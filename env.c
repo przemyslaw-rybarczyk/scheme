@@ -102,9 +102,10 @@ struct val define_var(char* var, struct val val, struct env *env) {
     }
     struct frame *new_frame;
     if (env != NULL) {
-        gc_push_env(&env);
+        struct env **gc_env = gc_push_env(env);
         gc_push_val(&val);
         new_frame = alloc_frame();
+        env = *gc_env;
         gc_pop_val();
         gc_pop_env();
     } else
@@ -134,18 +135,18 @@ struct env *extend_env(struct param_list *vars, struct val_list *vals, struct en
     if (vars == NULL && vals == NULL)
         return env;
     argnum_assert(vars != NULL && vals != NULL);
-    gc_push_env(&env);
+    struct env **gc_env = gc_push_env(env);
     struct env *new_env = alloc_env();
-    gc_push_env(&new_env);
+    struct env **gc_new_env = gc_push_env(new_env);
     new_env->frame = NULL;
-    new_env->outer = env;
+    new_env->outer = *gc_env;
     new_env->new_ptr = NULL;
     struct frame *frame = alloc_frame();
     while (vars->cdr != NULL && vals->cdr != NULL) {
         frame->binding.var = vars->car;
         frame->binding.val = vals->car;
-        frame->next = new_env->frame;
-        new_env->frame = frame;
+        frame->next = (*gc_new_env)->frame;
+        (*gc_new_env)->frame = frame;
         vars = vars->cdr;
         vals = vals->cdr;
         frame = alloc_frame();
@@ -153,9 +154,9 @@ struct env *extend_env(struct param_list *vars, struct val_list *vals, struct en
     argnum_assert(vars->cdr == NULL && vars->cdr == NULL);
     frame->binding.var = vars->car;
     frame->binding.val = vals->car;
-    frame->next = new_env->frame;
-    new_env->frame = frame;
+    frame->next = (*gc_new_env)->frame;
+    (*gc_new_env)->frame = frame;
     gc_pop_env();
     gc_pop_env();
-    return new_env;
+    return *gc_new_env;
 }
