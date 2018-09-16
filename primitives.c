@@ -15,7 +15,7 @@
  */
 
 void type_error(struct val val) {
-    fprintf(stderr, "Error: incorrent argument type - %s\n",
+    fprintf(stderr, "Error: incorrect argument type - %s\n",
             sprint_type(val.type));
     exit(2);
 }
@@ -381,10 +381,10 @@ struct val newline_prim(struct val_list *args) {
 
 struct val error_prim(struct val_list *args) {
     if (args == NULL) {
-        printf("Error.\n");
+        fprintf("Error.\n");
         exit(2);
     }
-    printf("Error: ");
+    fprintf("Error: ");
     while (args->cdr != NULL) {
         display_val(args->car);
         putchar(' ');

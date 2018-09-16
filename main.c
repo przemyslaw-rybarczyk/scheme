@@ -16,7 +16,7 @@ int main() {
     setup_memory();
     setup_global_env();
     setup_obarray();
-    printf(input_prompt);
+    printf("%s", input_prompt);
     struct expr *program = read();
     while (program != NULL) {
         struct val val = eval(program, NULL);
