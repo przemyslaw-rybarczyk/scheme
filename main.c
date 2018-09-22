@@ -7,6 +7,8 @@
 #include "memory.h"
 #include "symbol.h"
 
+#ifndef COMPILED
+
 const char *input_prompt = ">>> ";
 
 /* -- main
@@ -29,3 +31,5 @@ int main() {
     }
     putchar('\n');
 }
+
+#endif

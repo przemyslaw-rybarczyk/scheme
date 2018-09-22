@@ -7,6 +7,9 @@
 #include "safemem.h"
 #include "display.h"
 #include "memory.h"
+#include "symbol.h"
+
+#ifndef COMPILED
 
 struct val eval_sequence(struct expr_list *seq, struct env *env);
 struct val_list *eval_arg_list(struct expr_list *list, struct env *env);
@@ -66,6 +69,12 @@ struct val eval(struct expr *expr, struct env *env) {
         return (struct val){TYPE_LAMBDA, {.lambda_data = lambda}};
     }
 
+    case EXPR_BEGIN:
+        return eval_sequence(expr->data.begin, env);
+
+    case EXPR_QUOTE:
+        return eval_quote(expr->data.quote);
+
     case EXPR_AND:
         return eval_and_exprs(expr->data.begin, env);
 
@@ -77,32 +86,51 @@ struct val eval(struct expr *expr, struct env *env) {
         struct val_list *args = eval_arg_list(expr->data.appl.args, *gc_env);
         gc_pop_env();
         struct val proc = eval(expr->data.appl.proc, *gc_env);
-        switch (proc.type) {
-        case TYPE_PRIM: {
-            struct val result = proc.data.prim_data(args);
-            free_arg_list(args);
-            return result;
-        }
-        case TYPE_LAMBDA: {
-            struct expr_list *proc_body = proc.data.lambda_data->body;
-            struct env *ext_env =
-                extend_env(proc.data.lambda_data->params, args,
-                           proc.data.lambda_data->env);
-            free_arg_list(args);
-            return eval_sequence(proc_body, ext_env);
-        }
-        default:
-            fprintf(stderr, "Error: %s is not an applicable type\n",
-                    sprint_type(proc.type));
-            exit(2);
-        }
+        return apply(proc, args);
     }
-
-    case EXPR_BEGIN:
-        return eval_sequence(expr->data.begin, env);
 
     }
 }
+
+#endif
+
+/* -- apply
+ * Applies a procedure to a list of arguments and returns the resulting value.
+ * The high-order primitives are treated differently here - as they may call
+ * other functions tail-recursively, it is their responsibility to free the
+ * argument list before the call.
+ */
+struct val apply(struct val proc, struct val_list *args) {
+    switch (proc.type) {
+    case TYPE_PRIM: {
+        struct val result = proc.data.prim_data(args);
+        free_arg_list(args);
+        return result;
+    }
+    case TYPE_LAMBDA: {
+#ifndef COMPILED
+        struct expr_list *proc_body = proc.data.lambda_data->body;
+#endif
+        struct env *ext_env =
+            extend_env(proc.data.lambda_data->params, args,
+                    proc.data.lambda_data->env);
+#ifdef COMPILED
+        return proc.data.lambda_data->body(args, ext_env);
+#else
+        free_arg_list(args);
+        return eval_sequence(proc_body, ext_env);
+#endif
+    }
+    case TYPE_HIGH_PRIM:
+        return proc.data.prim_data(args);
+    default:
+        fprintf(stderr, "Error: %s is not an applicable type\n",
+                sprint_type(proc.type));
+        exit(2);
+    }
+}
+
+#ifndef COMPILED
 
 /* -- eval_sequence
  * Evaluates a list of expressions, returning the value of the last one.
@@ -177,6 +205,40 @@ struct val eval_or_exprs(struct expr_list *exprs, struct env *env) {
         return val;
     return eval_or_exprs(exprs->cdr, *gc_env);
 }
+
+#endif
+
+/* -- eval_quote
+ * Converts the argument to a quote special form into a value.
+ */
+struct val quote_list(struct sexpr_list *list);
+
+struct val eval_quote(struct sexpr *sexpr) {
+    switch (sexpr->type) {
+    case SEXPR_LITERAL:
+        return sexpr->data.literal;
+    case SEXPR_ATOM:
+        return (struct val){TYPE_SYMBOL, {.string_data = intern_symbol(sexpr->data.atom)}};
+    case SEXPR_CONS:
+        return quote_list(sexpr->data.cons);
+    }
+}
+
+struct val quote_list(struct sexpr_list *list) {
+    if (list == NULL)
+        return (struct val){TYPE_NIL};
+    struct val val = (struct val){TYPE_PAIR, {.pair_data = alloc_pair()}};
+    val.data.pair_data->car = (struct val){TYPE_NIL};
+    val.data.pair_data->cdr = (struct val){TYPE_NIL};
+    gc_push_val(&val);
+    struct val car = eval_quote(list->car);
+    val.data.pair_data->car = car;
+    struct val cdr = quote_list(list->cdr);
+    val.data.pair_data->cdr = cdr;
+    gc_pop_val();
+    return val;
+}
+
 
 /* -- free_arg_list
  * Frees a val_list.

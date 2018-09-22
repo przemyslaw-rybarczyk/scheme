@@ -18,19 +18,27 @@ struct frame *global_env_frame = NULL;
 
 /* -- setup_global_env
  * This function sets up the global environment by adding to it the primitives
- * contained in the `prim_vals` array bound to the names in the `prim_vars` array.
+ * according to the bindings in the `prims` and `high_prims` arrays.
  * It should be called at the start of the REPL.
  */
-void setup_global_env() {
-    struct val (**val)(struct val_list *) = prim_vals;
-    char **var = prim_vars;
-    while (val < prim_vals + prims && var < prim_vars + prims) {
+void setup_global_env(void) {
+    for (struct prim_binding *prims_ptr = prims + prims_size - 1;
+            prims_ptr >= prims;
+            prims_ptr--) {
         struct frame *frame = s_malloc(sizeof(struct frame));
-        frame->binding = (struct binding){{TYPE_PRIM, {.prim_data = *val}}, *var};
+        frame->binding = (struct binding){{TYPE_PRIM,
+            {.prim_data = prims_ptr->val}}, prims_ptr->var};
         frame->next = global_env_frame;
         global_env_frame = frame;
-        val++;
-        var++;
+    }
+    for (struct prim_binding *high_prims_ptr = high_prims + high_prims_size - 1;
+            high_prims_ptr >= high_prims;
+            high_prims_ptr--) {
+        struct frame *frame = s_malloc(sizeof(struct frame));
+        frame->binding = (struct binding){{TYPE_HIGH_PRIM,
+            {.prim_data = high_prims_ptr->val}}, high_prims_ptr->var};
+        frame->next = global_env_frame;
+        global_env_frame = frame;
     }
 }
 
@@ -91,8 +99,7 @@ struct val assign_var(char *var, struct val val, struct env *env) {
  * Changes the binding if one already exists in the frame.
  */
 struct val define_var(char* var, struct val val, struct env *env) {
-    struct frame *env_frame = env ? env->frame : global_env_frame;
-    struct frame *frame = env_frame;
+    struct frame *frame = env ? env->frame : global_env_frame;
     while (frame != NULL) {
         if (strcmp(var, frame->binding.var) == 0) {
             frame->binding.val = val;
@@ -112,7 +119,7 @@ struct val define_var(char* var, struct val val, struct env *env) {
         new_frame = s_malloc(sizeof(struct frame));
     new_frame->binding.val = val;
     new_frame->binding.var = var;
-    new_frame->next = env_frame;
+    new_frame->next = env ? env->frame : global_env_frame;
     if (env != NULL)
         env->frame = new_frame;
     else
@@ -126,6 +133,8 @@ void argnum_assert(int assertion) {
         exit(2);
     }
 }
+
+#include "display.h"
 
 /* -- extend_env
  * Extend an environment by a new frame containing the variables is `vars`
@@ -151,7 +160,7 @@ struct env *extend_env(struct param_list *vars, struct val_list *vals, struct en
         vals = vals->cdr;
         frame = alloc_frame();
     }
-    argnum_assert(vars->cdr == NULL && vars->cdr == NULL);
+    argnum_assert(vars->cdr == NULL && vals->cdr == NULL);
     frame->binding.var = vars->car;
     frame->binding.val = vals->car;
     frame->next = (*gc_new_env)->frame;

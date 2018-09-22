@@ -1,3 +1,5 @@
 #include "expr.h"
 
-struct expr *read();
+char getchar_nospace(void);
+struct sexpr *parse(void);
+struct expr *read(void);

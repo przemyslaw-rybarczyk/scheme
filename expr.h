@@ -10,6 +10,8 @@
  * - String - TYPE_STRING / string_data
  * - Symbol - TYPE_SYMBOL / string_data
  * - Primitive - TYPE_PRIM / prim_data
+ * - Higher-order primitive - TYPE_HIGH_PRIM / prim_data
+ *   * Note: not all higher-order primitives are actually of type TYPE_HIGH_PRIM.
  * - Lambda - TYPE_LAMBDA / lambda_data
  * - Pair - TYPE_PAIR / pair_data
  * - Nil - TYPE_NIL / -unspecified-
@@ -22,7 +24,8 @@
  */
 
 enum types {TYPE_INT, TYPE_FLOAT, TYPE_BOOL, TYPE_STRING, TYPE_SYMBOL,
-    TYPE_PRIM, TYPE_LAMBDA, TYPE_PAIR, TYPE_NIL, TYPE_VOID, TYPE_BROKEN_HEART};
+    TYPE_PRIM, TYPE_HIGH_PRIM, TYPE_LAMBDA, TYPE_PAIR, TYPE_NIL, TYPE_VOID,
+    TYPE_BROKEN_HEART};
 
 struct pair;
 struct lambda;
@@ -64,6 +67,8 @@ struct pair {
  * `new_ptr` is used only for garbage collection and is normally NULL.
  */
 
+struct env;
+
 struct param_list {
     char *car;
     struct param_list *cdr;
@@ -71,7 +76,11 @@ struct param_list {
 
 struct lambda {
     struct param_list *params;
+#ifdef COMPILED
+    struct val (*body)(struct val_list *, struct env *);
+#else
     struct expr_list *body;
+#endif
     struct env *env;
     struct lambda *new_ptr;
 };
@@ -106,6 +115,17 @@ struct env {
     struct env *outer;
     struct env *new_ptr;
 };
+
+/* -- prim_binding
+ * Represents a binding to a primitive function.
+ * Used is setting up the initial global environment.
+ */
+
+struct prim_binding {
+    char *var;
+    struct val (*val)(struct val_list *);
+};
+
 
 /* -- cell
  * Represents a cell of garbage-collected memory on the heap.
@@ -163,12 +183,13 @@ struct sexpr_list {
  *   * Note: The `alter` pointer may be NULL to indicate lack of alternative.
  * - Lambda expression - EXPR_LAMBDA / lambda
  * - Begin expression - EXPR_BEGIN / begin
+ * - Quote expression - EXPR_QUOTE / quote
  * - And expression - EXPR_AND / begin
  * - Or expression - EXPR_OR / begin
  */
 
 enum expr_types {EXPR_LITERAL, EXPR_VAR, EXPR_APPL, EXPR_DEF, EXPR_SET,
-    EXPR_IF, EXPR_LAMBDA, EXPR_BEGIN, EXPR_AND, EXPR_OR};
+    EXPR_IF, EXPR_LAMBDA, EXPR_BEGIN, EXPR_QUOTE, EXPR_AND, EXPR_OR};
 
 struct expr_list;
 
@@ -195,6 +216,7 @@ struct expr {
             struct expr_list *body;
         } lambda;
         struct expr_list *begin;
+        struct sexpr *quote;
     } data;
 };
 
