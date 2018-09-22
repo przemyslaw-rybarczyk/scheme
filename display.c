@@ -31,6 +31,7 @@ void display_val(struct val val) {
         printf("%s", val.data.string_data);
         break;
     case TYPE_PRIM:
+    case TYPE_HIGH_PRIM:
         printf("<primitive procedure>");
         break;
     case TYPE_LAMBDA:
@@ -128,6 +129,7 @@ const char *sprint_type(enum types type) {
     case TYPE_SYMBOL:
         return "symbol";
     case TYPE_PRIM:
+    case TYPE_HIGH_PRIM:
         return "primitive";
     case TYPE_LAMBDA:
         return "lambda";

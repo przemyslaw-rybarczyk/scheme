@@ -23,7 +23,7 @@ struct val **val_stack;
  * Sets up the heap and GC stacks.
  * Should be called at the start of `main`.
  */
-void setup_memory() {
+void setup_memory(void) {
     free_ptr = mem_start = s_malloc(mem_size * sizeof(union cell));
     val_stack = val_stack_start = s_malloc(val_stack_size * sizeof(struct val));
     env_stack = env_stack_start;
@@ -39,25 +39,27 @@ void garbage_collect();
  * which allocate memory for specific types of cells by performing
  * the appropriate pointer conversions.
  */
-union cell *alloc_cell() {
+union cell *alloc_cell(void) {
+#ifndef GC_ALWAYS
     if (free_ptr - mem_start >= mem_size)
+#endif
         garbage_collect();
     return free_ptr++;
 }
 
-struct pair *alloc_pair() {
+struct pair *alloc_pair(void) {
     return &alloc_cell()->pair;
 }
 
-struct lambda *alloc_lambda() {
+struct lambda *alloc_lambda(void) {
     return &alloc_cell()->lambda;
 }
 
-struct frame *alloc_frame() {
+struct frame *alloc_frame(void) {
     return &alloc_cell()->frame;
 }
 
-struct env *alloc_env() {
+struct env *alloc_env(void) {
     return &alloc_cell()->env;
 }
 
@@ -101,7 +103,7 @@ struct lambda *move_lambda(struct lambda *lambda);
  * arguments outside of the function and allow the C compiler to apply tail call
  * optimization to the evaluation process.
  */
-void garbage_collect() {
+void garbage_collect(void) {
     union cell *new_mem = s_malloc(mem_size * sizeof(union cell));
     free_ptr = new_mem;
     for (struct frame *frame = global_env_frame; frame != NULL; frame = frame->next)
@@ -190,9 +192,9 @@ struct env **gc_push_env(struct env *env) {
     return env_stack++;
 }
 
-void gc_pop_env() {
+void gc_pop_env(void) {
     if (env_stack == env_stack_start) {
-        fprintf(stderr, "Error: empty env_stack");
+        fprintf(stderr, "Error: empty env_stack\n");
         exit(-1);
     }
     env_stack--;
@@ -208,9 +210,9 @@ void gc_push_val(struct val *val) {
     *val_stack++ = val;
 }
 
-void gc_pop_val() {
+void gc_pop_val(void) {
     if (val_stack == val_stack_start) {
-        fprintf(stderr, "Error: empty val_stack");
+        fprintf(stderr, "Error: empty val_stack\n");
         exit(-1);
     }
     val_stack--;

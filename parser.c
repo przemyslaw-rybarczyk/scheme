@@ -23,6 +23,24 @@ void syntax_assert(int assertion, const char *tag, struct sexpr *sexpr) {
     exit(1);
 }
 
+/* -- getchar_nospace
+ * Gets the next character from stdin, skipping whitespace and comments.
+ */
+char getchar_nospace(void) {
+    char c;
+    while (1) {
+        while (isspace(c = getchar()))
+            ;
+        if (c == ';') {
+            while ((c = getchar()) != '\n' && c != EOF)
+                ;
+            continue;
+        }
+        break;
+    }
+    return c;
+}
+
 /* -- get_token
  * Returns the type of the next token.
  * For (, ), ' it returns the character.
@@ -35,12 +53,7 @@ void syntax_assert(int assertion, const char *tag, struct sexpr *sexpr) {
  * Returns EOF on end of file.
  */
 char get_token(char **s_ptr) {
-    char c;
-    while ((c = getchar()) != EOF && isspace(c))
-        ;
-    if (c == ';')
-        while ((c = getchar()) != EOF && c != '\n')
-            ;
+    char c = getchar_nospace();
 
     // simple cases
     if (c == '(' || c == ')' || c == '\'' || c == EOF)
@@ -79,10 +92,7 @@ char get_token(char **s_ptr) {
             s = s_realloc(s, token_length);
         }
     }
-    if (ungetc(s[i], stdin) == EOF) {
-        fprintf(stderr, "Error: ungetc failed\n");
-        exit(5);
-    }
+    s_ungetc(s[i], stdin);
     s[i] = '\0';
     *s_ptr = s;
     return NAME_TOKEN;
@@ -96,7 +106,7 @@ struct sexpr_list *parse_list();
  * Converts '... into (quote ...)
  * Returns NULL in case of a closed parenthesis without returning it to stdin.
  */
-struct sexpr *parse() {
+struct sexpr *parse(void) {
     char *text;
     char type = get_token(&text);
     if (type == ')')
@@ -172,7 +182,7 @@ struct sexpr *parse() {
             exit(1);
         }
 
-        // variable name
+        // atom
         sexpr->type = SEXPR_ATOM;
         sexpr->data.atom = text;
         return sexpr;
@@ -189,7 +199,7 @@ struct sexpr *parse() {
     }
 }
 
-struct sexpr_list *parse_list() {
+struct sexpr_list *parse_list(void) {
     struct sexpr *car = parse();
     if (car != NULL) {
         struct sexpr_list *pair = s_malloc(sizeof(struct sexpr_list));
@@ -205,7 +215,6 @@ struct param_list *analyze_param_list(struct sexpr_list *list,
         const char* tag, struct sexpr *sexpr);
 struct expr *analyze_seq_expr(struct sexpr_list *seq);
 struct expr *analyze_cond_clauses(struct sexpr_list *clauses, struct sexpr *cond);
-struct val quote(struct sexpr *sexpr);
 
 const char *keywords[] = {"and", "begin", "cond", "define", "else", "if", "lambda", "let", "set!", "or", "quote"};
 
@@ -229,6 +238,10 @@ void assert_not_keyword(const char *name) {
  */
 struct expr* analyze(struct sexpr* sexpr) {
     struct expr* expr = s_malloc(sizeof(struct expr));
+    if (sexpr == NULL) {
+        fprintf(stderr, "Syntax error: unexpected ')'\n");
+        exit(1);
+    }
     switch (sexpr->type) {
 
     case SEXPR_LITERAL:
@@ -318,8 +331,8 @@ struct expr* analyze(struct sexpr* sexpr) {
             if (strcmp(tag, "quote") == 0) {
                 syntax_assert(cdr != NULL, tag, sexpr);
                 syntax_assert(cdr->cdr == NULL, tag, sexpr);
-                expr->type = EXPR_LITERAL;
-                expr->data.literal = quote(cdr->car);
+                expr->type = EXPR_QUOTE;
+                expr->data.quote = cdr->car;
                 return expr;
             }
 
@@ -459,77 +472,14 @@ struct expr *analyze_cond_clauses(struct sexpr_list *clauses, struct sexpr *cond
     return expr;
 }
 
-struct val quote_list(struct sexpr_list *list);
-
-/* -- quote
- * Converts the argument to a quote special form into a literal, allocating
- * lists on the heap if necessary.
- * All values assigned from the same quote expression in the source code
- * are identical.
- */
-struct val quote(struct sexpr *sexpr) {
-    switch (sexpr->type) {
-    case SEXPR_LITERAL:
-        return sexpr->data.literal;
-    case SEXPR_ATOM:
-        return (struct val){TYPE_SYMBOL, {.string_data = intern_symbol(sexpr->data.atom)}};
-    case SEXPR_CONS:
-        return quote_list(sexpr->data.cons);
-    }
-}
-
-struct val quote_list(struct sexpr_list *list) {
-    if (list == NULL)
-        return (struct val){TYPE_NIL};
-    struct val val = (struct val){TYPE_PAIR, {.pair_data = alloc_pair()}};
-    gc_push_val(&val);
-    struct val car = quote(list->car);
-    val.data.pair_data->car = car;
-    struct val cdr = quote_list(list->cdr);
-    val.data.pair_data->cdr = cdr;
-    gc_pop_val();
-    return val;
-}
-
-void free_sexpr_list(struct sexpr_list *list);
-
-/* -- free_sexpr
- * Frees the memory taken by the sexpr objects created during parsing.
- */
-void free_sexpr(struct sexpr *sexpr) {
-    if (sexpr->type == SEXPR_CONS)
-        free_sexpr_list(sexpr->data.cons);
-    free(sexpr);
-}
-
-void free_sexpr_list(struct sexpr_list *list) {
-    if (list == NULL)
-        return;
-    free_sexpr(list->car);
-    free_sexpr_list(list->cdr);
-}
-
 /* -- read
  * Performs the entire parsing process.
- * Prevents error on exit and ensures the `sexpr` is freed.
+ * Prevents syntax error on exit.
  */
-struct expr* read() {
-    char c;
-    while (1) {
-        while (isspace(c = getchar()))
-            ;
-        if (c == ';') {
-            while ((c = getchar()) != '\n' && c != EOF)
-                ;
-            continue;
-        }
-        break;
-    }
+struct expr* read(void) {
+    char c = getchar_nospace();
     if (c == EOF)
         return NULL;
-    ungetc(c, stdin);
-    struct sexpr *sexpr = parse();
-    struct expr *expr = analyze(sexpr);
-    free_sexpr(sexpr);
-    return expr;
+    s_ungetc(c, stdin);
+    return analyze(parse());
 }

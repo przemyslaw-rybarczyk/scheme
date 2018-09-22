@@ -1,5 +1,6 @@
 #include "expr.h"
 
-extern struct val (*prim_vals[])(struct val_list *);
-extern char *prim_vars[];
-size_t prims;
+extern struct prim_binding prims[];
+extern struct prim_binding high_prims[];
+size_t prims_size;
+size_t high_prims_size;
