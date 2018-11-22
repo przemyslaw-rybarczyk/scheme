@@ -76,11 +76,7 @@ struct param_list {
 
 struct lambda {
     struct param_list *params;
-#ifdef COMPILED
-    struct val (*body)(struct val_list *, struct env *);
-#else
     struct expr_list *body;
-#endif
     struct env *env;
     struct lambda *new_ptr;
 };

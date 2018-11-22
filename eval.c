@@ -9,8 +9,6 @@
 #include "memory.h"
 #include "symbol.h"
 
-#ifndef COMPILED
-
 struct val eval_sequence(struct expr_list *seq, struct env *env);
 struct val_list *eval_arg_list(struct expr_list *list, struct env *env);
 struct val eval_and_exprs(struct expr_list *exprs, struct env *env);
@@ -92,8 +90,6 @@ struct val eval(struct expr *expr, struct env *env) {
     }
 }
 
-#endif
-
 /* -- apply
  * Applies a procedure to a list of arguments and returns the resulting value.
  * The high-order primitives are treated differently here - as they may call
@@ -108,18 +104,12 @@ struct val apply(struct val proc, struct val_list *args) {
         return result;
     }
     case TYPE_LAMBDA: {
-#ifndef COMPILED
         struct expr_list *proc_body = proc.data.lambda_data->body;
-#endif
         struct env *ext_env =
             extend_env(proc.data.lambda_data->params, args,
                     proc.data.lambda_data->env);
-#ifdef COMPILED
-        return proc.data.lambda_data->body(args, ext_env);
-#else
         free_arg_list(args);
         return eval_sequence(proc_body, ext_env);
-#endif
     }
     case TYPE_HIGH_PRIM:
         return proc.data.prim_data(args);
@@ -129,8 +119,6 @@ struct val apply(struct val proc, struct val_list *args) {
         exit(2);
     }
 }
-
-#ifndef COMPILED
 
 /* -- eval_sequence
  * Evaluates a list of expressions, returning the value of the last one.
@@ -205,8 +193,6 @@ struct val eval_or_exprs(struct expr_list *exprs, struct env *env) {
         return val;
     return eval_or_exprs(exprs->cdr, *gc_env);
 }
-
-#endif
 
 /* -- eval_quote
  * Converts the argument to a quote special form into a value.
