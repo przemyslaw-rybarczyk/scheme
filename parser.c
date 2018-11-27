@@ -215,6 +215,7 @@ struct param_list *analyze_param_list(struct sexpr_list *list,
         const char* tag, struct sexpr *sexpr);
 struct expr *analyze_seq_expr(struct sexpr_list *seq);
 struct expr *analyze_cond_clauses(struct sexpr_list *clauses, struct sexpr *cond);
+struct expr *analyze_or_args(struct sexpr_list *args);
 
 const char *keywords[] = {"and", "begin", "cond", "define", "else", "if", "lambda", "let", "set!", "or", "quote"};
 
@@ -337,15 +338,33 @@ struct expr* analyze(struct sexpr* sexpr) {
             }
 
             if (strcmp(tag, "and") == 0) {
-                expr->type = EXPR_AND;
-                expr->data.begin = analyze_list(cdr);
+                if (cdr == NULL) {
+                    expr->type = EXPR_LITERAL;
+                    expr->data.literal = (struct val){TYPE_BOOL, {.int_data = 1}};
+                    return expr;
+                }
+                if (cdr->cdr == NULL)
+                    return analyze(cdr->car);
+                struct expr *branch = expr;
+                struct sexpr_list *args = cdr;
+                while (args != NULL) {
+                    branch->type = EXPR_IF;
+                    branch->data.if_data.pred = analyze(args->car);
+                    branch->data.if_data.alter = s_malloc(sizeof(struct expr));
+                    branch->data.if_data.alter->type = EXPR_LITERAL;
+                    branch->data.if_data.alter->data.literal = (struct val){TYPE_BOOL, {.int_data = 0}};
+                    if (args->cdr->cdr == NULL)
+                        break;
+                    branch->data.if_data.conseq = s_malloc(sizeof(struct expr));
+                    branch = branch->data.if_data.conseq;
+                    args = args->cdr;
+                }
+                branch->data.if_data.conseq = analyze(args->cdr->car);
                 return expr;
             }
 
             if (strcmp(tag, "or") == 0) {
-                expr->type = EXPR_OR;
-                expr->data.begin = analyze_list(cdr);
-                return expr;
+                return analyze_or_args(cdr);
             }
 
             if (strcmp(tag, "cond") == 0) {
@@ -469,6 +488,44 @@ struct expr *analyze_cond_clauses(struct sexpr_list *clauses, struct sexpr *cond
     expr->data.if_data.pred = analyze(clauses->car->data.cons->car);
     expr->data.if_data.conseq = analyze_seq_expr(clauses->car->data.cons->cdr);
     expr->data.if_data.alter = analyze_cond_clauses(clauses->cdr, cond);
+    return expr;
+}
+
+struct expr *analyze_or_args(struct sexpr_list *args) {
+    if (args == NULL) {
+        struct expr *expr = s_malloc(sizeof(struct expr));
+        expr->type = EXPR_LITERAL;
+        expr->data.literal = (struct val){TYPE_BOOL, {.int_data = 0}};
+        return expr;
+    }
+    if (args->cdr == NULL) {
+        return analyze(args->car);
+    }
+    struct expr *expr = s_malloc(sizeof(struct expr));
+    expr->type = EXPR_APPL;
+    struct expr *proc = s_malloc(sizeof(struct expr));
+    proc->type = EXPR_LAMBDA;
+    struct param_list *params = s_malloc(sizeof(struct param_list));
+    params->car = "0";
+    params->cdr = NULL;
+    proc->data.lambda.params = params;
+    struct expr_list *body = s_malloc(sizeof(struct expr_list));
+    struct expr *if_test = s_malloc(sizeof(struct expr));
+    if_test->type = EXPR_IF;
+    struct expr *x = s_malloc(sizeof(struct expr));
+    x->type = EXPR_VAR;
+    x->data.var = "0";
+    if_test->data.if_data.pred = x;
+    if_test->data.if_data.conseq = x;
+    if_test->data.if_data.alter = analyze_or_args(args->cdr);
+    body->car = if_test;
+    body->cdr = NULL;
+    proc->data.lambda.body = body;
+    expr->data.appl.proc = proc;
+    struct expr_list *appl_args = s_malloc(sizeof(struct expr_list));
+    appl_args->car = analyze(args->car);
+    appl_args->cdr = NULL;
+    expr->data.appl.args = appl_args;
     return expr;
 }
 

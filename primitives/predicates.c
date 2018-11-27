@@ -1,9 +1,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "predicates.h"
 #include "../expr.h"
 #include "assert.h"
-#include "../eval.h"
+#include "../exec.h"
 
 int eq(struct val val1, struct val val2) {
     if (val1.type != val2.type)
@@ -31,9 +32,9 @@ int eq(struct val val1, struct val val2) {
     }
 }
 
-struct val eq_prim(struct val_list *args) {
-    assert_2_args(args);
-    return (struct val){TYPE_BOOL, {.int_data = eq(args->car, args->cdr->car)}};
+struct val eq_prim(struct val *args, int num) {
+    args_assert(num == 2);
+    return (struct val){TYPE_BOOL, {.int_data = eq(args[0], args[1])}};
 }
 
 int equal(struct val val1, struct val val2) {
@@ -49,39 +50,39 @@ int equal(struct val val1, struct val val2) {
     }
 }
 
-struct val equal_prim(struct val_list *args) {
-    assert_2_args(args);
-    return (struct val){TYPE_BOOL, {.int_data = equal(args->car, args->cdr->car)}};
+struct val equal_prim(struct val *args, int num) {
+    args_assert(num == 2);
+    return (struct val){TYPE_BOOL, {.int_data = equal(args[0], args[1])}};
 }
 
-struct val pair_prim(struct val_list *args) {
-    assert_1_arg(args);
-    return (struct val){TYPE_BOOL, {.int_data = args->car.type == TYPE_PAIR}};
+struct val pair_prim(struct val *args, int num) {
+    args_assert(num == 1);
+    return (struct val){TYPE_BOOL, {.int_data = args[0].type == TYPE_PAIR}};
 }
 
-struct val null_prim(struct val_list *args) {
-    assert_1_arg(args);
-    return (struct val){TYPE_BOOL, {.int_data = args->car.type == TYPE_NIL}};
+struct val null_prim(struct val *args, int num) {
+    args_assert(num == 1);
+    return (struct val){TYPE_BOOL, {.int_data = args[0].type == TYPE_NIL}};
 }
 
-struct val number_prim(struct val_list *args) {
-    assert_1_arg(args);
-    return (struct val){TYPE_BOOL, {.int_data = args->car.type == TYPE_INT || args->car.type == TYPE_FLOAT}};
+struct val number_prim(struct val *args, int num) {
+    args_assert(num == 1);
+    return (struct val){TYPE_BOOL, {.int_data = args[0].type == TYPE_INT || args[0].type == TYPE_FLOAT}};
 }
 
-struct val symbol_prim(struct val_list *args) {
-    assert_1_arg(args);
-    return (struct val){TYPE_BOOL, {.int_data = args->car.type == TYPE_SYMBOL}};
+struct val symbol_prim(struct val *args, int num) {
+    args_assert(num == 1);
+    return (struct val){TYPE_BOOL, {.int_data = args[0].type == TYPE_SYMBOL}};
 }
 
-struct val string_prim(struct val_list *args) {
-    assert_1_arg(args);
-    return (struct val){TYPE_BOOL, {.int_data = args->car.type == TYPE_STRING}};
+struct val string_prim(struct val *args, int num) {
+    args_assert(num == 1);
+    return (struct val){TYPE_BOOL, {.int_data = args[0].type == TYPE_STRING}};
 }
 
-struct val not_prim(struct val_list *args) {
-    assert_1_arg(args);
-    if (is_true(args->car))
+struct val not_prim(struct val *args, int num) {
+    args_assert(num == 1);
+    if (is_true(args[0]))
         return (struct val){TYPE_BOOL, {.int_data = 0}};
     else
         return (struct val){TYPE_BOOL, {.int_data = 1}};

@@ -21,11 +21,14 @@
  * A void type is used as a return value when none is specified, such as
  * in assignments and definitions.
  * A `type` value of TYPE_BROKEN_HEART is used only for garbage collection.
+ * The following values are used only for returning from functions:
+ * - Environment - TYPE_ENV / env_data
+ * - Instruction pointer - TYPE_INST / inst_data
  */
 
 enum types {TYPE_INT, TYPE_FLOAT, TYPE_BOOL, TYPE_STRING, TYPE_SYMBOL,
     TYPE_PRIM, TYPE_HIGH_PRIM, TYPE_LAMBDA, TYPE_PAIR, TYPE_NIL, TYPE_VOID,
-    TYPE_BROKEN_HEART};
+    TYPE_BROKEN_HEART, TYPE_ENV, TYPE_INST};
 
 struct pair;
 struct lambda;
@@ -37,9 +40,12 @@ struct val {
         long long int_data;
         double float_data;
         char *string_data;
-        struct val (*prim_data)(struct val_list *);
+        struct val (*prim_data)(struct val *, int);
+        struct inst *(*high_prim_data)(int);
         struct lambda *lambda_data;
         struct pair *pair_data;
+        struct env *env_data;
+        struct inst *inst_data;
     } data;
 };
 
@@ -60,10 +66,10 @@ struct pair {
 /* -- lambda
  * Represents a lambda with the following elements:
  * - `params` is a linked list of strings representing parameter names.
- * - `body` contains the body of the lambda in the form of a linked list
- *   of expressions. The expressions are part of the program's AST.
+ * - `body` contains the body of the lambda in the form of a pointer
+ *   to program memory.
  * - `env` contains the environment in which the lambda is to be executed.
- *   A value of null represents the global environment.
+ *   A value of NULL represents the global environment.
  * `new_ptr` is used only for garbage collection and is normally NULL.
  */
 
@@ -76,7 +82,7 @@ struct param_list {
 
 struct lambda {
     struct param_list *params;
-    struct expr_list *body;
+    struct inst *body;
     struct env *env;
     struct lambda *new_ptr;
 };
@@ -112,16 +118,20 @@ struct env {
     struct env *new_ptr;
 };
 
-/* -- prim_binding
+/* -- prim_binding, high_prim_binding
  * Represents a binding to a primitive function.
- * Used is setting up the initial global environment.
+ * Used in setting up the initial global environment.
  */
 
 struct prim_binding {
     char *var;
-    struct val (*val)(struct val_list *);
+    struct val (*val)(struct val *, int);
 };
 
+struct high_prim_binding {
+    char *var;
+    struct inst *(*val)(int);
+};
 
 /* -- cell
  * Represents a cell of garbage-collected memory on the heap.
@@ -180,12 +190,10 @@ struct sexpr_list {
  * - Lambda expression - EXPR_LAMBDA / lambda
  * - Begin expression - EXPR_BEGIN / begin
  * - Quote expression - EXPR_QUOTE / quote
- * - And expression - EXPR_AND / begin
- * - Or expression - EXPR_OR / begin
  */
 
 enum expr_types {EXPR_LITERAL, EXPR_VAR, EXPR_APPL, EXPR_DEF, EXPR_SET,
-    EXPR_IF, EXPR_LAMBDA, EXPR_BEGIN, EXPR_QUOTE, EXPR_AND, EXPR_OR};
+    EXPR_IF, EXPR_LAMBDA, EXPR_BEGIN, EXPR_QUOTE};
 
 struct expr_list;
 
@@ -219,4 +227,51 @@ struct expr {
 struct expr_list {
     struct expr *car;
     struct expr_list *cdr;
+};
+
+/* -- inst
+ * Represents a virtual machine instruction.
+ * The following are valid instructions:
+ * - INST_CONST / val - Pushes a constant value onto the stack.
+ * - INST_VAR / name - Looks up a variable in the current environment
+ *   and pushes it onto the stack
+ * - INST_DEF / name - Pops a value off the stack and binds it to `name`
+ *   in the current environment frame.
+ * - INST_SET / name - Pops a value off the stack and sets the value of `name`
+ *   to it in the environment.
+ * - INST_JUMP / ptr - Jumps to the instruction located at `ptr`.
+ * - INST_JUMP_FALSE / ptr - Pops a value off the stack and jumps to `ptr`
+ *   if it's false.
+ * - INST_LAMBDA / lambda - Pushes a lambda with params `params`, body `ptr`,
+ *   and env set to the current environment.
+ * - INST_CALL / num - Calls the function with `num` arguments.
+ *   The function and arguments are pushed in left-to-right order.
+ *   Saves the environment and instruction pointer on the stack.
+ * - INST_TAIL_CALL / num - Call a function with `num` arguments tail-recursively.
+ * - INST_RETURN / -unspecified- - Returns from the current function.
+ *   If there is not calling function, gives the return value as the final
+ *   result of execution.
+ * - INST_DELETE / -unspecified- - Pops a value off the stack without using it.
+ * - INST_CONS / -unspecified- - Pops two values off the stack and pushes
+ *   a pair containing the two of them.
+ *   It's used in evaluating quoted literals instead of a function call,
+ *   since cons can be rebound.
+ */
+
+enum inst_type {INST_CONST, INST_VAR, INST_DEF, INST_SET,
+    INST_JUMP, INST_JUMP_FALSE, INST_LAMBDA,
+    INST_CALL, INST_TAIL_CALL, INST_RETURN, INST_DELETE, INST_CONS};
+
+struct inst {
+    enum inst_type type;
+    union {
+        struct val val;
+        char *name;
+        struct inst *ptr;
+        int num;
+        struct {
+            struct param_list *params;
+            struct inst *ptr;
+        } lambda;
+    } args;
 };

@@ -2,42 +2,46 @@
 #include <stdlib.h>
 #include <ctype.h>
 
+#include "io.h"
 #include "../expr.h"
 #include "assert.h"
 #include "../display.h"
 #include "../parser.h"
-#include "../eval.h"
 #include "../safemem.h"
+#include "../insts.h"
+#include "../compile.h"
+#include "../exec.h"
 
-struct val display_prim(struct val_list *args) {
-    assert_1_arg(args);
-    inner_display_val(args->car);
+struct val display_prim(struct val *args, int num) {
+    args_assert(num == 1);
+    inner_display_val(args[0]);
     return (struct val){TYPE_VOID};
 }
 
-struct val newline_prim(struct val_list *args) {
-    args_assert(args == NULL);
+struct val newline_prim(struct val *args, int num) {
+    args_assert(num == 0);
     putchar('\n');
     return (struct val){TYPE_VOID};
 }
 
-struct val error_prim(struct val_list *args) {
-    if (args == NULL) {
+struct val error_prim(struct val *args, int num) {
+    if (num == 0) {
         fprintf(stderr, "Error.\n");
         exit(2);
     }
     fprintf(stderr, "Error: ");
-    while (args->cdr != NULL) {
-        display_val(args->car);
+    for (struct val *arg_ptr = args; arg_ptr < args + num - 1; arg_ptr++) {
+        inner_display_val(*arg_ptr);
         putchar(' ');
-        args = args->cdr;
     }
-    inner_display_val(args->car);
+    inner_display_val(args[num - 1]);
     putchar('\n');
     exit(2);
 }
 
-struct val read_prim(struct val_list *args) {
+struct inst *read_prim(int num) {
+    args_assert(num == 0);
+    stack_pop();
     char c = getchar_nospace();
     if (c == EOF)
         exit(0);
@@ -47,5 +51,8 @@ struct val read_prim(struct val_list *args) {
         fprintf(stderr, "Syntax error: unexpected ')'\n");
         exit(1);
     }
-    return eval_quote(sexpr);
+    struct inst *eval = this_inst();
+    compile_quote(sexpr);
+    *next_inst() = (struct inst){INST_RETURN};
+    return eval;
 }

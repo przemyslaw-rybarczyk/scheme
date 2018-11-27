@@ -9,7 +9,7 @@ void display_val_list(struct pair *list);
 /* -- display_val
  * Displays a value as seen in the REPL.
  * Void type values are prevented from displaying on their own in `main`.
- * but they can be displayed as part of lists.
+ * but they can be displayed as part of compound data structures.
  */
 void display_val(struct val val) {
     switch(val.type) {
@@ -178,6 +178,49 @@ void inner_display_val_list(struct pair *list) {
     default:
         printf(" . ");
         inner_display_val(list->cdr);
+        break;
+    }
+}
+
+void display_inst(struct inst *inst) {
+    printf("%p ", inst);
+    switch (inst->type) {
+    case INST_CONST:
+        printf("CONST ");
+        display_val(inst->args.val);
+        printf("\n");
+        break;
+    case INST_VAR:
+        printf("VAR %s\n", inst->args.name);
+        break;
+    case INST_DEF:
+        printf("DEF %s\n", inst->args.name);
+        break;
+    case INST_SET:
+        printf("SET %s\n", inst->args.name);
+        break;
+    case INST_JUMP:
+        printf("JUMP %p\n", inst->args.ptr);
+        break;
+    case INST_JUMP_FALSE:
+        printf("JUMP_FALSE %p\n", inst->args.ptr);
+        break;
+    case INST_LAMBDA:
+        printf("LAMBDA (");
+        display_param_list(inst->args.lambda.params);
+        printf(") %p\n", inst->args.lambda.ptr);
+        break;
+    case INST_CALL:
+        printf("CALL %d\n", inst->args.num);
+        break;
+    case INST_TAIL_CALL:
+        printf("TAIL_CALL %d\n", inst->args.num);
+        break;
+    case INST_RETURN:
+        printf("RETURN\n");
+        break;
+    case INST_DELETE:
+        printf("DELETE\n");
         break;
     }
 }
