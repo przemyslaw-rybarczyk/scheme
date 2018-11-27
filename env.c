@@ -7,6 +7,7 @@
 #include "safemem.h"
 #include "primitives.h"
 #include "memory.h"
+#include "exec.h"
 
 /* -- global_env_frame
  * The frame containing the global environment.
@@ -31,12 +32,12 @@ void setup_global_env(void) {
         frame->next = global_env_frame;
         global_env_frame = frame;
     }
-    for (struct prim_binding *high_prims_ptr = high_prims + high_prims_size - 1;
+    for (struct high_prim_binding *high_prims_ptr = high_prims + high_prims_size - 1;
             high_prims_ptr >= high_prims;
             high_prims_ptr--) {
         struct frame *frame = s_malloc(sizeof(struct frame));
         frame->binding = (struct binding){{TYPE_HIGH_PRIM,
-            {.prim_data = high_prims_ptr->val}}, high_prims_ptr->var};
+            {.high_prim_data = high_prims_ptr->val}}, high_prims_ptr->var};
         frame->next = global_env_frame;
         global_env_frame = frame;
     }
@@ -98,26 +99,23 @@ struct val assign_var(char *var, struct val val, struct env *env) {
  * Binds a value to a variable name in the first frame of a given environment.
  * Changes the binding if one already exists in the frame.
  */
-struct val define_var(char* var, struct val val, struct env *env) {
+struct val define_var(char* var, struct val *val, struct env *env) {
     struct frame *frame = env ? env->frame : global_env_frame;
     while (frame != NULL) {
         if (strcmp(var, frame->binding.var) == 0) {
-            frame->binding.val = val;
+            frame->binding.val = *val;
             return (struct val){TYPE_VOID};
         }
         frame = frame->next;
     }
     struct frame *new_frame;
     if (env != NULL) {
-        struct env **gc_env = gc_push_env(env);
-        gc_push_val(&val);
+        gc_push_env(&env);
         new_frame = alloc_frame();
-        env = *gc_env;
-        gc_pop_val();
         gc_pop_env();
     } else
         new_frame = s_malloc(sizeof(struct frame));
-    new_frame->binding.val = val;
+    new_frame->binding.val = *val;
     new_frame->binding.var = var;
     new_frame->next = env ? env->frame : global_env_frame;
     if (env != NULL)
@@ -134,38 +132,37 @@ void argnum_assert(int assertion) {
     }
 }
 
-#include "display.h"
-
 /* -- extend_env
  * Extend an environment by a new frame containing the variables is `vars`
- * bound to the values in `vals`.
+ * bound to the `vals_num` variables in an array starting at `vals_start`.
  */
-struct env *extend_env(struct param_list *vars, struct val_list *vals, struct env *env) {
-    if (vars == NULL && vals == NULL)
+struct env *extend_env(struct param_list *vars, struct val *vals_start, int vals_num, struct env *env) {
+    if (vars == NULL && vals_num == 0)
         return env;
-    argnum_assert(vars != NULL && vals != NULL);
-    struct env **gc_env = gc_push_env(env);
+    argnum_assert(vars != NULL && vals_num != 0);
+    gc_push_env(&env);
     struct env *new_env = alloc_env();
-    struct env **gc_new_env = gc_push_env(new_env);
+    gc_push_env(&new_env);
     new_env->frame = NULL;
-    new_env->outer = *gc_env;
+    new_env->outer = env;
     new_env->new_ptr = NULL;
     struct frame *frame = alloc_frame();
-    while (vars->cdr != NULL && vals->cdr != NULL) {
+    while (vars->cdr != NULL && vals_num > 1) {
         frame->binding.var = vars->car;
-        frame->binding.val = vals->car;
-        frame->next = (*gc_new_env)->frame;
-        (*gc_new_env)->frame = frame;
+        frame->binding.val = *vals_start;
+        frame->next = new_env->frame;
+        new_env->frame = frame;
         vars = vars->cdr;
-        vals = vals->cdr;
+        vals_start++;
+        vals_num--;
         frame = alloc_frame();
     }
-    argnum_assert(vars->cdr == NULL && vals->cdr == NULL);
+    argnum_assert(vars->cdr == NULL && vals_num == 1);
     frame->binding.var = vars->car;
-    frame->binding.val = vals->car;
-    frame->next = (*gc_new_env)->frame;
-    (*gc_new_env)->frame = frame;
+    frame->binding.val = *vals_start;
+    frame->next = new_env->frame;
+    new_env->frame = frame;
     gc_pop_env();
     gc_pop_env();
-    return *gc_new_env;
+    return new_env;
 }

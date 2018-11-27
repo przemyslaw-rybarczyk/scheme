@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "assert.h"
 #include "../expr.h"
 #include "../display.h"
 
@@ -22,10 +23,7 @@ void args_assert(int assertion) {
 }
 
 void assert_1_arg(struct val_list *args) {
-    args_assert(args != NULL && args->cdr == NULL);
 }
 
 void assert_2_args(struct val_list *args) {
-    args_assert(args != NULL && args->cdr != NULL && args->cdr->cdr == NULL);
 }
-

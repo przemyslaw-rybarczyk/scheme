@@ -10,7 +10,7 @@ char **obarray;
 char **obarray_end;
 
 /* -- setup_obarray
- * Sets up the variables providing the obtable.
+ * Sets up the variables providing the obarray.
  * Should be called at the beginning of `main`.
  */
 void setup_obarray(void) {
@@ -19,9 +19,9 @@ void setup_obarray(void) {
 }
 
 /* -- intern_symbol
- * Given a symbol string, it attempts to find it in the obtable.
+ * Given a symbol string, it attempts to find it in the obarray.
  * If it is already there, the found string is returned.
- * Otherwise, the symbol string is added to the obtable and returned back.
+ * Otherwise, the symbol string is added to the obarray and returned back.
  */
 char *intern_symbol(char *symbol) {
     for (char **obarray_ptr = obarray; obarray_ptr < obarray_end; obarray_ptr++)

@@ -1,7 +1,7 @@
 #include <stdlib.h>
 
+#include "primitives.h"
 #include "expr.h"
-
 #include "primitives/io.h"
 #include "primitives/list.h"
 #include "primitives/number.h"
@@ -51,7 +51,6 @@ struct prim_binding prims[] = {
     "symbol?", symbol_prim,
     "string?", string_prim,
     "error", error_prim,
-    "read", read_prim,
     "caar", caar_prim,
     "caaar", caaar_prim,
     "caaaar", caaaar_prim,
@@ -76,9 +75,10 @@ struct prim_binding prims[] = {
     "cdaddr", cdaddr_prim,
 };
 
-struct prim_binding high_prims[] = {
+struct high_prim_binding high_prims[] = {
     "apply", apply_prim,
+    "read", read_prim,
 };
 
 size_t prims_size = sizeof(prims) / sizeof(struct prim_binding);
-size_t high_prims_size = sizeof(high_prims) / sizeof(struct prim_binding);
+size_t high_prims_size = sizeof(high_prims) / sizeof(struct high_prim_binding);
