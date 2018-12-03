@@ -11,7 +11,7 @@
 struct val list_prim(struct val *args, int num) {
     stack_push((struct val){TYPE_NIL});
     for (struct val *arg_ptr = args + num - 1; arg_ptr >= args; arg_ptr--) {
-        struct pair *pair = alloc_pair();
+        struct pair *pair = gc_alloc(sizeof(struct pair));
         pair->car = *arg_ptr;
         pair->cdr = stack_pop();
         stack_push((struct val){TYPE_PAIR, {.pair_data = pair}});

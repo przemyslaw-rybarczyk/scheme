@@ -7,9 +7,9 @@
 #include "env.h"
 #include "exec.h"
 
-union cell *mem_start;
-size_t mem_size = 65536;
-union cell *free_ptr;
+void *mem_start;
+size_t mem_size = 32 * 65536;
+void *free_ptr;
 
 struct env **env_stack[2];
 struct env ***env_stack_ptr = env_stack;
@@ -19,12 +19,13 @@ struct env ***env_stack_ptr = env_stack;
  * Should be called at the start of `main`.
  */
 void setup_memory(void) {
-    free_ptr = mem_start = s_malloc(mem_size * sizeof(union cell));
+    free_ptr = mem_start = s_malloc(mem_size);
 }
 
 void garbage_collect();
 
-/* -- alloc_cell
+/* -- gc_alloc
+ * TODO doc
  * Allocates a memory cell and returns its address.
  * If the memory is full, it performs garbage collection.
  * This function is called by the more specific functions
@@ -32,28 +33,25 @@ void garbage_collect();
  * which allocate memory for specific types of cells by performing
  * the appropriate pointer conversions.
  */
-union cell *alloc_cell(void) {
+void *gc_alloc(size_t size) {
 #ifndef GC_ALWAYS
-    if (free_ptr - mem_start >= mem_size)
+    if (free_ptr + size >= mem_start + mem_size)
 #endif
         garbage_collect();
-    return free_ptr++;
+    if (free_ptr + size >= mem_start + mem_size) {
+        // TODO expand memory
+        printf("Internal error: out of memory\n");
+        exit(-1);
+    }
+    free_ptr += size;
+    return free_ptr - size;
 }
 
-struct pair *alloc_pair(void) {
-    return &alloc_cell()->pair;
-}
-
-struct lambda *alloc_lambda(void) {
-    return &alloc_cell()->lambda;
-}
-
-struct frame *alloc_frame(void) {
-    return &alloc_cell()->frame;
-}
-
-struct env *alloc_env(void) {
-    return &alloc_cell()->env;
+/* -- force_alloc
+ */
+void *force_alloc(size_t size) {
+    free_ptr += size;
+    return free_ptr - size;
 }
 
 struct env *move_env(struct env *env);
@@ -89,15 +87,20 @@ struct lambda *move_lambda(struct lambda *lambda);
  * moving function simply returns the address contained within it. Otherwise it
  * sets up the broken heart and copies data to the new address, determined by
  * the `free_ptr` pointer.
+ *
+ * TODO redocument
  */
 void garbage_collect(void) {
     // TODO try allocating less memory in case of malloc failure
-    union cell *new_mem = s_malloc(mem_size * sizeof(union cell));
+    void *new_mem = s_malloc(mem_size);
     free_ptr = new_mem;
-    for (struct frame *frame = global_env_frame; frame != NULL; frame = frame->next)
-        frame->binding.val = move_val(frame->binding.val);
-    for (struct val *val_ptr = stack; val_ptr < stack_ptr; val_ptr++)
+    for (struct val *val_ptr = global_env; val_ptr < global_env + global_env_size; val_ptr++)
         *val_ptr = move_val(*val_ptr);
+//  printf("Stack ptr is %p\n", stack_ptr);
+    for (struct val *val_ptr = stack; val_ptr < stack_ptr; val_ptr++) {
+//      printf("Moving val at %p\n", val_ptr);
+        *val_ptr = move_val(*val_ptr);
+    }
     exec_env = move_env(exec_env);
     for (struct env ***env_ptr = env_stack; env_ptr < env_stack_ptr; env_ptr++)
         **env_ptr = move_env(**env_ptr);
@@ -112,28 +115,17 @@ void garbage_collect(void) {
 struct env *move_env(struct env *env) {
     if (env == NULL)
         return env;
-    if (env->new_ptr != NULL)
-        return env->new_ptr;
-    *free_ptr = (union cell){.env = *env};
-    env->new_ptr = &free_ptr++->env;
-    env = env->new_ptr;
-    env->outer = move_env(env->outer);
-    env->frame = move_frame(env->frame);
-    return env;
-}
-
-struct frame *move_frame(struct frame *frame) {
-    if (frame == NULL)
-        return frame;
-    if (frame->binding.val.type == TYPE_BROKEN_HEART)
-        return frame->next;
-    *free_ptr = (union cell){.frame = *frame};
-    frame->binding.val.type = TYPE_BROKEN_HEART;
-    frame->next = &free_ptr++->frame;
-    frame = frame->next;
-    frame->binding.val = move_val(frame->binding.val);
-    frame->next = move_frame(frame->next);
-    return frame;
+    if (env->size == -1)
+        return env->outer;
+    struct env *new_env = force_alloc(sizeof(struct env) + env->size * sizeof(struct val));
+    *new_env = *env;
+    env->size = -1;
+    env->outer = new_env;
+    new_env->outer = move_env(new_env->outer);
+    for (size_t i = 0; i < new_env->size; i++)
+        new_env->vals[i] = move_val(env->vals[i]);
+//  printf("Moved to %p\n", new_env);
+    return new_env;
 }
 
 struct val move_val(struct val val) {
@@ -145,6 +137,7 @@ struct val move_val(struct val val) {
         val.data.lambda_data = move_lambda(val.data.lambda_data);
         return val;
     case TYPE_ENV:
+//      printf("Will move memory from %p\n", val.data.env_data);
         val.data.env_data = move_env(val.data.env_data);
         return val;
     default:
@@ -155,23 +148,23 @@ struct val move_val(struct val val) {
 struct pair *move_pair(struct pair *pair) {
     if (pair->car.type == TYPE_BROKEN_HEART)
         return pair->car.data.pair_data;
-    *free_ptr = (union cell){.pair = *pair};
+    struct pair *new_pair = force_alloc(sizeof(struct pair));
+    *new_pair = *pair;
     pair->car.type = TYPE_BROKEN_HEART;
-    pair->car.data.pair_data = &free_ptr++->pair;
-    pair = pair->car.data.pair_data;
-    pair->cdr = move_val(pair->cdr);
-    pair->car = move_val(pair->car);
-    return pair;
+    pair->car.data.pair_data = new_pair;
+    new_pair->cdr = move_val(new_pair->cdr);
+    new_pair->car = move_val(new_pair->car);
+    return new_pair;
 }
 
 struct lambda *move_lambda(struct lambda *lambda) {
     if (lambda->new_ptr != NULL)
         return lambda->new_ptr;
-    *free_ptr = (union cell){.lambda = *lambda};
-    lambda->new_ptr = &free_ptr++->lambda;
-    lambda = lambda->new_ptr;
-    lambda->env = move_env(lambda->env);
-    return lambda;
+    struct lambda *new_lambda = force_alloc(sizeof(struct lambda));
+    *new_lambda = *lambda;
+    lambda->new_ptr = new_lambda;
+    new_lambda->env = move_env(new_lambda->env);
+    return new_lambda;
 }
 
 void gc_push_env(struct env **env) {

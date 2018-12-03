@@ -20,21 +20,34 @@ void compile(struct expr *expr, int tail) {
         break;
 
     case EXPR_VAR:
-        *next_inst() = (struct inst){INST_VAR, {.name = expr->data.var}};
+        *next_inst() = (struct inst){INST_VAR, {.var = expr->data.var}};
+        if (tail)
+            *next_inst() = (struct inst){INST_RETURN};
+        break;
+
+    case EXPR_NAME:
+        *next_inst() = (struct inst){INST_NAME, {.name = expr->data.name}};
         if (tail)
             *next_inst() = (struct inst){INST_RETURN};
         break;
 
     case EXPR_DEF:
-        compile(expr->data.binding.val, 0);
-        *next_inst() = (struct inst){INST_DEF, {.name = expr->data.binding.var}};
+        compile(expr->data.name_binding.val, 0);
+        *next_inst() = (struct inst){INST_DEF, {.name = expr->data.name_binding.var}};
         if (tail)
             *next_inst() = (struct inst){INST_RETURN};
         break;
 
     case EXPR_SET:
         compile(expr->data.binding.val, 0);
-        *next_inst() = (struct inst){INST_SET, {.name = expr->data.binding.var}};
+        *next_inst() = (struct inst){INST_SET, {.var = expr->data.binding.var}};
+        if (tail)
+            *next_inst() = (struct inst){INST_RETURN};
+        break;
+
+    case EXPR_SET_NAME:
+        compile(expr->data.name_binding.val, 0);
+        *next_inst() = (struct inst){INST_SET_NAME, {.name = expr->data.name_binding.var}};
         if (tail)
             *next_inst() = (struct inst){INST_RETURN};
         break;

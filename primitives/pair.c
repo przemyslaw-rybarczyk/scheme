@@ -8,7 +8,7 @@
 
 struct val cons_prim(struct val *args, int num) {
     args_assert(num == 2);
-    struct pair *pair = alloc_pair();
+    struct pair *pair = gc_alloc(sizeof(struct pair));
     pair->car = args[0];
     pair->cdr = args[1];
     return (struct val){TYPE_PAIR, {.pair_data = pair}};

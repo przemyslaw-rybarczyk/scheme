@@ -75,13 +75,13 @@ struct pair {
 
 struct env;
 
-struct param_list {
+struct name_list {
     char *car;
-    struct param_list *cdr;
+    struct name_list *cdr;
 };
 
 struct lambda {
-    struct param_list *params;
+    int params;
     struct inst *body;
     struct env *env;
     struct lambda *new_ptr;
@@ -105,17 +105,13 @@ struct binding {
  * `new_ptr` is used only for garbage collection and is normally NULL.
  * Environments are represented with pointers to `struct env`s,
  * where NULL is used to represent the global environment.
+ * TODO describe
  */
 
-struct frame {
-    struct binding binding;
-    struct frame *next;
-};
-
 struct env {
-    struct frame *frame;
     struct env *outer;
-    struct env *new_ptr;
+    int size;
+    struct val vals[];
 };
 
 /* -- prim_binding, high_prim_binding
@@ -131,24 +127,6 @@ struct prim_binding {
 struct high_prim_binding {
     char *var;
     struct inst *(*val)(int);
-};
-
-/* -- cell
- * Represents a cell of garbage-collected memory on the heap.
- * May contain one of:
- * - `pair` - a pair
- * - `lambda` - a lambda
- * - `frame` - an environment frame
- * - `env` - an environment
- * The type of data contained in the cell must be represented by the context
- * of the pointer used to access it.
- */
-
-union cell {
-    struct pair pair;
-    struct lambda lambda;
-    struct frame frame;
-    struct env env;
 };
 
 /* -- sexpr
@@ -177,11 +155,29 @@ struct sexpr_list {
     struct sexpr_list *cdr;
 };
 
+/* -- name_env
+ */
+
+struct name_env {
+    struct name_list *frame;
+    struct name_env *next;
+};
+
+/* -- env_loc
+ * TODO explain
+ */
+
+struct env_loc {
+    int frame;
+    int index;
+};
+
 /* -- expr
  * Represents an expression in the program's AST.
  * It may take on the following values with the described fields:
  * - Literal - EXPR_LITERAL / literal
- * - Variable name - EXPR_VAR / var
+ * - Variable location - EXPR_VAR / var
+ * - Global variable name - EXPR_NAME / name
  * - Function application - EXPR_APPL / appl
  * - Definition - EXPR_DEF / binding
  * - Assignment - EXPR_SET / binding
@@ -192,8 +188,8 @@ struct sexpr_list {
  * - Quote expression - EXPR_QUOTE / quote
  */
 
-enum expr_types {EXPR_LITERAL, EXPR_VAR, EXPR_APPL, EXPR_DEF, EXPR_SET,
-    EXPR_IF, EXPR_LAMBDA, EXPR_BEGIN, EXPR_QUOTE};
+enum expr_types {EXPR_LITERAL, EXPR_VAR, EXPR_NAME, EXPR_APPL,
+    EXPR_DEF, EXPR_SET, EXPR_SET_NAME, EXPR_IF, EXPR_LAMBDA, EXPR_BEGIN, EXPR_QUOTE};
 
 struct expr_list;
 
@@ -201,22 +197,27 @@ struct expr {
     enum expr_types type;
     union {
         struct val literal;
-        char *var;
+        struct env_loc var;
+        char *name;
         struct {
             struct expr *proc;
             struct expr_list *args;
         } appl;
         struct {
-            char *var;
+            struct env_loc var;
             struct expr *val;
         } binding;
+        struct {
+            char *var;
+            struct expr *val;
+        } name_binding;
         struct {
             struct expr *pred;
             struct expr *conseq;
             struct expr *alter;
         } if_data;
         struct {
-            struct param_list *params;
+            int params;
             struct expr_list *body;
         } lambda;
         struct expr_list *begin;
@@ -233,8 +234,8 @@ struct expr_list {
  * Represents a virtual machine instruction.
  * The following are valid instructions:
  * - INST_CONST / val - Pushes a constant value onto the stack.
- * - INST_VAR / name - Looks up a variable in the current environment
- *   and pushes it onto the stack
+ * - INST_VAR / name - Looks up a variable with a given name
+ *   in the current environment and pushes it onto the stack.
  * - INST_DEF / name - Pops a value off the stack and binds it to `name`
  *   in the current environment frame.
  * - INST_SET / name - Pops a value off the stack and sets the value of `name`
@@ -256,21 +257,23 @@ struct expr_list {
  *   a pair containing the two of them.
  *   It's used in evaluating quoted literals instead of a function call,
  *   since cons can be rebound.
+ * TODO update
  */
 
-enum inst_type {INST_CONST, INST_VAR, INST_DEF, INST_SET,
-    INST_JUMP, INST_JUMP_FALSE, INST_LAMBDA,
+enum inst_type {INST_CONST, INST_VAR, INST_NAME, INST_DEF,
+    INST_SET, INST_SET_NAME, INST_JUMP, INST_JUMP_FALSE, INST_LAMBDA,
     INST_CALL, INST_TAIL_CALL, INST_RETURN, INST_DELETE, INST_CONS};
 
 struct inst {
     enum inst_type type;
     union {
         struct val val;
+        struct env_loc var;
         char *name;
         struct inst *ptr;
         int num;
         struct {
-            struct param_list *params;
+            int params;
             struct inst *ptr;
         } lambda;
     } args;

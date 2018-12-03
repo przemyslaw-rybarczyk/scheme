@@ -9,13 +9,16 @@
 #include "memory.h"
 #include "exec.h"
 
-/* -- global_env_frame
+/* -- global_env
  * The frame containing the global environment.
  * Since the global environment is never garbage collected, this frame exists
  * outside of the heap.
  * The global environment itself is represented with a NULL pointer.
+ * TODO redocument
  */
-struct frame *global_env_frame = NULL;
+struct val *global_env;
+char **global_names;
+int global_env_size, global_env_capacity;
 
 /* -- setup_global_env
  * This function sets up the global environment by adding to it the primitives
@@ -23,106 +26,79 @@ struct frame *global_env_frame = NULL;
  * It should be called at the start of the REPL.
  */
 void setup_global_env(void) {
-    for (struct prim_binding *prims_ptr = prims + prims_size - 1;
-            prims_ptr >= prims;
-            prims_ptr--) {
-        struct frame *frame = s_malloc(sizeof(struct frame));
-        frame->binding = (struct binding){{TYPE_PRIM,
-            {.prim_data = prims_ptr->val}}, prims_ptr->var};
-        frame->next = global_env_frame;
-        global_env_frame = frame;
+    global_env_size = global_env_capacity = prims_size + high_prims_size;
+    global_env = s_malloc(global_env_capacity * sizeof(struct val));
+    global_names = s_malloc(global_env_capacity * sizeof(char *));
+    for (int i = 0; i < prims_size; i++) {
+        global_env[i] = (struct val){TYPE_PRIM, {.prim_data = prims[i].val}};
+        global_names[i] = prims[i].var;
     }
-    for (struct high_prim_binding *high_prims_ptr = high_prims + high_prims_size - 1;
-            high_prims_ptr >= high_prims;
-            high_prims_ptr--) {
-        struct frame *frame = s_malloc(sizeof(struct frame));
-        frame->binding = (struct binding){{TYPE_HIGH_PRIM,
-            {.high_prim_data = high_prims_ptr->val}}, high_prims_ptr->var};
-        frame->next = global_env_frame;
-        global_env_frame = frame;
+    for (int i = 0; i < high_prims_size; i++) {
+        global_env[prims_size + i] = (struct val){TYPE_HIGH_PRIM, {.high_prim_data = high_prims[i].val}};
+        global_names[prims_size + i] = high_prims[i].var;
     }
 }
 
-/* -- lookup_var
- * Finds a value bound to a variable name in a given environment.
- * Causes an error in case of an unbound variable.
+/* -- locate_var
+ * Finds a value bound to a location in a given environment.
  */
-struct val lookup_var(char *var, struct env *env) {
-    while (env != NULL) {
-        struct frame *frame = env->frame;
-        while (frame != NULL) {
-            if (strcmp(var, frame->binding.var) == 0)
-                return frame->binding.val;
-            frame = frame->next;
-        }
-        env = env->outer;
-    }
-    struct frame *frame = global_env_frame;
-    while (frame != NULL) {
-        if (strcmp(var, frame->binding.var) == 0)
-            return frame->binding.val;
-        frame = frame->next;
-    }
-    fprintf(stderr, "Error: unbound variable - %s\n", var);
-    exit(1);
+struct val locate_var(struct env_loc var, struct env *env) {
+    if (var.frame == -1)
+        return global_env[var.index];
+    struct env *frame = env;
+    for (int n = var.frame; n > 0; n--)
+        frame = frame->outer;
+    return frame->vals[var.index];
 }
 
-/* -- set_var
+int locate_global_var(char *var) {
+    for (int i = 0; i < global_env_size; i++)
+        if (strcmp(global_names[i], var) == 0)
+            return i;
+//  for (int i = 0; i < global_env_size; i++)
+//      printf("Global at %d is %s\n", i, global_names[i]);
+    fprintf(stderr, "Error: unbound variable %s\n", var);
+    exit(2);
+}
+
+/* -- assign_var
  * Changes a value bound to a variable name in a given environment.
  * Causes an error in case of an unbound variable.
  */
-struct val assign_var(char *var, struct val val, struct env *env) {
-    while (env != NULL) {
-        struct frame *frame = env->frame;
-        while (frame != NULL) {
-            if (strcmp(var, frame->binding.var) == 0) {
-                frame->binding.val = val;
-                return (struct val){TYPE_VOID};
-            }
-            frame = frame->next;
-        }
-        env = env->outer;
+void assign_var(struct env_loc var, struct val val, struct env *env) {
+    if (var.frame == -1) {
+//      printf("Assigning to global at %d\n", var.index);
+        global_env[var.index] = val;
+        return;
     }
-    struct frame *frame = global_env_frame;
-    while (frame != NULL) {
-        if (strcmp(var, frame->binding.var) == 0) {
-            frame->binding.val = val;
-            return (struct val){TYPE_VOID};
-        }
-        frame = frame->next;
-    }
-    fprintf(stderr, "Error: unbound variable - %s\n", var);
-    exit(1);
+    struct env *frame = env;
+    for (int n = var.frame; n > 0; n--)
+        frame = frame->outer;
+    frame->vals[var.index] = val;
 }
 
 /* -- define_var
  * Binds a value to a variable name in the first frame of a given environment.
  * Changes the binding if one already exists in the frame.
  */
-struct val define_var(char* var, struct val *val, struct env *env) {
-    struct frame *frame = env ? env->frame : global_env_frame;
-    while (frame != NULL) {
-        if (strcmp(var, frame->binding.var) == 0) {
-            frame->binding.val = *val;
-            return (struct val){TYPE_VOID};
+void define_var(char* var, struct val val, struct env *env) {
+//  printf("Defining %s; global_env_size is %d\n", var, global_env_size);
+    for (int i = 0; i < global_env_size; i++) {
+        if (strcmp(global_names[i], var) == 0) {
+            global_env[i] = val;
+            return;
         }
-        frame = frame->next;
     }
-    struct frame *new_frame;
-    if (env != NULL) {
-        gc_push_env(&env);
-        new_frame = alloc_frame();
-        gc_pop_env();
-    } else
-        new_frame = s_malloc(sizeof(struct frame));
-    new_frame->binding.val = *val;
-    new_frame->binding.var = var;
-    new_frame->next = env ? env->frame : global_env_frame;
-    if (env != NULL)
-        env->frame = new_frame;
-    else
-        global_env_frame = new_frame;
-    return (struct val){TYPE_VOID};
+    if (global_env_size == global_env_capacity) {
+        global_env_capacity *= 2;
+        global_env = s_realloc(global_env, global_env_capacity * sizeof(struct val));
+        global_names = s_realloc(global_names, global_env_capacity * sizeof(char *));
+//      printf("Expanded global env capacity to %d\n", global_env_capacity);
+    }
+    global_env[global_env_size] = val;
+    global_names[global_env_size] = var;
+//  printf("Defined %s at %d\n", var, global_env_size);
+    global_env_size++;
 }
 
 void argnum_assert(int assertion) {
@@ -136,33 +112,12 @@ void argnum_assert(int assertion) {
  * Extend an environment by a new frame containing the variables is `vars`
  * bound to the `vals_num` variables in an array starting at `vals_start`.
  */
-struct env *extend_env(struct param_list *vars, struct val *vals_start, int vals_num, struct env *env) {
-    if (vars == NULL && vals_num == 0)
-        return env;
-    argnum_assert(vars != NULL && vals_num != 0);
+struct env *extend_env(struct val *vals_start, int vals_num, struct env *env) {
     gc_push_env(&env);
-    struct env *new_env = alloc_env();
-    gc_push_env(&new_env);
-    new_env->frame = NULL;
-    new_env->outer = env;
-    new_env->new_ptr = NULL;
-    struct frame *frame = alloc_frame();
-    while (vars->cdr != NULL && vals_num > 1) {
-        frame->binding.var = vars->car;
-        frame->binding.val = *vals_start;
-        frame->next = new_env->frame;
-        new_env->frame = frame;
-        vars = vars->cdr;
-        vals_start++;
-        vals_num--;
-        frame = alloc_frame();
-    }
-    argnum_assert(vars->cdr == NULL && vals_num == 1);
-    frame->binding.var = vars->car;
-    frame->binding.val = *vals_start;
-    frame->next = new_env->frame;
-    new_env->frame = frame;
+    struct env *ext_env = gc_alloc(sizeof(struct env) + vals_num * sizeof(struct val));
+    ext_env->outer = env;
+    ext_env->size = vals_num;
+    memcpy(ext_env->vals, vals_start, vals_num * sizeof(struct val));
     gc_pop_env();
-    gc_pop_env();
-    return new_env;
+    return ext_env;
 }
