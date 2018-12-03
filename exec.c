@@ -34,6 +34,14 @@ struct val exec(struct inst *inst) {
     stack_ptr = stack;
     exec_env = NULL;
     while (1) {
+//      display_inst(inst);
+//      printf("%p\n", exec_env);
+//      for (struct val *val_ptr = stack; val_ptr < stack_ptr; val_ptr++) {
+//          printf("%p: %d - ", val_ptr, val_ptr->type);
+//          display_val(*val_ptr);
+//          putchar('\n');
+//      }
+//      putchar('\n');
         switch (inst->type) {
 
         case INST_CONST:
@@ -41,19 +49,38 @@ struct val exec(struct inst *inst) {
             break;
 
         case INST_VAR:
-            stack_push(lookup_var(inst++->args.name, exec_env));
+            stack_push(locate_var(inst++->args.var, exec_env));
             break;
 
+        case INST_NAME: {
+//          printf("Context for %s lookup:\n", inst->args.name);
+//          for (struct inst *a = inst - 5; a <= inst + 5; a++) {
+//              display_inst(a);
+//              if (a->type == INST_JUMP)
+//                  break;
+//          }
+            int index = locate_global_var(inst->args.name);
+            inst->type = INST_VAR;
+            inst->args.var = (struct env_loc){-1, index};
+            break;
+        }
+
         case INST_DEF:
-            define_var(inst++->args.name, stack_ptr - 1, exec_env);
-            stack_pop();
+            define_var(inst++->args.name, stack_pop(), exec_env);
             stack_push((struct val){TYPE_VOID});
             break;
 
         case INST_SET:
-            assign_var(inst++->args.name, stack_pop(), exec_env);
+            assign_var(inst++->args.var, stack_pop(), exec_env);
             stack_push((struct val){TYPE_VOID});
             break;
+
+        case INST_SET_NAME: {
+            int index = locate_global_var(inst->args.name);
+            inst->type = INST_SET;
+            inst->args.var = (struct env_loc){-1, index};
+            break;
+        }
 
         case INST_JUMP:
             inst = inst->args.ptr;
@@ -67,7 +94,7 @@ struct val exec(struct inst *inst) {
             break;
 
         case INST_LAMBDA: {
-            struct lambda *lambda = alloc_lambda();
+            struct lambda *lambda = gc_alloc(sizeof(struct lambda));
             lambda->params = inst->args.lambda.params;
             lambda->body = inst->args.lambda.ptr;
             lambda->env = exec_env;
@@ -91,7 +118,7 @@ struct val exec(struct inst *inst) {
                 struct lambda *lambda = op->data.lambda_data;
                 struct inst *old_inst = inst;
                 inst = lambda->body;
-                struct env *lambda_env = extend_env(lambda->params, op + 1, old_inst->args.num, lambda->env);
+                struct env *lambda_env = extend_env(op + 1, old_inst->args.num, lambda->env);
                 stack_ptr = op;
                 stack_push((struct val){TYPE_ENV, {.env_data = exec_env}});
                 stack_push((struct val){TYPE_INST, {.inst_data = old_inst + 1}});
@@ -133,7 +160,7 @@ struct val exec(struct inst *inst) {
             }
             case TYPE_LAMBDA: {
                 struct lambda *lambda = op->data.lambda_data;
-                exec_env = extend_env(lambda->params, op + 1, inst->args.num, lambda->env);
+                exec_env = extend_env(op + 1, inst->args.num, lambda->env);
                 stack_ptr = op;
                 inst = op->data.lambda_data->body;
                 break;
@@ -165,7 +192,7 @@ struct val exec(struct inst *inst) {
             break;
 
         case INST_CONS: {
-            struct pair *pair = alloc_pair();
+            struct pair *pair = gc_alloc(sizeof(struct pair));
             pair->cdr = stack_pop();
             pair->car = stack_pop();
             stack_push((struct val){TYPE_PAIR, {.pair_data = pair}});

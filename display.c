@@ -3,7 +3,6 @@
 #include "display.h"
 #include "expr.h"
 
-void display_param_list(struct param_list *params);
 void display_val_list(struct pair *list);
 
 /* -- display_val
@@ -35,9 +34,7 @@ void display_val(struct val val) {
         printf("<primitive procedure>");
         break;
     case TYPE_LAMBDA:
-        printf("<lambda with params (");
-        display_param_list(val.data.lambda_data->params);
-        printf(")>");
+        printf("<lambda with arity %d>", val.data.lambda_data->params);
         break;
     case TYPE_PAIR:
         putchar('(');
@@ -53,16 +50,13 @@ void display_val(struct val val) {
     case TYPE_BROKEN_HEART:
         printf("</broken heart/>");
         break;
+    case TYPE_ENV:
+        printf("</environment at %p/>", val.data.env_data);
+        break;
+    case TYPE_INST:
+        printf("</instruction pointer to %p/>", val.data.inst_data);
+        break;
     }
-}
-
-void display_param_list(struct param_list *params) {
-    if (params == NULL)
-        return;
-    printf("%s", params->car);
-    if (params->cdr != NULL)
-        putchar(' ');
-    display_param_list(params->cdr);
 }
 
 void display_val_list(struct pair *list) {
@@ -141,6 +135,10 @@ const char *sprint_type(enum types type) {
         return "void";
     case TYPE_BROKEN_HEART:
         return "/broken heart/";
+    case TYPE_ENV:
+        return "/environment/";
+    case TYPE_INST:
+        return "/instruction pointer/";
     }
 }
 
@@ -191,13 +189,19 @@ void display_inst(struct inst *inst) {
         printf("\n");
         break;
     case INST_VAR:
-        printf("VAR %s\n", inst->args.name);
+        printf("VAR %d %d\n", inst->args.var.frame, inst->args.var.index);
+        break;
+    case INST_NAME:
+        printf("NAME %s\n", inst->args.name);
         break;
     case INST_DEF:
         printf("DEF %s\n", inst->args.name);
         break;
     case INST_SET:
-        printf("SET %s\n", inst->args.name);
+        printf("SET %d %d\n", inst->args.var.frame, inst->args.var.index);
+        break;
+    case INST_SET_NAME:
+        printf("SET_NAME %s\n", inst->args.name);
         break;
     case INST_JUMP:
         printf("JUMP %p\n", inst->args.ptr);
@@ -206,9 +210,7 @@ void display_inst(struct inst *inst) {
         printf("JUMP_FALSE %p\n", inst->args.ptr);
         break;
     case INST_LAMBDA:
-        printf("LAMBDA (");
-        display_param_list(inst->args.lambda.params);
-        printf(") %p\n", inst->args.lambda.ptr);
+        printf("LAMBDA %d %p\n", inst->args.lambda.params, inst->args.lambda.ptr);
         break;
     case INST_CALL:
         printf("CALL %d\n", inst->args.num);
@@ -221,6 +223,9 @@ void display_inst(struct inst *inst) {
         break;
     case INST_DELETE:
         printf("DELETE\n");
+        break;
+    case INST_CONS:
+        printf("CONS\n");
         break;
     }
 }
