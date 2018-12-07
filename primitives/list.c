@@ -7,6 +7,7 @@
 #include "../safemem.h"
 #include "../memory.h"
 #include "../exec.h"
+#include "../insts.h"
 
 struct val list_prim(struct val *args, int num) {
     stack_push((struct val){TYPE_NIL});
@@ -34,9 +35,7 @@ struct val length_prim(struct val *args, int num) {
     return (struct val){TYPE_INT, {.int_data = get_length(args[0])}};
 }
 
-struct inst tail_call_inst = (struct inst){INST_TAIL_CALL};
-
-struct inst *apply_prim(int num) {
+int apply_prim(int num) {
     args_assert(num == 2);
     struct val args = stack_pop();
     struct val proc = stack_pop();
@@ -50,6 +49,6 @@ struct inst *apply_prim(int num) {
     }
     if (arg_list.type != TYPE_NIL)
         type_error(args);
-    tail_call_inst.args.num = arg_num;
-    return &tail_call_inst;
+    insts[tail_call_inst].args.num = arg_num;
+    return tail_call_inst;
 }

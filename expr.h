@@ -41,11 +41,11 @@ struct val {
         double float_data;
         char *string_data;
         struct val (*prim_data)(struct val *, int);
-        struct inst *(*high_prim_data)(int);
+        int (*high_prim_data)(int);
         struct lambda *lambda_data;
         struct pair *pair_data;
         struct env *env_data;
-        struct inst *inst_data;
+        int inst_data;
     } data;
 };
 
@@ -82,7 +82,7 @@ struct name_list {
 
 struct lambda {
     int params;
-    struct inst *body;
+    int body;
     struct env *env;
     struct lambda *new_ptr;
 };
@@ -126,7 +126,7 @@ struct prim_binding {
 
 struct high_prim_binding {
     char *var;
-    struct inst *(*val)(int);
+    int (*val)(int);
 };
 
 /* -- sexpr
@@ -262,7 +262,8 @@ struct expr_list {
 
 enum inst_type {INST_CONST, INST_VAR, INST_NAME, INST_DEF,
     INST_SET, INST_SET_NAME, INST_JUMP, INST_JUMP_FALSE, INST_LAMBDA,
-    INST_CALL, INST_TAIL_CALL, INST_RETURN, INST_DELETE, INST_CONS};
+    INST_CALL, INST_TAIL_CALL, INST_RETURN, INST_DELETE, INST_CONS,
+    INST_EXPR, INST_EOF};
 
 struct inst {
     enum inst_type type;
@@ -270,11 +271,11 @@ struct inst {
         struct val val;
         struct env_loc var;
         char *name;
-        struct inst *ptr;
+        int index;
         int num;
         struct {
             int params;
-            struct inst *ptr;
+            int index;
         } lambda;
     } args;
 };

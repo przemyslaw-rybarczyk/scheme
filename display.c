@@ -2,6 +2,7 @@
 
 #include "display.h"
 #include "expr.h"
+#include "insts.h"
 
 void display_val_list(struct pair *list);
 
@@ -54,7 +55,7 @@ void display_val(struct val val) {
         printf("</environment at %p/>", val.data.env_data);
         break;
     case TYPE_INST:
-        printf("</instruction pointer to %p/>", val.data.inst_data);
+        printf("</instruction pointer to %d/>", val.data.inst_data);
         break;
     }
 }
@@ -180,43 +181,43 @@ void inner_display_val_list(struct pair *list) {
     }
 }
 
-void display_inst(struct inst *inst) {
-    printf("%p ", inst);
-    switch (inst->type) {
+void display_inst(int n) {
+    printf("%d ", n);
+    switch (insts[n].type) {
     case INST_CONST:
         printf("CONST ");
-        display_val(inst->args.val);
+        display_val(insts[n].args.val);
         printf("\n");
         break;
     case INST_VAR:
-        printf("VAR %d %d\n", inst->args.var.frame, inst->args.var.index);
+        printf("VAR %d %d\n", insts[n].args.var.frame, insts[n].args.var.index);
         break;
     case INST_NAME:
-        printf("NAME %s\n", inst->args.name);
+        printf("NAME %s\n", insts[n].args.name);
         break;
     case INST_DEF:
-        printf("DEF %s\n", inst->args.name);
+        printf("DEF %s\n", insts[n].args.name);
         break;
     case INST_SET:
-        printf("SET %d %d\n", inst->args.var.frame, inst->args.var.index);
+        printf("SET %d %d\n", insts[n].args.var.frame, insts[n].args.var.index);
         break;
     case INST_SET_NAME:
-        printf("SET_NAME %s\n", inst->args.name);
+        printf("SET_NAME %s\n", insts[n].args.name);
         break;
     case INST_JUMP:
-        printf("JUMP %p\n", inst->args.ptr);
+        printf("JUMP %d\n", insts[n].args.index);
         break;
     case INST_JUMP_FALSE:
-        printf("JUMP_FALSE %p\n", inst->args.ptr);
+        printf("JUMP_FALSE %d\n", insts[n].args.index);
         break;
     case INST_LAMBDA:
-        printf("LAMBDA %d %p\n", inst->args.lambda.params, inst->args.lambda.ptr);
+        printf("LAMBDA %d %d\n", insts[n].args.lambda.params, insts[n].args.lambda.index);
         break;
     case INST_CALL:
-        printf("CALL %d\n", inst->args.num);
+        printf("CALL %d\n", insts[n].args.num);
         break;
     case INST_TAIL_CALL:
-        printf("TAIL_CALL %d\n", inst->args.num);
+        printf("TAIL_CALL %d\n", insts[n].args.num);
         break;
     case INST_RETURN:
         printf("RETURN\n");

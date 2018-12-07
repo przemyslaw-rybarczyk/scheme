@@ -39,7 +39,7 @@ struct val error_prim(struct val *args, int num) {
     exit(2);
 }
 
-struct inst *read_prim(int num) {
+int read_prim(int num) {
     args_assert(num == 0);
     stack_pop();
     char c = getchar_nospace();
@@ -51,8 +51,8 @@ struct inst *read_prim(int num) {
         fprintf(stderr, "Syntax error: unexpected ')'\n");
         exit(1);
     }
-    struct inst *eval = this_inst();
+    int eval = this_inst();
     compile_quote(sexpr);
-    *next_inst() = (struct inst){INST_RETURN};
+    insts[next_inst()] = (struct inst){INST_RETURN};
     return eval;
 }

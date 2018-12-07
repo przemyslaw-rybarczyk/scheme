@@ -6,14 +6,14 @@
 #include "env.h"
 #include "memory.h"
 #include "display.h"
+#include "insts.h"
 
 #define STACK_SIZE 65536
 
 struct val stack[STACK_SIZE];
 struct val *stack_ptr;
 struct env *exec_env;
-
-struct inst return_inst = (struct inst){INST_RETURN};
+int pc;
 
 void stack_push(struct val val) {
     if (stack_ptr - stack >= STACK_SIZE) {
@@ -30,98 +30,83 @@ struct val stack_pop(void) {
 /* -- exec
  * Executes the virual machine instructions, starting at `inst`.
  */
-struct val exec(struct inst *inst) {
+struct val exec(long init_pc) {
     stack_ptr = stack;
     exec_env = NULL;
+    pc = init_pc;
     while (1) {
-//      display_inst(inst);
-//      printf("%p\n", exec_env);
-//      for (struct val *val_ptr = stack; val_ptr < stack_ptr; val_ptr++) {
-//          printf("%p: %d - ", val_ptr, val_ptr->type);
-//          display_val(*val_ptr);
-//          putchar('\n');
-//      }
-//      putchar('\n');
-        switch (inst->type) {
+        switch (insts[pc].type) {
 
         case INST_CONST:
-            stack_push(inst++->args.val);
+            stack_push(insts[pc++].args.val);
             break;
 
         case INST_VAR:
-            stack_push(locate_var(inst++->args.var, exec_env));
+            stack_push(locate_var(insts[pc++].args.var, exec_env));
             break;
 
         case INST_NAME: {
-//          printf("Context for %s lookup:\n", inst->args.name);
-//          for (struct inst *a = inst - 5; a <= inst + 5; a++) {
-//              display_inst(a);
-//              if (a->type == INST_JUMP)
-//                  break;
-//          }
-            int index = locate_global_var(inst->args.name);
-            inst->type = INST_VAR;
-            inst->args.var = (struct env_loc){-1, index};
+            int index = locate_global_var(insts[pc].args.name);
+            insts[pc] = (struct inst){INST_VAR, {.var = (struct env_loc){-1, index}}};
             break;
         }
 
         case INST_DEF:
-            define_var(inst++->args.name, stack_pop(), exec_env);
+            define_var(insts[pc++].args.name, stack_pop(), exec_env);
             stack_push((struct val){TYPE_VOID});
             break;
 
         case INST_SET:
-            assign_var(inst++->args.var, stack_pop(), exec_env);
+            assign_var(insts[pc++].args.var, stack_pop(), exec_env);
             stack_push((struct val){TYPE_VOID});
             break;
 
         case INST_SET_NAME: {
-            int index = locate_global_var(inst->args.name);
-            inst->type = INST_SET;
-            inst->args.var = (struct env_loc){-1, index};
+            int index = locate_global_var(insts[pc].args.name);
+            insts[pc] = (struct inst){INST_SET, {.var = (struct env_loc){-1, index}}};
             break;
         }
 
         case INST_JUMP:
-            inst = inst->args.ptr;
+            pc = insts[pc].args.index;
             break;
 
         case INST_JUMP_FALSE:
             if (!is_true(stack_pop()))
-                inst = inst->args.ptr;
+                pc = insts[pc].args.index;
             else
-                inst++;
+                pc++;
             break;
 
         case INST_LAMBDA: {
             struct lambda *lambda = gc_alloc(sizeof(struct lambda));
-            lambda->params = inst->args.lambda.params;
-            lambda->body = inst->args.lambda.ptr;
+            lambda->params = insts[pc].args.lambda.params;
+            lambda->body = insts[pc].args.lambda.index;
             lambda->env = exec_env;
             lambda->new_ptr = NULL;
             stack_push((struct val){TYPE_LAMBDA, {.lambda_data = lambda}});
-            inst++;
+            pc++;
             break;
         }
 
         case INST_CALL: {
-            struct val *op = stack_ptr - inst->args.num - 1;
+            struct val *op = stack_ptr - insts[pc].args.num - 1;
             switch (op->type) {
             case TYPE_PRIM: {
-                struct val result = op->data.prim_data(op + 1, inst->args.num);
+                struct val result = op->data.prim_data(op + 1, insts[pc].args.num);
                 stack_ptr = op;
                 stack_push(result);
-                inst++;
+                pc++;
                 break;
             }
             case TYPE_LAMBDA: {
                 struct lambda *lambda = op->data.lambda_data;
-                struct inst *old_inst = inst;
-                inst = lambda->body;
-                struct env *lambda_env = extend_env(op + 1, old_inst->args.num, lambda->env);
+                int old_pc = pc;
+                pc = lambda->body;
+                struct env *lambda_env = extend_env(op + 1, insts[old_pc].args.num, lambda->env);
                 stack_ptr = op;
                 stack_push((struct val){TYPE_ENV, {.env_data = exec_env}});
-                stack_push((struct val){TYPE_INST, {.inst_data = old_inst + 1}});
+                stack_push((struct val){TYPE_INST, {.inst_data = old_pc + 1}});
                 exec_env = lambda_env;
                 break;
             }
@@ -133,11 +118,11 @@ struct val exec(struct inst *inst) {
                 for (struct val *arg_ptr = stack_ptr - 1; arg_ptr > op; arg_ptr--)
                     *(arg_ptr + 2) = *arg_ptr;
                 stack_ptr += 2;
-                struct inst *(*high_prim)(int) = op->data.high_prim_data;
+                int (*high_prim)(int) = op->data.high_prim_data;
                 *(op + 2) = *op;
                 *op = (struct val){TYPE_ENV, {.env_data = exec_env}};
-                *(op + 1) = (struct val){TYPE_INST, {.inst_data = inst + 1}};
-                inst = high_prim(inst->args.num);
+                *(op + 1) = (struct val){TYPE_INST, {.inst_data = pc + 1}};
+                pc = high_prim(insts[pc].args.num);
                 break;
             }
             default:
@@ -149,24 +134,24 @@ struct val exec(struct inst *inst) {
         }
 
         case INST_TAIL_CALL: {
-            struct val *op = stack_ptr - inst->args.num - 1;
+            struct val *op = stack_ptr - insts[pc].args.num - 1;
             switch (op->type) {
             case TYPE_PRIM: {
-                struct val result = op->data.prim_data(op + 1, inst->args.num);
+                struct val result = op->data.prim_data(op + 1, insts[pc].args.num);
                 stack_ptr = op;
                 stack_push(result);
-                inst = &return_inst;
+                pc = return_inst;
                 break;
             }
             case TYPE_LAMBDA: {
                 struct lambda *lambda = op->data.lambda_data;
-                exec_env = extend_env(op + 1, inst->args.num, lambda->env);
+                exec_env = extend_env(op + 1, insts[pc].args.num, lambda->env);
                 stack_ptr = op;
-                inst = op->data.lambda_data->body;
+                pc = op->data.lambda_data->body;
                 break;
             }
             case TYPE_HIGH_PRIM:
-                inst = op->data.high_prim_data(inst->args.num);
+                pc = op->data.high_prim_data(insts[pc].args.num);
                 break;
             default:
                 fprintf(stderr, "Error: %s is not an applicable type\n",
@@ -180,7 +165,7 @@ struct val exec(struct inst *inst) {
             if (stack_ptr == stack + 1)
                 return stack_pop();
             struct val result = stack_pop();
-            inst = stack_pop().data.inst_data;
+            pc = stack_pop().data.inst_data;
             exec_env = stack_pop().data.env_data;
             stack_push(result);
             break;
@@ -188,7 +173,7 @@ struct val exec(struct inst *inst) {
 
         case INST_DELETE:
             stack_pop();
-            inst++;
+            pc++;
             break;
 
         case INST_CONS: {
@@ -196,9 +181,18 @@ struct val exec(struct inst *inst) {
             pair->cdr = stack_pop();
             pair->car = stack_pop();
             stack_push((struct val){TYPE_PAIR, {.pair_data = pair}});
-            inst++;
+            pc++;
             break;
         }
+
+        case INST_EXPR:
+            pc++;
+            break;
+
+        default:
+            fprintf(stderr, "Error\n");
+            // TODO
+            exit(-1);
 
         }
     }
