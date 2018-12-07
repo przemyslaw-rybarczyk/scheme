@@ -7,5 +7,5 @@ struct env *exec_env;
 void stack_push(struct val val);
 struct val stack_pop(void);
 
-struct val exec(struct inst *inst);
+struct val exec(long init_pc);
 int is_true(struct val val);

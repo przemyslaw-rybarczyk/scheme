@@ -578,7 +578,7 @@ struct expr *analyze_or_args(struct sexpr_list *args, struct name_env *env) {
  * Performs the entire parsing process.
  * Prevents syntax error on exit.
  */
-struct expr* read(void) {
+struct expr* read_expr(void) {
     char c = getchar_nospace();
     if (c == EOF)
         return NULL;
