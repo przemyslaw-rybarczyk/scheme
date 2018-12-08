@@ -53,6 +53,8 @@ int main(int argc, char **argv) {
     struct expr *ast = read_expr();
     int program;
     FILE *compiled = compile_flag ? fopen("compiled.sss", "wb") : NULL;
+    if (compile_flag)
+        save_magic(compiled);
     while (ast != NULL) {
         program = next_inst();
         insts[program] = (struct inst){INST_EXPR};
