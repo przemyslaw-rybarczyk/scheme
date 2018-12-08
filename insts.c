@@ -86,6 +86,12 @@ void save_val(FILE *fp, struct val val) {
     }
 }
 
+const char *magic = "\xf0\x9f\x91\xad""v3.0";
+
+void save_magic(FILE *fp) {
+    fputs(magic, fp);
+}
+
 void save_insts(FILE *fp, int start, int end) {
     for (int n = start; n != end; n++) {
         putc(insts[n].type, fp);
@@ -180,6 +186,12 @@ struct val load_val(FILE *fp) {
 }
 
 void load_insts(FILE *fp) {
+    char s[9];
+    fgets(s, 9, fp);
+    if (strcmp(s, magic) != 0) {
+        fprintf(stderr, "Error: not a valid bytecode file\n");
+        exit(3);
+    }
     char c;
     while ((c = getc(fp)) != EOF) {
         int n = next_inst();
