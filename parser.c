@@ -116,7 +116,7 @@ struct sexpr *parse(void) {
 
     case '(':
         sexpr->type = SEXPR_CONS;
-        sexpr->data.cons = parse_list();
+        sexpr->cons = parse_list();
         return sexpr;
 
     case '\'': {
@@ -129,13 +129,13 @@ struct sexpr *parse(void) {
         struct sexpr_list *cons = s_malloc(sizeof(struct sexpr_list));
         struct sexpr *car_sexpr = s_malloc(sizeof(struct sexpr));
         car_sexpr->type = SEXPR_ATOM;
-        car_sexpr->data.atom = "quote";
+        car_sexpr->atom = "quote";
         struct sexpr_list *cdr_pair = s_malloc(sizeof(struct sexpr_list));
         cdr_pair->car = quoted;
         cdr_pair->cdr = NULL;
         cons->car = car_sexpr;
         cons->cdr = cdr_pair;
-        sexpr->data.cons = cons;
+        sexpr->cons = cons;
         return sexpr;
     }
 
@@ -149,16 +149,16 @@ struct sexpr *parse(void) {
 
             // integer
             if (*endptr == '\0') {
-                sexpr->data.literal.type = TYPE_INT;
-                sexpr->data.literal.data.int_data = int_val;
+                sexpr->literal.type = TYPE_INT;
+                sexpr->literal.int_data = int_val;
                 return sexpr;
             }
 
             // floating point
             double float_val = strtod(text, &endptr);
             if (*endptr == '\0') {
-                sexpr->data.literal.type = TYPE_FLOAT;
-                sexpr->data.literal.data.float_data = float_val;
+                sexpr->literal.type = TYPE_FLOAT;
+                sexpr->literal.float_data = float_val;
                 return sexpr;
             }
 
@@ -169,13 +169,13 @@ struct sexpr *parse(void) {
         // boolean
         if (text[0] == '#') {
             sexpr->type = SEXPR_LITERAL;
-            sexpr->data.literal.type = TYPE_BOOL;
+            sexpr->literal.type = TYPE_BOOL;
             switch (text[1]) {
             case 'f':
-                sexpr->data.literal.data.int_data = 0;
+                sexpr->literal.int_data = 0;
                 return sexpr;
             case 't':
-                sexpr->data.literal.data.int_data = 1;
+                sexpr->literal.int_data = 1;
                 return sexpr;
             }
             fprintf(stderr, "Syntax error: incorrect boolean literal %s\n", text);
@@ -184,13 +184,13 @@ struct sexpr *parse(void) {
 
         // atom
         sexpr->type = SEXPR_ATOM;
-        sexpr->data.atom = text;
+        sexpr->atom = text;
         return sexpr;
 
     case STRING_TOKEN:
         sexpr->type = SEXPR_LITERAL;
-        sexpr->data.literal.type = TYPE_STRING;
-        sexpr->data.literal.data.string_data = text;
+        sexpr->literal.type = TYPE_STRING;
+        sexpr->literal.string_data = text;
         return sexpr;
 
     case EOF:
@@ -232,18 +232,18 @@ void assert_not_keyword(const char *name) {
 /* -- lookup_name
  * TODO explain
  */
-struct env_loc lookup_name(char *name, struct name_env *env) {
+Env_loc lookup_name(char *name, struct name_env *env) {
     int frame = 0;
     for (struct name_env *env_part = env; env_part != NULL; env_part = env_part->next) {
         int index = 0;
         for (struct name_list *frame_part = env_part->frame; frame_part != NULL; frame_part = frame_part->cdr) {
             if (strcmp(name, frame_part->car) == 0)
-                return (struct env_loc){frame, index};
+                return (Env_loc){frame, index};
             index++;
         }
         frame++;
     }
-    return (struct env_loc){-1, -1};
+    return (Env_loc){-1, -1};
 }
 
 /* -- analyze
@@ -262,29 +262,29 @@ struct expr* analyze(struct sexpr* sexpr, struct name_env *env) {
 
     case SEXPR_LITERAL:
         expr->type = EXPR_LITERAL;
-        expr->data.literal = sexpr->data.literal;
+        expr->literal = sexpr->literal;
         return expr;
 
     case SEXPR_ATOM:
-        assert_not_keyword(sexpr->data.atom);
-        struct env_loc var = lookup_name(sexpr->data.atom, env);
+        assert_not_keyword(sexpr->atom);
+        Env_loc var = lookup_name(sexpr->atom, env);
         if (var.frame != -1) {
             expr->type = EXPR_VAR;
-            expr->data.var = var;
+            expr->var = var;
         } else {
             expr->type = EXPR_NAME;
-            expr->data.name = sexpr->data.atom;
+            expr->name = sexpr->atom;
         }
         return expr;
 
     case SEXPR_CONS:
-        if (sexpr->data.cons == NULL) {
+        if (sexpr->cons == NULL) {
             fprintf(stderr, "Syntax error: () is not a valid expression\n");
             exit(1);
         }
-        if (sexpr->data.cons->car->type == SEXPR_ATOM) {
-            const char *tag = sexpr->data.cons->car->data.atom;
-            struct sexpr_list *cdr = sexpr->data.cons->cdr;
+        if (sexpr->cons->car->type == SEXPR_ATOM) {
+            const char *tag = sexpr->cons->car->atom;
+            struct sexpr_list *cdr = sexpr->cons->cdr;
 
             if (strcmp(tag, "define") == 0) {
                 expr->type = EXPR_DEF;
@@ -294,26 +294,26 @@ struct expr* analyze(struct sexpr* sexpr, struct name_env *env) {
                 case SEXPR_ATOM:
                     syntax_assert(cdr->cdr != NULL, tag, sexpr);
                     syntax_assert(cdr->cdr->cdr == NULL, tag, sexpr);
-                    expr->data.name_binding.var = cdr->car->data.atom;
-                    expr->data.name_binding.val = analyze(cdr->cdr->car, env);
+                    expr->name_binding.var = cdr->car->atom;
+                    expr->name_binding.val = analyze(cdr->cdr->car, env);
                     return expr;
                 case SEXPR_CONS:
                     // lambda definition
-                    syntax_assert(cdr->car->data.cons != NULL, tag, sexpr);
-                    syntax_assert(cdr->car->data.cons->car->type == SEXPR_ATOM, tag, sexpr);
-                    expr->data.name_binding.var = cdr->car->data.cons->car->data.atom;
+                    syntax_assert(cdr->car->cons != NULL, tag, sexpr);
+                    syntax_assert(cdr->car->cons->car->type == SEXPR_ATOM, tag, sexpr);
+                    expr->name_binding.var = cdr->car->cons->car->atom;
                     struct expr *lambda = s_malloc(sizeof(struct expr));
                     lambda->type = EXPR_LAMBDA;
-                    struct name_list *params = analyze_param_list(cdr->car->data.cons->cdr, tag, sexpr);
+                    struct name_list *params = analyze_param_list(cdr->car->cons->cdr, tag, sexpr);
                     int len = 0;
                     for (struct name_list *params_part = params; params_part != NULL; params_part = params_part->cdr)
                         len++;
-                    lambda->data.lambda.params = len;
+                    lambda->lambda.params = len;
                     struct name_env *lambda_env = s_malloc(sizeof(struct name_env));
                     lambda_env->frame = params;
                     lambda_env->next = env;
-                    lambda->data.lambda.body = analyze_list(cdr->cdr, lambda_env);
-                    expr->data.name_binding.val = lambda;
+                    lambda->lambda.body = analyze_list(cdr->cdr, lambda_env);
+                    expr->name_binding.val = lambda;
                     return expr;
                 }
             }
@@ -323,15 +323,15 @@ struct expr* analyze(struct sexpr* sexpr, struct name_env *env) {
                 syntax_assert(cdr->car->type == SEXPR_ATOM, tag, sexpr);
                 syntax_assert(cdr->cdr != NULL, tag, sexpr);
                 syntax_assert(cdr->cdr->cdr == NULL, tag, sexpr);
-                struct env_loc loc = lookup_name(cdr->car->data.atom, env);
+                Env_loc loc = lookup_name(cdr->car->atom, env);
                 if (loc.frame == -1) {
                     expr->type = EXPR_SET_NAME;
-                    expr->data.name_binding.var = cdr->car->data.atom;
-                    expr->data.name_binding.val = analyze(cdr->cdr->car, env);
+                    expr->name_binding.var = cdr->car->atom;
+                    expr->name_binding.val = analyze(cdr->cdr->car, env);
                 } else {
                     expr->type = EXPR_SET;
-                    expr->data.binding.var = loc;
-                    expr->data.binding.val = analyze(cdr->cdr->car, env);
+                    expr->binding.var = loc;
+                    expr->binding.val = analyze(cdr->cdr->car, env);
                 }
                 return expr;
             }
@@ -339,10 +339,10 @@ struct expr* analyze(struct sexpr* sexpr, struct name_env *env) {
             if (strcmp(tag, "if") == 0) {
                 expr->type = EXPR_IF;
                 syntax_assert(cdr != NULL, tag, sexpr);
-                expr->data.if_data.pred = analyze(cdr->car, env);
+                expr->if_data.pred = analyze(cdr->car, env);
                 syntax_assert(cdr->cdr != NULL, tag, sexpr);
-                expr->data.if_data.conseq = analyze(cdr->cdr->car, env);
-                expr->data.if_data.alter =
+                expr->if_data.conseq = analyze(cdr->cdr->car, env);
+                expr->if_data.alter =
                     cdr->cdr->cdr ? analyze(cdr->cdr->cdr->car, env) : NULL;
                 return expr;
             }
@@ -351,21 +351,21 @@ struct expr* analyze(struct sexpr* sexpr, struct name_env *env) {
                 expr->type = EXPR_LAMBDA;
                 syntax_assert(cdr != NULL, tag, sexpr);
                 syntax_assert(cdr->car->type == SEXPR_CONS, tag, sexpr);
-                struct name_list *params = analyze_param_list(cdr->car->data.cons, tag, sexpr);
+                struct name_list *params = analyze_param_list(cdr->car->cons, tag, sexpr);
                 int len = 0;
                 for (struct name_list *params_part = params; params_part != NULL; params_part = params_part->cdr)
                     len++;
-                expr->data.lambda.params = len;
+                expr->lambda.params = len;
                 struct name_env *lambda_env = s_malloc(sizeof(struct name_env));
                 lambda_env->frame = params;
                 lambda_env->next = env;
-                expr->data.lambda.body = analyze_list(cdr->cdr, lambda_env);
+                expr->lambda.body = analyze_list(cdr->cdr, lambda_env);
                 return expr;
             }
 
             if (strcmp(tag, "begin") == 0) {
                 expr->type = EXPR_BEGIN;
-                expr->data.begin = analyze_list(cdr, env);
+                expr->begin = analyze_list(cdr, env);
                 return expr;
             }
 
@@ -373,14 +373,14 @@ struct expr* analyze(struct sexpr* sexpr, struct name_env *env) {
                 syntax_assert(cdr != NULL, tag, sexpr);
                 syntax_assert(cdr->cdr == NULL, tag, sexpr);
                 expr->type = EXPR_QUOTE;
-                expr->data.quote = cdr->car;
+                expr->quote = cdr->car;
                 return expr;
             }
 
             if (strcmp(tag, "and") == 0) {
                 if (cdr == NULL) {
                     expr->type = EXPR_LITERAL;
-                    expr->data.literal = (struct val){TYPE_BOOL, {.int_data = 1}};
+                    expr->literal = (Val){TYPE_BOOL, {.int_data = 1}};
                     return expr;
                 }
                 if (cdr->cdr == NULL)
@@ -389,17 +389,17 @@ struct expr* analyze(struct sexpr* sexpr, struct name_env *env) {
                 struct sexpr_list *args = cdr;
                 while (args != NULL) {
                     branch->type = EXPR_IF;
-                    branch->data.if_data.pred = analyze(args->car, env);
-                    branch->data.if_data.alter = s_malloc(sizeof(struct expr));
-                    branch->data.if_data.alter->type = EXPR_LITERAL;
-                    branch->data.if_data.alter->data.literal = (struct val){TYPE_BOOL, {.int_data = 0}};
+                    branch->if_data.pred = analyze(args->car, env);
+                    branch->if_data.alter = s_malloc(sizeof(struct expr));
+                    branch->if_data.alter->type = EXPR_LITERAL;
+                    branch->if_data.alter->literal = (Val){TYPE_BOOL, {.int_data = 0}};
                     if (args->cdr->cdr == NULL)
                         break;
-                    branch->data.if_data.conseq = s_malloc(sizeof(struct expr));
-                    branch = branch->data.if_data.conseq;
+                    branch->if_data.conseq = s_malloc(sizeof(struct expr));
+                    branch = branch->if_data.conseq;
                     args = args->cdr;
                 }
-                branch->data.if_data.conseq = analyze(args->cdr->car, env);
+                branch->if_data.conseq = analyze(args->cdr->car, env);
                 return expr;
             }
 
@@ -414,20 +414,20 @@ struct expr* analyze(struct sexpr* sexpr, struct name_env *env) {
             if (strcmp(tag, "let") == 0) {
                 syntax_assert(cdr != NULL, tag, sexpr);
                 syntax_assert(cdr->car->type == SEXPR_CONS, tag, sexpr);
-                if (cdr->car->data.cons == NULL)
+                if (cdr->car->cons == NULL)
                     return analyze_seq_expr(cdr->cdr, env);
                 struct name_list *params = s_malloc(sizeof(struct name_list));
                 struct expr_list *args = s_malloc(sizeof(struct expr_list));
                 struct name_list *vars = params;
                 struct expr_list *vals = args;
-                struct sexpr_list *bindings = cdr->car->data.cons;
+                struct sexpr_list *bindings = cdr->car->cons;
                 while (bindings != NULL) {
                     syntax_assert(bindings->car->type == SEXPR_CONS, tag, sexpr);
-                    syntax_assert(bindings->car->data.cons->cdr != NULL, tag, sexpr);
-                    syntax_assert(bindings->car->data.cons->cdr->cdr == NULL, tag, sexpr);
-                    syntax_assert(bindings->car->data.cons->car->type == SEXPR_ATOM, tag, sexpr);
-                    vars->car = bindings->car->data.cons->car->data.atom;
-                    vals->car = analyze(bindings->car->data.cons->cdr->car, env);
+                    syntax_assert(bindings->car->cons->cdr != NULL, tag, sexpr);
+                    syntax_assert(bindings->car->cons->cdr->cdr == NULL, tag, sexpr);
+                    syntax_assert(bindings->car->cons->car->type == SEXPR_ATOM, tag, sexpr);
+                    vars->car = bindings->car->cons->car->atom;
+                    vals->car = analyze(bindings->car->cons->cdr->car, env);
                     if (bindings->cdr == NULL)
                         break;
                     vars->cdr = s_malloc(sizeof(struct name_list));
@@ -444,13 +444,13 @@ struct expr* analyze(struct sexpr* sexpr, struct name_env *env) {
                 int len = 0;
                 for (struct name_list *params_part = params; params_part != NULL; params_part = params_part->cdr)
                     len++;
-                lambda->data.lambda.params = len;
+                lambda->lambda.params = len;
                 struct name_env *lambda_env = s_malloc(sizeof(struct name_env));
                 lambda_env->frame = params;
                 lambda_env->next = env;
-                lambda->data.lambda.body = analyze_list(cdr->cdr, lambda_env);
-                expr->data.appl.proc = lambda;
-                expr->data.appl.args = args;
+                lambda->lambda.body = analyze_list(cdr->cdr, lambda_env);
+                expr->appl.proc = lambda;
+                expr->appl.args = args;
                 return expr;
             }
 
@@ -462,8 +462,8 @@ struct expr* analyze(struct sexpr* sexpr, struct name_env *env) {
         }
 
         expr->type = EXPR_APPL;
-        expr->data.appl.proc = analyze(sexpr->data.cons->car, env);
-        expr->data.appl.args = analyze_list(sexpr->data.cons->cdr, env);
+        expr->appl.proc = analyze(sexpr->cons->car, env);
+        expr->appl.args = analyze_list(sexpr->cons->cdr, env);
         return expr;
     }
 }
@@ -487,7 +487,7 @@ struct name_list *analyze_param_list(struct sexpr_list *list, const char* tag, s
         return NULL;
     struct name_list *pair = s_malloc(sizeof(struct name_list));
     syntax_assert(list->car->type = SEXPR_ATOM, tag, sexpr);
-    pair->car = list->car->data.atom;
+    pair->car = list->car->atom;
     pair->cdr = analyze_param_list(list->cdr, tag, sexpr);
     return pair;
 }
@@ -500,14 +500,14 @@ struct expr *analyze_seq_expr(struct sexpr_list *seq, struct name_env *env) {
     if (seq == NULL) {
         struct expr *expr = s_malloc(sizeof(struct expr));
         expr->type = EXPR_LITERAL;
-        expr->data.literal = (struct val){TYPE_VOID};
+        expr->literal = (Val){TYPE_VOID};
         return expr;
     }
     if (seq->cdr == NULL)
         return analyze(seq->car, env);
     struct expr *expr = s_malloc(sizeof(struct expr));
     expr->type = EXPR_BEGIN;
-    expr->data.begin = analyze_list(seq, env);
+    expr->begin = analyze_list(seq, env);
     return expr;
 }
 
@@ -515,24 +515,24 @@ struct expr *analyze_cond_clauses(struct sexpr_list *clauses, struct sexpr *cond
     if (clauses == NULL) {
         struct expr *expr = s_malloc(sizeof(struct expr));
         expr->type = EXPR_LITERAL;
-        expr->data.literal = (struct val){TYPE_VOID};
+        expr->literal = (Val){TYPE_VOID};
         return expr;
     }
     syntax_assert(clauses->car->type == SEXPR_CONS, "cond", cond);
 
     // else clause
-    if (clauses->car->data.cons->car->type == SEXPR_ATOM
-            && strcmp(clauses->car->data.cons->car->data.atom, "else") == 0) {
+    if (clauses->car->cons->car->type == SEXPR_ATOM
+            && strcmp(clauses->car->cons->car->atom, "else") == 0) {
         syntax_assert(clauses->cdr == NULL, "cond", cond);
-        return analyze_seq_expr(clauses->car->data.cons->cdr, env);
+        return analyze_seq_expr(clauses->car->cons->cdr, env);
     }
 
     // normal cond clause
     struct expr *expr = s_malloc(sizeof(struct expr));
     expr->type = EXPR_IF;
-    expr->data.if_data.pred = analyze(clauses->car->data.cons->car, env);
-    expr->data.if_data.conseq = analyze_seq_expr(clauses->car->data.cons->cdr, env);
-    expr->data.if_data.alter = analyze_cond_clauses(clauses->cdr, cond, env);
+    expr->if_data.pred = analyze(clauses->car->cons->car, env);
+    expr->if_data.conseq = analyze_seq_expr(clauses->car->cons->cdr, env);
+    expr->if_data.alter = analyze_cond_clauses(clauses->cdr, cond, env);
     return expr;
 }
 
@@ -540,7 +540,7 @@ struct expr *analyze_or_args(struct sexpr_list *args, struct name_env *env) {
 //  if (args == NULL) {
 //      struct expr *expr = s_malloc(sizeof(struct expr));
 //      expr->type = EXPR_LITERAL;
-//      expr->data.literal = (struct val){TYPE_BOOL, {.int_data = 0}};
+//      expr->literal = (Val){TYPE_BOOL, {.int_data = 0}};
 //      return expr;
 //  }
 //  if (args->cdr == NULL) {
@@ -553,24 +553,24 @@ struct expr *analyze_or_args(struct sexpr_list *args, struct name_env *env) {
 //  struct name_list *params = s_malloc(sizeof(struct name_list));
 //  params->car = "0";
 //  params->cdr = NULL;
-//  proc->data.lambda.params = params;
+//  proc->lambda.params = params;
 //  struct expr_list *body = s_malloc(sizeof(struct expr_list));
 //  struct expr *if_test = s_malloc(sizeof(struct expr));
 //  if_test->type = EXPR_IF;
 //  struct expr *x = s_malloc(sizeof(struct expr));
 //  x->type = EXPR_VAR;
-//  x->data.var = "0";
-//  if_test->data.if_data.pred = x;
-//  if_test->data.if_data.conseq = x;
-//  if_test->data.if_data.alter = analyze_or_args(args->cdr, env);
+//  x->var = "0";
+//  if_test->if_data.pred = x;
+//  if_test->if_data.conseq = x;
+//  if_test->if_data.alter = analyze_or_args(args->cdr, env);
 //  body->car = if_test;
 //  body->cdr = NULL;
-//  proc->data.lambda.body = body;
-//  expr->data.appl.proc = proc;
+//  proc->lambda.body = body;
+//  expr->appl.proc = proc;
 //  struct expr_list *appl_args = s_malloc(sizeof(struct expr_list));
 //  appl_args->car = analyze(args->car, env);
 //  appl_args->cdr = NULL;
-//  expr->data.appl.args = appl_args;
+//  expr->appl.args = appl_args;
 //  return expr;
 }
 

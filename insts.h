@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "expr.h"
 
-struct inst *insts;
+Inst *insts;
 int return_inst;
 int tail_call_inst;
 void setup_insts(void);

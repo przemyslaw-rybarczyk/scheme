@@ -11,8 +11,8 @@ void *mem_start;
 size_t mem_size = 32 * 65536;
 void *free_ptr;
 
-struct env **env_stack[2];
-struct env ***env_stack_ptr = env_stack;
+Env **env_stack[2];
+Env ***env_stack_ptr = env_stack;
 
 /* -- setup_memory
  * Sets up the heap.
@@ -54,11 +54,11 @@ void *force_alloc(size_t size) {
     return free_ptr - size;
 }
 
-struct env *move_env(struct env *env);
+Env *move_env(Env *env);
 struct frame *move_frame(struct frame *frame);
-struct val move_val(struct val val);
-struct pair *move_pair(struct pair *pair);
-struct lambda *move_lambda(struct lambda *lambda);
+Val move_val(Val val);
+Pair *move_pair(Pair *pair);
+Lambda *move_lambda(Lambda *lambda);
 
 /* -- garbage_collect
  * Performs garbage collection and extends the heap size if more than half of it
@@ -78,10 +78,10 @@ struct lambda *move_lambda(struct lambda *lambda);
  *
  * Each type of cell is turned into a 'broken heart' after being moved to the
  * new heap. For `env`s and `lambda`s this is indicated through setting a special
- * `new_ptr` member variable to point to the reallocated data. The `frame`s and
+ * `new_ptr` member variable to point to the reallocated  The `frame`s and
  * `pair`s have their `binding.val` and `car`, respectively, member's `type` set
  * to a special value of TYPE_BROKEN_HEART, with the pointer respectively in
- * `next` and `car.data.pair_data` members.
+ * `next` and `car.pair_data` members.
  *
  * If a broken heart value is detected, the cell has already been moved and the
  * moving function simply returns the address contained within it. Otherwise it
@@ -94,15 +94,15 @@ void garbage_collect(void) {
     // TODO try allocating less memory in case of malloc failure
     void *new_mem = s_malloc(mem_size);
     free_ptr = new_mem;
-    for (struct val *val_ptr = global_env; val_ptr < global_env + global_env_size; val_ptr++)
+    for (Val *val_ptr = global_env; val_ptr < global_env + global_env_size; val_ptr++)
         *val_ptr = move_val(*val_ptr);
 //  printf("Stack ptr is %p\n", stack_ptr);
-    for (struct val *val_ptr = stack; val_ptr < stack_ptr; val_ptr++) {
+    for (Val *val_ptr = stack; val_ptr < stack_ptr; val_ptr++) {
 //      printf("Moving val at %p\n", val_ptr);
         *val_ptr = move_val(*val_ptr);
     }
     exec_env = move_env(exec_env);
-    for (struct env ***env_ptr = env_stack; env_ptr < env_stack_ptr; env_ptr++)
+    for (Env ***env_ptr = env_stack; env_ptr < env_stack_ptr; env_ptr++)
         **env_ptr = move_env(**env_ptr);
     free(mem_start);
     mem_start = new_mem;
@@ -112,12 +112,12 @@ void garbage_collect(void) {
     }
 }
 
-struct env *move_env(struct env *env) {
+Env *move_env(Env *env) {
     if (env == NULL)
         return env;
     if (env->size == -1)
         return env->outer;
-    struct env *new_env = force_alloc(sizeof(struct env) + env->size * sizeof(struct val));
+    Env *new_env = force_alloc(sizeof(Env) + env->size * sizeof(Val));
     *new_env = *env;
     env->size = -1;
     env->outer = new_env;
@@ -128,46 +128,46 @@ struct env *move_env(struct env *env) {
     return new_env;
 }
 
-struct val move_val(struct val val) {
+Val move_val(Val val) {
     switch (val.type) {
     case TYPE_PAIR:
-        val.data.pair_data = move_pair(val.data.pair_data);
+        val.pair_data = move_pair(val.pair_data);
         return val;
     case TYPE_LAMBDA:
-        val.data.lambda_data = move_lambda(val.data.lambda_data);
+        val.lambda_data = move_lambda(val.lambda_data);
         return val;
     case TYPE_ENV:
-//      printf("Will move memory from %p\n", val.data.env_data);
-        val.data.env_data = move_env(val.data.env_data);
+//      printf("Will move memory from %p\n", val.env_data);
+        val.env_data = move_env(val.env_data);
         return val;
     default:
         return val;
     }
 }
 
-struct pair *move_pair(struct pair *pair) {
+Pair *move_pair(Pair *pair) {
     if (pair->car.type == TYPE_BROKEN_HEART)
-        return pair->car.data.pair_data;
-    struct pair *new_pair = force_alloc(sizeof(struct pair));
+        return pair->car.pair_data;
+    Pair *new_pair = force_alloc(sizeof(Pair));
     *new_pair = *pair;
     pair->car.type = TYPE_BROKEN_HEART;
-    pair->car.data.pair_data = new_pair;
+    pair->car.pair_data = new_pair;
     new_pair->cdr = move_val(new_pair->cdr);
     new_pair->car = move_val(new_pair->car);
     return new_pair;
 }
 
-struct lambda *move_lambda(struct lambda *lambda) {
+Lambda *move_lambda(Lambda *lambda) {
     if (lambda->new_ptr != NULL)
         return lambda->new_ptr;
-    struct lambda *new_lambda = force_alloc(sizeof(struct lambda));
+    Lambda *new_lambda = force_alloc(sizeof(Lambda));
     *new_lambda = *lambda;
     lambda->new_ptr = new_lambda;
     new_lambda->env = move_env(new_lambda->env);
     return new_lambda;
 }
 
-void gc_push_env(struct env **env) {
+void gc_push_env(Env **env) {
     *env_stack_ptr++ = env;
 }
 

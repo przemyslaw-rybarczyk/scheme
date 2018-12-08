@@ -1,10 +1,10 @@
 #include "../expr.h"
 
-struct val eq_prim(struct val *args, int num);
-struct val equal_prim(struct val *args, int num);
-struct val pair_prim(struct val *args, int num);
-struct val null_prim(struct val *args, int num);
-struct val number_prim(struct val *args, int num);
-struct val symbol_prim(struct val *args, int num);
-struct val string_prim(struct val *args, int num);
-struct val not_prim(struct val *args, int num);
+Val eq_prim(Val *args, int num);
+Val equal_prim(Val *args, int num);
+Val pair_prim(Val *args, int num);
+Val null_prim(Val *args, int num);
+Val number_prim(Val *args, int num);
+Val symbol_prim(Val *args, int num);
+Val string_prim(Val *args, int num);
+Val not_prim(Val *args, int num);
