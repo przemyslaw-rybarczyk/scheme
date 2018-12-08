@@ -12,25 +12,25 @@
 #include "../compile.h"
 #include "../exec.h"
 
-struct val display_prim(struct val *args, int num) {
+Val display_prim(Val *args, int num) {
     args_assert(num == 1);
     inner_display_val(args[0]);
-    return (struct val){TYPE_VOID};
+    return (Val){TYPE_VOID};
 }
 
-struct val newline_prim(struct val *args, int num) {
+Val newline_prim(Val *args, int num) {
     args_assert(num == 0);
     putchar('\n');
-    return (struct val){TYPE_VOID};
+    return (Val){TYPE_VOID};
 }
 
-struct val error_prim(struct val *args, int num) {
+Val error_prim(Val *args, int num) {
     if (num == 0) {
         fprintf(stderr, "Error.\n");
         exit(2);
     }
     fprintf(stderr, "Error: ");
-    for (struct val *arg_ptr = args; arg_ptr < args + num - 1; arg_ptr++) {
+    for (Val *arg_ptr = args; arg_ptr < args + num - 1; arg_ptr++) {
         inner_display_val(*arg_ptr);
         putchar(' ');
     }
@@ -53,6 +53,6 @@ int read_prim(int num) {
     }
     int eval = this_inst();
     compile_quote(sexpr);
-    insts[next_inst()] = (struct inst){INST_RETURN};
+    insts[next_inst()] = (Inst){INST_RETURN};
     return eval;
 }

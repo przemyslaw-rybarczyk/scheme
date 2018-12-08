@@ -6,192 +6,192 @@
 #include "assert.h"
 #include "../memory.h"
 
-struct val cons_prim(struct val *args, int num) {
+Val cons_prim(Val *args, int num) {
     args_assert(num == 2);
-    struct pair *pair = gc_alloc(sizeof(struct pair));
+    Pair *pair = gc_alloc(sizeof(Pair));
     pair->car = args[0];
     pair->cdr = args[1];
-    return (struct val){TYPE_PAIR, {.pair_data = pair}};
+    return (Val){TYPE_PAIR, {.pair_data = pair}};
 }
 
-struct val get_car(struct val pair) {
+Val get_car(Val pair) {
     if (pair.type != TYPE_PAIR) {
         fprintf(stderr, "Error: not a pair\n");
         exit(2);
     }
-    return pair.data.pair_data->car;
+    return pair.pair_data->car;
 }
 
-struct val get_cdr(struct val pair) {
+Val get_cdr(Val pair) {
     if (pair.type != TYPE_PAIR) {
         fprintf(stderr, "Error: not a pair\n");
         exit(2);
     }
-    return pair.data.pair_data->cdr;
+    return pair.pair_data->cdr;
 }
 
-struct val car_prim(struct val *args, int num) {
+Val car_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_car(args[0]);
 }
 
-struct val caar_prim(struct val *args, int num) {
+Val caar_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_car(get_car(args[0]));
 }
 
-struct val caaar_prim(struct val *args, int num) {
+Val caaar_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_car(get_car(get_car(args[0])));
 }
 
-struct val caaaar_prim(struct val *args, int num) {
+Val caaaar_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_car(get_car(get_car(get_car(args[0]))));
 }
 
-struct val cdaaar_prim(struct val *args, int num) {
+Val cdaaar_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_cdr(get_car(get_car(get_car(args[0]))));
 }
 
-struct val cdaar_prim(struct val *args, int num) {
+Val cdaar_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_cdr(get_car(get_car(args[0])));
 }
 
-struct val cadaar_prim(struct val *args, int num) {
+Val cadaar_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_car(get_cdr(get_car(get_car(args[0]))));
 }
 
-struct val cddaar_prim(struct val *args, int num) {
+Val cddaar_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_cdr(get_cdr(get_car(get_car(args[0]))));
 }
 
-struct val cdar_prim(struct val *args, int num) {
+Val cdar_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_cdr(get_car(args[0]));
 }
 
-struct val cadar_prim(struct val *args, int num) {
+Val cadar_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_car(get_cdr(get_car(args[0])));
 }
 
-struct val caadar_prim(struct val *args, int num) {
+Val caadar_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_car(get_car(get_cdr(get_car(args[0]))));
 }
 
-struct val cdadar_prim(struct val *args, int num) {
+Val cdadar_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_cdr(get_car(get_cdr(get_car(args[0]))));
 }
 
-struct val cddar_prim(struct val *args, int num) {
+Val cddar_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_cdr(get_cdr(get_car(args[0])));
 }
 
-struct val caddar_prim(struct val *args, int num) {
+Val caddar_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_car(get_cdr(get_cdr(get_car(args[0]))));
 }
 
-struct val cdddar_prim(struct val *args, int num) {
+Val cdddar_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_cdr(get_cdr(get_cdr(get_car(args[0]))));
 }
 
-struct val cdr_prim(struct val *args, int num) {
+Val cdr_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_cdr(args[0]);
 }
 
-struct val cadr_prim(struct val *args, int num) {
+Val cadr_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_car(get_cdr(args[0]));
 }
 
-struct val caadr_prim(struct val *args, int num) {
+Val caadr_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_car(get_car(get_cdr(args[0])));
 }
 
-struct val caaadr_prim(struct val *args, int num) {
+Val caaadr_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_car(get_car(get_car(get_cdr(args[0]))));
 }
 
-struct val cdaadr_prim(struct val *args, int num) {
+Val cdaadr_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_cdr(get_car(get_car(get_cdr(args[0]))));
 }
 
-struct val cdadr_prim(struct val *args, int num) {
+Val cdadr_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_cdr(get_car(get_cdr(args[0])));
 }
 
-struct val cadadr_prim(struct val *args, int num) {
+Val cadadr_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_car(get_cdr(get_car(get_cdr(args[0]))));
 }
 
-struct val cddadr_prim(struct val *args, int num) {
+Val cddadr_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_cdr(get_cdr(get_car(get_cdr(args[0]))));
 }
 
-struct val cddr_prim(struct val *args, int num) {
+Val cddr_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_cdr(get_cdr(args[0]));
 }
 
-struct val caddr_prim(struct val *args, int num) {
+Val caddr_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_car(get_cdr(get_cdr(args[0])));
 }
 
-struct val caaddr_prim(struct val *args, int num) {
+Val caaddr_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_car(get_car(get_cdr(get_cdr(args[0]))));
 }
 
-struct val cdaddr_prim(struct val *args, int num) {
+Val cdaddr_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_cdr(get_car(get_cdr(get_cdr(args[0]))));
 }
 
-struct val cdddr_prim(struct val *args, int num) {
+Val cdddr_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_cdr(get_cdr(get_cdr(args[0])));
 }
 
-struct val cadddr_prim(struct val *args, int num) {
+Val cadddr_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_car(get_cdr(get_cdr(get_cdr(args[0]))));
 }
 
-struct val cddddr_prim(struct val *args, int num) {
+Val cddddr_prim(Val *args, int num) {
     args_assert(num == 1);
     return get_cdr(get_cdr(get_cdr(get_cdr(args[0]))));
 }
 
-struct val set_car_prim(struct val *args, int num) {
+Val set_car_prim(Val *args, int num) {
     args_assert(num == 2);
     if (args[0].type != TYPE_PAIR)
         type_error(args[0]);
-    args[0].data.pair_data->car = args[1];
-    return (struct val){TYPE_VOID};
+    args[0].pair_data->car = args[1];
+    return (Val){TYPE_VOID};
 }
 
-struct val set_cdr_prim(struct val *args, int num) {
+Val set_cdr_prim(Val *args, int num) {
     args_assert(num == 2);
     if (args[0].type != TYPE_PAIR)
         type_error(args[0]);
-    args[0].data.pair_data->cdr = args[1];
-    return (struct val){TYPE_VOID};
+    args[0].pair_data->cdr = args[1];
+    return (Val){TYPE_VOID};
 }

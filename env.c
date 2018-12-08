@@ -16,7 +16,7 @@
  * The global environment itself is represented with a NULL pointer.
  * TODO redocument
  */
-struct val *global_env;
+Val *global_env;
 char **global_names;
 int global_env_size, global_env_capacity;
 
@@ -27,14 +27,14 @@ int global_env_size, global_env_capacity;
  */
 void setup_global_env(void) {
     global_env_size = global_env_capacity = prims_size + high_prims_size;
-    global_env = s_malloc(global_env_capacity * sizeof(struct val));
+    global_env = s_malloc(global_env_capacity * sizeof(Val));
     global_names = s_malloc(global_env_capacity * sizeof(char *));
     for (int i = 0; i < prims_size; i++) {
-        global_env[i] = (struct val){TYPE_PRIM, {.prim_data = prims[i].val}};
+        global_env[i] = (Val){TYPE_PRIM, {.prim_data = prims[i].val}};
         global_names[i] = prims[i].var;
     }
     for (int i = 0; i < high_prims_size; i++) {
-        global_env[prims_size + i] = (struct val){TYPE_HIGH_PRIM, {.high_prim_data = high_prims[i].val}};
+        global_env[prims_size + i] = (Val){TYPE_HIGH_PRIM, {.high_prim_data = high_prims[i].val}};
         global_names[prims_size + i] = high_prims[i].var;
     }
 }
@@ -42,10 +42,10 @@ void setup_global_env(void) {
 /* -- locate_var
  * Finds a value bound to a location in a given environment.
  */
-struct val locate_var(struct env_loc var, struct env *env) {
+Val locate_var(Env_loc var, Env *env) {
     if (var.frame == -1)
         return global_env[var.index];
-    struct env *frame = env;
+    Env *frame = env;
     for (int n = var.frame; n > 0; n--)
         frame = frame->outer;
     return frame->vals[var.index];
@@ -65,13 +65,13 @@ int locate_global_var(char *var) {
  * Changes a value bound to a variable name in a given environment.
  * Causes an error in case of an unbound variable.
  */
-void assign_var(struct env_loc var, struct val val, struct env *env) {
+void assign_var(Env_loc var, Val val, Env *env) {
     if (var.frame == -1) {
 //      printf("Assigning to global at %d\n", var.index);
         global_env[var.index] = val;
         return;
     }
-    struct env *frame = env;
+    Env *frame = env;
     for (int n = var.frame; n > 0; n--)
         frame = frame->outer;
     frame->vals[var.index] = val;
@@ -81,7 +81,7 @@ void assign_var(struct env_loc var, struct val val, struct env *env) {
  * Binds a value to a variable name in the first frame of a given environment.
  * Changes the binding if one already exists in the frame.
  */
-void define_var(char* var, struct val val, struct env *env) {
+void define_var(char* var, Val val, Env *env) {
 //  printf("Defining %s; global_env_size is %d\n", var, global_env_size);
     for (int i = 0; i < global_env_size; i++) {
         if (strcmp(global_names[i], var) == 0) {
@@ -91,7 +91,7 @@ void define_var(char* var, struct val val, struct env *env) {
     }
     if (global_env_size == global_env_capacity) {
         global_env_capacity *= 2;
-        global_env = s_realloc(global_env, global_env_capacity * sizeof(struct val));
+        global_env = s_realloc(global_env, global_env_capacity * sizeof(Val));
         global_names = s_realloc(global_names, global_env_capacity * sizeof(char *));
 //      printf("Expanded global env capacity to %d\n", global_env_capacity);
     }
@@ -112,12 +112,12 @@ void argnum_assert(int assertion) {
  * Extend an environment by a new frame containing the variables is `vars`
  * bound to the `vals_num` variables in an array starting at `vals_start`.
  */
-struct env *extend_env(struct val *vals_start, int vals_num, struct env *env) {
+Env *extend_env(Val *vals_start, int vals_num, Env *env) {
     gc_push_env(&env);
-    struct env *ext_env = gc_alloc(sizeof(struct env) + vals_num * sizeof(struct val));
+    Env *ext_env = gc_alloc(sizeof(Env) + vals_num * sizeof(Val));
     ext_env->outer = env;
     ext_env->size = vals_num;
-    memcpy(ext_env->vals, vals_start, vals_num * sizeof(struct val));
+    memcpy(ext_env->vals, vals_start, vals_num * sizeof(Val));
     gc_pop_env();
     return ext_env;
 }

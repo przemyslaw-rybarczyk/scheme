@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "insts.h"
 #include "expr.h"
@@ -6,7 +7,7 @@
 #include "display.h"
 #include "symbol.h"
 
-struct inst *insts;
+Inst *insts;
 int insts_size = 4096;
 int inst_index = 0;
 
@@ -19,11 +20,11 @@ int return_inst;
  */
 
 void setup_insts(void) {
-    insts = s_malloc(insts_size * sizeof(struct inst));
+    insts = s_malloc(insts_size * sizeof(Inst));
     return_inst = next_inst();
-    insts[return_inst] = (struct inst){INST_RETURN};
+    insts[return_inst] = (Inst){INST_RETURN};
     tail_call_inst = next_inst();
-    insts[tail_call_inst] = (struct inst){INST_TAIL_CALL};
+    insts[tail_call_inst] = (Inst){INST_TAIL_CALL};
 }
 
 /* -- next_inst
@@ -33,7 +34,7 @@ void setup_insts(void) {
 int next_inst(void) {
     if (inst_index >= insts_size) {
         insts_size *= 2;
-        insts = s_realloc(insts, insts_size * sizeof(struct inst));
+        insts = s_realloc(insts, insts_size * sizeof(Inst));
     }
     return inst_index++;
 }
@@ -52,29 +53,29 @@ int next_expr(int start) {
             return i;
 }
 
-void save_loc(FILE *fp, struct env_loc loc) {
+void save_loc(FILE *fp, Env_loc loc) {
     for (int i = 1; i >= 0; i--)
         putc(loc.frame >> 8 * i, fp);
     for (int i = 1; i >= 0; i--)
         putc(loc.index >> 8 * i, fp);
 }
 
-void save_val(FILE *fp, struct val val) {
+void save_val(FILE *fp, Val val) {
     putc(val.type, fp);
     switch (val.type) {
     case TYPE_INT:
         for (int i = 7; i >= 0; i--)
-            putc(val.data.int_data >> 8 * i, fp);
+            putc(val.int_data >> 8 * i, fp);
         break;
     case TYPE_FLOAT:
         // TODO
         break;
     case TYPE_BOOL:
-        putc(val.data.int_data, fp);
+        putc(val.int_data, fp);
         break;
     case TYPE_STRING:
     case TYPE_SYMBOL:
-        fputs(val.data.string_data, fp);
+        fputs(val.string_data, fp);
         putc('\0', fp);
         break;
     case TYPE_NIL:
@@ -97,33 +98,33 @@ void save_insts(FILE *fp, int start, int end) {
         putc(insts[n].type, fp);
         switch (insts[n].type) {
         case INST_CONST:
-            save_val(fp, insts[n].args.val);
+            save_val(fp, insts[n].val);
             break;
         case INST_VAR:
         case INST_SET:
-            save_loc(fp, insts[n].args.var);
+            save_loc(fp, insts[n].var);
             break;
         case INST_NAME:
         case INST_DEF:
         case INST_SET_NAME:
-            fputs(insts[n].args.name, fp);
+            fputs(insts[n].name, fp);
             putc('\0', fp);
             break;
         case INST_JUMP:
         case INST_JUMP_FALSE:
             for (int i = 3; i >= 0; i--)
-                putc(insts[n].args.index >> 8 * i, fp);
+                putc(insts[n].index >> 8 * i, fp);
             break;
         case INST_LAMBDA:
             for (int i = 3; i >= 0; i--)
-                putc(insts[n].args.lambda.params >> 8 * i, fp);
+                putc(insts[n].lambda.params >> 8 * i, fp);
             for (int i = 3; i >= 0; i--)
-                putc(insts[n].args.lambda.index >> 8 * i, fp);
+                putc(insts[n].lambda.index >> 8 * i, fp);
             break;
         case INST_CALL:
         case INST_TAIL_CALL:
             for (int i = 3; i >= 0; i--)
-                putc(insts[n].args.num >> 8 * i, fp);
+                putc(insts[n].num >> 8 * i, fp);
             break;
         case INST_RETURN:
         case INST_DELETE:
@@ -133,8 +134,8 @@ void save_insts(FILE *fp, int start, int end) {
     }
 }
 
-struct env_loc load_loc(FILE *fp) {
-    struct env_loc loc = {0, 0};
+Env_loc load_loc(FILE *fp) {
+    Env_loc loc = {0, 0};
     for (int i = 0; i < 2; i++)
         loc.frame = loc.frame << 8 | getc(fp);
     for (int i = 0; i < 2; i++)
@@ -157,28 +158,28 @@ char *load_str(FILE *fp) {
     return str;
 }
 
-struct val load_val(FILE *fp) {
+Val load_val(FILE *fp) {
     char type = getc(fp);
     switch (type) {
     case TYPE_INT: {
         long long n = 0;
         for (int i = 0; i < 8; i++)
             n = n << 8 | getc(fp);
-        return (struct val){TYPE_INT, {.int_data = n}};
+        return (Val){TYPE_INT, {.int_data = n}};
     }
     case TYPE_FLOAT:
         // TODO
         break;
     case TYPE_BOOL:
-        return (struct val){TYPE_BOOL, {.int_data = getc(fp)}};
+        return (Val){TYPE_BOOL, {.int_data = getc(fp)}};
     case TYPE_STRING:
-        return (struct val){TYPE_STRING, {.string_data = load_str(fp)}};
+        return (Val){TYPE_STRING, {.string_data = load_str(fp)}};
     case TYPE_SYMBOL:
-        return (struct val){TYPE_SYMBOL, {.string_data = intern_symbol(load_str(fp))}};
+        return (Val){TYPE_SYMBOL, {.string_data = intern_symbol(load_str(fp))}};
     case TYPE_NIL:
-        return (struct val){TYPE_NIL};
+        return (Val){TYPE_NIL};
     case TYPE_VOID:
-        return (struct val){TYPE_VOID};
+        return (Val){TYPE_VOID};
     default:
         fprintf(stderr, "Error: invalid type (%d)\n", type);
         exit(3);
@@ -198,34 +199,34 @@ void load_insts(FILE *fp) {
         insts[n].type = c;
         switch (insts[n].type) {
         case INST_CONST:
-            insts[n].args.val = load_val(fp);
+            insts[n].val = load_val(fp);
             break;
         case INST_VAR:
         case INST_SET:
-            insts[n].args.var = load_loc(fp);
+            insts[n].var = load_loc(fp);
             break;
         case INST_NAME:
         case INST_DEF:
         case INST_SET_NAME:
-            insts[n].args.name = load_str(fp);
+            insts[n].name = load_str(fp);
             break;
         case INST_JUMP:
         case INST_JUMP_FALSE: {
             int index = 0;
             for (int i = 0; i < 4; i++)
                 index = index << 8 | getc(fp);
-            insts[n].args.index = index;
+            insts[n].index = index;
             break;
         }
         case INST_LAMBDA: {
             int params = 0;
             for (int i = 0; i < 4; i++)
                 params = params << 8 | getc(fp);
-            insts[n].args.lambda.params = params;
+            insts[n].lambda.params = params;
             long long index = 0;
             for (int i = 0; i < 4; i++)
                 index = index << 8 | getc(fp);
-            insts[n].args.lambda.index = index;
+            insts[n].lambda.index = index;
             break;
         }
         case INST_CALL:
@@ -233,7 +234,7 @@ void load_insts(FILE *fp) {
             int num = 0;
             for (int i = 0; i < 4; i++)
                 num = num << 8 | getc(fp);
-            insts[n].args.num = num;
+            insts[n].num = num;
             break;
         }
         case INST_RETURN:
@@ -246,5 +247,5 @@ void load_insts(FILE *fp) {
             exit(3);
         }
     }
-    insts[next_inst()] = (struct inst){INST_EOF};
+    insts[next_inst()] = (Inst){INST_EOF};
 }

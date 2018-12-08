@@ -4,42 +4,42 @@
 #include "expr.h"
 #include "insts.h"
 
-void display_val_list(struct pair *list);
+void display_val_list(Pair *list);
 
 /* -- display_val
  * Displays a value as seen in the REPL.
  * Void type values are prevented from displaying on their own in `main`.
  * but they can be displayed as part of compound data structures.
  */
-void display_val(struct val val) {
+void display_val(Val val) {
     switch(val.type) {
     case TYPE_INT:
-        printf("%lld", val.data.int_data);
+        printf("%lld", val.int_data);
         break;
     case TYPE_FLOAT:
-        printf("%.16g", val.data.float_data);
-        if ((float)(int)val.data.float_data == val.data.float_data)
+        printf("%.16g", val.float_data);
+        if ((float)(int)val.float_data == val.float_data)
             putchar('.');
         break;
     case TYPE_BOOL:
-        printf(val.data.int_data ? "#t" : "#f");
+        printf(val.int_data ? "#t" : "#f");
         break;
     case TYPE_STRING:
-        printf("\"%s\"", val.data.string_data);
+        printf("\"%s\"", val.string_data);
         break;
     case TYPE_SYMBOL:
-        printf("%s", val.data.string_data);
+        printf("%s", val.string_data);
         break;
     case TYPE_PRIM:
     case TYPE_HIGH_PRIM:
         printf("<primitive procedure>");
         break;
     case TYPE_LAMBDA:
-        printf("<lambda with arity %d>", val.data.lambda_data->params);
+        printf("<lambda with arity %d>", val.lambda_data->params);
         break;
     case TYPE_PAIR:
         putchar('(');
-        display_val_list(val.data.pair_data);
+        display_val_list(val.pair_data);
         putchar(')');
         break;
     case TYPE_NIL:
@@ -52,20 +52,20 @@ void display_val(struct val val) {
         printf("</broken heart/>");
         break;
     case TYPE_ENV:
-        printf("</environment at %p/>", val.data.env_data);
+        printf("</environment at %p/>", val.env_data);
         break;
     case TYPE_INST:
-        printf("</instruction pointer to %d/>", val.data.inst_data);
+        printf("</instruction pointer to %d/>", val.inst_data);
         break;
     }
 }
 
-void display_val_list(struct pair *list) {
+void display_val_list(Pair *list) {
     display_val(list->car);
     switch (list->cdr.type) {
     case TYPE_PAIR:
         putchar(' ');
-        display_val_list(list->cdr.data.pair_data);
+        display_val_list(list->cdr.pair_data);
         break;
     case TYPE_NIL:
         break;
@@ -85,14 +85,14 @@ void display_list_sexpr(struct sexpr_list *pair);
 void display_sexpr(struct sexpr *sexpr) {
     switch (sexpr->type) {
     case SEXPR_LITERAL:
-        display_val(sexpr->data.literal);
+        display_val(sexpr->literal);
         break;
     case SEXPR_ATOM:
-        printf("%s", sexpr->data.atom);
+        printf("%s", sexpr->atom);
         break;
     case SEXPR_CONS:
         putchar('(');
-        display_list_sexpr(sexpr->data.cons);
+        display_list_sexpr(sexpr->cons);
         putchar(')');
         break;
     }
@@ -111,7 +111,7 @@ void display_list_sexpr(struct sexpr_list *pair) {
  * Returns a string containing a type name.
  * Used for error messages about invalid types.
  */
-const char *sprint_type(enum types type) {
+const char *sprint_type(Type type) {
     switch (type) {
     case TYPE_INT:
         return "int";
@@ -143,20 +143,20 @@ const char *sprint_type(enum types type) {
     }
 }
 
-void inner_display_val_list(struct pair *list);
+void inner_display_val_list(Pair *list);
 
 /* -- inner_display_val
  * Displays a value as seen as a result of the `display` primitive.
  * Differs from `display_val` in that is displays string without quotes.
  */
-void inner_display_val(struct val val) {
+void inner_display_val(Val val) {
     switch (val.type) {
     case TYPE_STRING:
-        printf("%s", val.data.string_data);
+        printf("%s", val.string_data);
         break;
     case TYPE_PAIR:
         putchar('(');
-        inner_display_val_list(val.data.pair_data);
+        inner_display_val_list(val.pair_data);
         putchar(')');
         break;
     default:
@@ -165,12 +165,12 @@ void inner_display_val(struct val val) {
     }
 }
 
-void inner_display_val_list(struct pair *list) {
+void inner_display_val_list(Pair *list) {
     inner_display_val(list->car);
     switch (list->cdr.type) {
     case TYPE_PAIR:
         putchar(' ');
-        inner_display_val_list(list->cdr.data.pair_data);
+        inner_display_val_list(list->cdr.pair_data);
         break;
     case TYPE_NIL:
         break;
@@ -186,38 +186,38 @@ void display_inst(int n) {
     switch (insts[n].type) {
     case INST_CONST:
         printf("CONST ");
-        display_val(insts[n].args.val);
+        display_val(insts[n].val);
         printf("\n");
         break;
     case INST_VAR:
-        printf("VAR %d %d\n", insts[n].args.var.frame, insts[n].args.var.index);
+        printf("VAR %d %d\n", insts[n].var.frame, insts[n].var.index);
         break;
     case INST_NAME:
-        printf("NAME %s\n", insts[n].args.name);
+        printf("NAME %s\n", insts[n].name);
         break;
     case INST_DEF:
-        printf("DEF %s\n", insts[n].args.name);
+        printf("DEF %s\n", insts[n].name);
         break;
     case INST_SET:
-        printf("SET %d %d\n", insts[n].args.var.frame, insts[n].args.var.index);
+        printf("SET %d %d\n", insts[n].var.frame, insts[n].var.index);
         break;
     case INST_SET_NAME:
-        printf("SET_NAME %s\n", insts[n].args.name);
+        printf("SET_NAME %s\n", insts[n].name);
         break;
     case INST_JUMP:
-        printf("JUMP %d\n", insts[n].args.index);
+        printf("JUMP %d\n", insts[n].index);
         break;
     case INST_JUMP_FALSE:
-        printf("JUMP_FALSE %d\n", insts[n].args.index);
+        printf("JUMP_FALSE %d\n", insts[n].index);
         break;
     case INST_LAMBDA:
-        printf("LAMBDA %d %d\n", insts[n].args.lambda.params, insts[n].args.lambda.index);
+        printf("LAMBDA %d %d\n", insts[n].lambda.params, insts[n].lambda.index);
         break;
     case INST_CALL:
-        printf("CALL %d\n", insts[n].args.num);
+        printf("CALL %d\n", insts[n].num);
         break;
     case INST_TAIL_CALL:
-        printf("TAIL_CALL %d\n", insts[n].args.num);
+        printf("TAIL_CALL %d\n", insts[n].num);
         break;
     case INST_RETURN:
         printf("RETURN\n");

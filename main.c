@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
             display_inst(inst);
 #endif
         while (insts[program].type != INST_EOF) {
-            struct val val = exec(program);
+            Val val = exec(program);
             if (val.type != TYPE_VOID) {
                 display_val(val);
                 putchar('\n');
@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
         save_magic(compiled);
     while (ast != NULL) {
         program = next_inst();
-        insts[program] = (struct inst){INST_EXPR};
+        insts[program] = (Inst){INST_EXPR};
         compile(ast, 1);
 #ifdef SHOW_VM_CODE
         for (int inst = program; inst < this_inst(); inst++)
@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
         if (compile_flag)
             save_insts(compiled, program, this_inst());
         else {
-            struct val val = exec(program);
+            Val val = exec(program);
             if (val.type != TYPE_VOID) {
                 display_val(val);
                 putchar('\n');

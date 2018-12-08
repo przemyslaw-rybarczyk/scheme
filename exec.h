@@ -1,11 +1,11 @@
 #include "expr.h"
 
-extern struct val stack[];
-struct val *stack_ptr;
-struct env *exec_env;
+extern Val stack[];
+Val *stack_ptr;
+Env *exec_env;
 
-void stack_push(struct val val);
-struct val stack_pop(void);
+void stack_push(Val val);
+Val stack_pop(void);
 
-struct val exec(long init_pc);
-int is_true(struct val val);
+Val exec(long init_pc);
+int is_true(Val val);

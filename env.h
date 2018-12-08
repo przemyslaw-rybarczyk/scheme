@@ -1,10 +1,10 @@
 #include "expr.h"
 
-struct val *global_env;
+Val *global_env;
 int global_env_size;
 void setup_global_env(void);
-struct val locate_var(struct env_loc var, struct env *env);
+Val locate_var(Env_loc var, Env *env);
 int locate_global_var(char *var);
-void assign_var(struct env_loc var, struct val val, struct env *env);
-void define_var(char *var, struct val val, struct env *env);
-struct env *extend_env(struct val *vals_start, int vals_num, struct env *env);
+void assign_var(Env_loc var, Val val, Env *env);
+void define_var(char *var, Val val, Env *env);
+Env *extend_env(Val *vals_start, int vals_num, Env *env);

@@ -26,42 +26,49 @@
  * - Instruction pointer - TYPE_INST / inst_data
  */
 
-enum types {TYPE_INT, TYPE_FLOAT, TYPE_BOOL, TYPE_STRING, TYPE_SYMBOL,
-    TYPE_PRIM, TYPE_HIGH_PRIM, TYPE_LAMBDA, TYPE_PAIR, TYPE_NIL, TYPE_VOID,
-    TYPE_BROKEN_HEART, TYPE_ENV, TYPE_INST};
+typedef enum Type {
+    TYPE_INT,
+    TYPE_FLOAT,
+    TYPE_BOOL,
+    TYPE_STRING,
+    TYPE_SYMBOL,
+    TYPE_PRIM,
+    TYPE_HIGH_PRIM,
+    TYPE_LAMBDA,
+    TYPE_PAIR,
+    TYPE_NIL,
+    TYPE_VOID,
+    TYPE_BROKEN_HEART,
+    TYPE_ENV,
+    TYPE_INST
+} Type;
 
-struct pair;
-struct lambda;
-struct val_list;
+struct Pair;
+struct Lambda;
 
-struct val {
-    enum types type;
+typedef struct Val {
+    enum Type type;
     union {
         long long int_data;
         double float_data;
         char *string_data;
-        struct val (*prim_data)(struct val *, int);
+        struct Val (*prim_data)(struct Val *, int);
         int (*high_prim_data)(int);
-        struct lambda *lambda_data;
-        struct pair *pair_data;
-        struct env *env_data;
+        struct Lambda *lambda_data;
+        struct Pair *pair_data;
+        struct Env *env_data;
         int inst_data;
-    } data;
-};
-
-struct val_list {
-    struct val car;
-    struct val_list *cdr;
-};
+    };
+} Val;
 
 /* -- pair
  * Represents a cons pair of two vals - `car` and `cdr`.
  */
 
-struct pair {
-    struct val car;
-    struct val cdr;
-};
+typedef struct Pair {
+    Val car;
+    Val cdr;
+} Pair;
 
 /* -- lambda
  * Represents a lambda with the following elements:
@@ -73,19 +80,20 @@ struct pair {
  * `new_ptr` is used only for garbage collection and is normally NULL.
  */
 
-struct env;
+struct Env;
 
+// TODO remove this type
 struct name_list {
     char *car;
     struct name_list *cdr;
 };
 
-struct lambda {
+typedef struct Lambda {
     int params;
     int body;
-    struct env *env;
-    struct lambda *new_ptr;
-};
+    struct Env *env;
+    struct Lambda *new_ptr;
+} Lambda;
 
 /* -- binding
  * Represents a binding with the following elements:
@@ -93,26 +101,26 @@ struct lambda {
  * - `var` is the name of the bound variable.
  */
 
-struct binding {
-    struct val val;
+typedef struct Binding {
+    struct Val val;
     char *var;
-};
+} Binding;
 
 /* -- env
  * Represents an environment with the following elements:
  * - `frame` contains a linked list of bindings.
  * - `outer` contains the outer environment frame.
  * `new_ptr` is used only for garbage collection and is normally NULL.
- * Environments are represented with pointers to `struct env`s,
+ * Environments are represented with pointers to `Env`s,
  * where NULL is used to represent the global environment.
  * TODO describe
  */
 
-struct env {
-    struct env *outer;
+typedef struct Env {
+    struct Env *outer;
     int size;
-    struct val vals[];
-};
+    struct Val vals[];
+} Env;
 
 /* -- prim_binding, high_prim_binding
  * Represents a binding to a primitive function.
@@ -121,7 +129,7 @@ struct env {
 
 struct prim_binding {
     char *var;
-    struct val (*val)(struct val *, int);
+    struct Val (*val)(Val *, int);
 };
 
 struct high_prim_binding {
@@ -144,10 +152,10 @@ struct sexpr_list;
 struct sexpr {
     enum sexpr_types type;
     union {
-        struct val literal;
+        Val literal;
         char *atom;
         struct sexpr_list *cons;
-    } data;
+    };
 };
 
 struct sexpr_list {
@@ -167,10 +175,10 @@ struct name_env {
  * TODO explain
  */
 
-struct env_loc {
+typedef struct Env_loc {
     int frame;
     int index;
-};
+} Env_loc;
 
 /* -- expr
  * Represents an expression in the program's AST.
@@ -196,15 +204,15 @@ struct expr_list;
 struct expr {
     enum expr_types type;
     union {
-        struct val literal;
-        struct env_loc var;
+        Val literal;
+        Env_loc var;
         char *name;
         struct {
             struct expr *proc;
             struct expr_list *args;
         } appl;
         struct {
-            struct env_loc var;
+            Env_loc var;
             struct expr *val;
         } binding;
         struct {
@@ -222,7 +230,7 @@ struct expr {
         } lambda;
         struct expr_list *begin;
         struct sexpr *quote;
-    } data;
+    };
 };
 
 struct expr_list {
@@ -260,16 +268,16 @@ struct expr_list {
  * TODO update
  */
 
-enum inst_type {INST_CONST, INST_VAR, INST_NAME, INST_DEF,
+enum Inst_type {INST_CONST, INST_VAR, INST_NAME, INST_DEF,
     INST_SET, INST_SET_NAME, INST_JUMP, INST_JUMP_FALSE, INST_LAMBDA,
     INST_CALL, INST_TAIL_CALL, INST_RETURN, INST_DELETE, INST_CONS,
     INST_EXPR, INST_EOF};
 
-struct inst {
-    enum inst_type type;
+typedef struct Inst {
+    enum Inst_type type;
     union {
-        struct val val;
-        struct env_loc var;
+        struct Val val;
+        struct Env_loc var;
         char *name;
         int index;
         int num;
@@ -277,5 +285,5 @@ struct inst {
             int params;
             int index;
         } lambda;
-    } args;
-};
+    };
+} Inst;
