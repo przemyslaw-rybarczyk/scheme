@@ -82,12 +82,6 @@ typedef struct Pair {
 
 struct Env;
 
-// TODO remove this type
-struct name_list {
-    char *car;
-    struct name_list *cdr;
-};
-
 typedef struct Lambda {
     int params;
     int body;
@@ -95,16 +89,16 @@ typedef struct Lambda {
     struct Lambda *new_ptr;
 } Lambda;
 
-/* -- binding
- * Represents a binding with the following elements:
- * - `val` is the value of the binding.
- * - `var` is the name of the bound variable.
- */
-
 typedef struct Binding {
     struct Val val;
     char *var;
 } Binding;
+
+typedef struct Global_env {
+    int size;
+    int capacity;
+    struct Binding bindings[];
+} Global_env;
 
 /* -- env
  * Represents an environment with the following elements:
@@ -137,32 +131,6 @@ struct high_prim_binding {
     int (*val)(int);
 };
 
-/* -- sexpr
- * Represents an expression in the program's AST before analysis.
- * It may take on the following values:
- * - Literal - SEXPR_LITERAL / literal
- * - Atom - SEXPR_ATOM / text
- * - Compound expression - SEXPR_CONS / cons
- */
-
-enum sexpr_types {SEXPR_LITERAL, SEXPR_ATOM, SEXPR_CONS};
-
-struct sexpr_list;
-
-struct sexpr {
-    enum sexpr_types type;
-    union {
-        Val literal;
-        char *atom;
-        struct sexpr_list *cons;
-    };
-};
-
-struct sexpr_list {
-    struct sexpr *car;
-    struct sexpr_list *cdr;
-};
-
 /* -- name_env
  */
 
@@ -179,64 +147,6 @@ typedef struct Env_loc {
     int frame;
     int index;
 } Env_loc;
-
-/* -- expr
- * Represents an expression in the program's AST.
- * It may take on the following values with the described fields:
- * - Literal - EXPR_LITERAL / literal
- * - Variable location - EXPR_VAR / var
- * - Global variable name - EXPR_NAME / name
- * - Function application - EXPR_APPL / appl
- * - Definition - EXPR_DEF / binding
- * - Assignment - EXPR_SET / binding
- * - Conditional expression - EXPR_IF / if_data
- *   * Note: The `alter` pointer may be NULL to indicate lack of alternative.
- * - Lambda expression - EXPR_LAMBDA / lambda
- * - Begin expression - EXPR_BEGIN / begin
- * - Quote expression - EXPR_QUOTE / quote
- */
-
-enum expr_types {EXPR_LITERAL, EXPR_VAR, EXPR_NAME, EXPR_APPL,
-    EXPR_DEF, EXPR_SET, EXPR_SET_NAME, EXPR_IF, EXPR_LAMBDA, EXPR_BEGIN, EXPR_QUOTE};
-
-struct expr_list;
-
-struct expr {
-    enum expr_types type;
-    union {
-        Val literal;
-        Env_loc var;
-        char *name;
-        struct {
-            struct expr *proc;
-            struct expr_list *args;
-        } appl;
-        struct {
-            Env_loc var;
-            struct expr *val;
-        } binding;
-        struct {
-            char *var;
-            struct expr *val;
-        } name_binding;
-        struct {
-            struct expr *pred;
-            struct expr *conseq;
-            struct expr *alter;
-        } if_data;
-        struct {
-            int params;
-            struct expr_list *body;
-        } lambda;
-        struct expr_list *begin;
-        struct sexpr *quote;
-    };
-};
-
-struct expr_list {
-    struct expr *car;
-    struct expr_list *cdr;
-};
 
 /* -- inst
  * Represents a virtual machine instruction.

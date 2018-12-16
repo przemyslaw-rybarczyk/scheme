@@ -8,55 +8,50 @@
 #include "primitives.h"
 #include "memory.h"
 #include "exec.h"
+#include "primitives/compiler.h"
 
-/* -- global_env
- * The frame containing the global environment.
- * Since the global environment is never garbage collected, this frame exists
- * outside of the heap.
- * The global environment itself is represented with a NULL pointer.
- * TODO redocument
- */
-Val *global_env;
-char **global_names;
-int global_env_size, global_env_capacity;
+Global_env *make_global_env(void) {
+    int size = prims_size + high_prims_size;
+    Global_env *env = s_malloc(sizeof(Global_env) + size * sizeof(Binding));
+    env->size = env->capacity = size;
+    for (int i = 0; i < prims_size; i++)
+        env->bindings[i] = (Binding){{TYPE_PRIM, {.prim_data = prims[i].val}}, prims[i].var};
+    for (int i = 0; i < high_prims_size; i++)
+        env->bindings[prims_size + i] = (Binding){{TYPE_HIGH_PRIM, {.high_prim_data = high_prims[i].val}}, high_prims[i].var};
+    return env;
+}
 
-/* -- setup_global_env
- * This function sets up the global environment by adding to it the primitives
- * according to the bindings in the `prims` and `high_prims` arrays.
- * It should be called at the start of the REPL.
- */
-void setup_global_env(void) {
-    global_env_size = global_env_capacity = prims_size + high_prims_size;
-    global_env = s_malloc(global_env_capacity * sizeof(Val));
-    global_names = s_malloc(global_env_capacity * sizeof(char *));
-    for (int i = 0; i < prims_size; i++) {
-        global_env[i] = (Val){TYPE_PRIM, {.prim_data = prims[i].val}};
-        global_names[i] = prims[i].var;
-    }
-    for (int i = 0; i < high_prims_size; i++) {
-        global_env[prims_size + i] = (Val){TYPE_HIGH_PRIM, {.high_prim_data = high_prims[i].val}};
-        global_names[prims_size + i] = high_prims[i].var;
-    }
+Global_env *make_compile_env(void) {
+    int size = prims_size + high_prims_size + compiler_prims_size;
+    Global_env *env = s_malloc(sizeof(Global_env) + size * sizeof(Binding));
+    env->size = env->capacity = size;
+    for (int i = 0; i < prims_size; i++)
+        env->bindings[i] = (Binding){{TYPE_PRIM, {.prim_data = prims[i].val}}, prims[i].var};
+    size_t d = prims_size;
+    for (int i = 0; i < high_prims_size; i++)
+        env->bindings[d + i] = (Binding){{TYPE_HIGH_PRIM, {.high_prim_data = high_prims[i].val}}, high_prims[i].var};
+    d += high_prims_size;
+    for (int i = 0; i < compiler_prims_size; i++)
+        env->bindings[d + i] = (Binding){{TYPE_PRIM, {.prim_data = compiler_prims[i].val}}, compiler_prims[i].var};
+    return env;
 }
 
 /* -- locate_var
  * Finds a value bound to a location in a given environment.
  */
-Val locate_var(Env_loc var, Env *env) {
+Val locate_var(Env_loc var, Env *env, Global_env *global) {
     if (var.frame == -1)
-        return global_env[var.index];
+        return global->bindings[var.index].val;
     Env *frame = env;
     for (int n = var.frame; n > 0; n--)
         frame = frame->outer;
     return frame->vals[var.index];
 }
 
-int locate_global_var(char *var) {
-    for (int i = 0; i < global_env_size; i++)
-        if (strcmp(global_names[i], var) == 0)
+int locate_global_var(char *var, Global_env *global) {
+    for (int i = 0; i < global->size; i++)
+        if (strcmp(global->bindings[i].var, var) == 0)
             return i;
-//  for (int i = 0; i < global_env_size; i++)
-//      printf("Global at %d is %s\n", i, global_names[i]);
     fprintf(stderr, "Error: unbound variable %s\n", var);
     exit(2);
 }
@@ -65,10 +60,9 @@ int locate_global_var(char *var) {
  * Changes a value bound to a variable name in a given environment.
  * Causes an error in case of an unbound variable.
  */
-void assign_var(Env_loc var, Val val, Env *env) {
+void assign_var(Env_loc var, Val val, Env *env, Global_env *global) {
     if (var.frame == -1) {
-//      printf("Assigning to global at %d\n", var.index);
-        global_env[var.index] = val;
+        global->bindings[var.index].val = val;
         return;
     }
     Env *frame = env;
@@ -81,24 +75,18 @@ void assign_var(Env_loc var, Val val, Env *env) {
  * Binds a value to a variable name in the first frame of a given environment.
  * Changes the binding if one already exists in the frame.
  */
-void define_var(char* var, Val val, Env *env) {
-//  printf("Defining %s; global_env_size is %d\n", var, global_env_size);
+void define_var(char* var, Val val, Global_env **global) {
     for (int i = 0; i < global_env_size; i++) {
-        if (strcmp(global_names[i], var) == 0) {
-            global_env[i] = val;
+        if (strcmp((*global)->bindings[i].var, var) == 0) {
+            (*global)->bindings[i].val = val;
             return;
         }
     }
-    if (global_env_size == global_env_capacity) {
-        global_env_capacity *= 2;
-        global_env = s_realloc(global_env, global_env_capacity * sizeof(Val));
-        global_names = s_realloc(global_names, global_env_capacity * sizeof(char *));
-//      printf("Expanded global env capacity to %d\n", global_env_capacity);
+    if ((*global)->size == (*global)->capacity) {
+        (*global)->capacity *= 2;
+        *global = s_realloc(*global, sizeof(Global_env) + (*global)->capacity * sizeof(Binding));
     }
-    global_env[global_env_size] = val;
-    global_names[global_env_size] = var;
-//  printf("Defined %s at %d\n", var, global_env_size);
-    global_env_size++;
+    (*global)->bindings[(*global)->size++] = (Binding){val, var};
 }
 
 void argnum_assert(int assertion) {

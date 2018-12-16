@@ -11,8 +11,6 @@ Inst *insts;
 int insts_size = 4096;
 int inst_index = 0;
 
-int return_inst;
-
 /* == insts.c
  * Allocates program memory to the compiler.
  * The program memory consists of a linked list of instruction arrays.
@@ -25,6 +23,11 @@ void setup_insts(void) {
     insts[return_inst] = (Inst){INST_RETURN};
     tail_call_inst = next_inst();
     insts[tail_call_inst] = (Inst){INST_TAIL_CALL};
+    compiler_pc = this_inst();
+    load_insts(fopen("compiler.sss", "rb"));
+    compile_pc = next_inst();
+    insts[compile_pc] = (Inst){INST_NAME, {.name = "parse-and-compile"}};
+    insts[next_inst()] = (Inst){INST_TAIL_CALL, {.num = 0}};
 }
 
 /* -- next_inst

@@ -7,11 +7,13 @@
 #include "memory.h"
 #include "display.h"
 #include "insts.h"
+#include "primitives/assert.h"
 
 #define STACK_SIZE 65536
 
 Val stack[STACK_SIZE];
 Val *stack_ptr;
+Global_env *global_env;
 Env *exec_env;
 int pc;
 
@@ -35,6 +37,10 @@ Val exec(long init_pc) {
     exec_env = NULL;
     pc = init_pc;
     while (1) {
+//      printf("pc = %d\n", pc);
+//      printf("insts = %p\n", insts);
+//      printf("insts+pc = %p\n", insts + pc);
+//      printf("Executing inst type %d\n", insts[pc].type);
         switch (insts[pc].type) {
 
         case INST_CONST:
@@ -42,27 +48,27 @@ Val exec(long init_pc) {
             break;
 
         case INST_VAR:
-            stack_push(locate_var(insts[pc++].var, exec_env));
+            stack_push(locate_var(insts[pc++].var, exec_env, global_env));
             break;
 
         case INST_NAME: {
-            int index = locate_global_var(insts[pc].name);
+            int index = locate_global_var(insts[pc].name, global_env);
             insts[pc] = (Inst){INST_VAR, {.var = (Env_loc){-1, index}}};
             break;
         }
 
         case INST_DEF:
-            define_var(insts[pc++].name, stack_pop(), exec_env);
+            define_var(insts[pc++].name, stack_pop(), &global_env);
             stack_push((Val){TYPE_VOID});
             break;
 
         case INST_SET:
-            assign_var(insts[pc++].var, stack_pop(), exec_env);
+            assign_var(insts[pc++].var, stack_pop(), exec_env, global_env);
             stack_push((Val){TYPE_VOID});
             break;
 
         case INST_SET_NAME: {
-            int index = locate_global_var(insts[pc].name);
+            int index = locate_global_var(insts[pc].name, global_env);
             insts[pc] = (Inst){INST_SET, {.var = (Env_loc){-1, index}}};
             break;
         }
@@ -101,6 +107,7 @@ Val exec(long init_pc) {
             }
             case TYPE_LAMBDA: {
                 Lambda *lambda = op->lambda_data;
+                args_assert(insts[pc].num == lambda->params);
                 int old_pc = pc;
                 pc = lambda->body;
                 Env *lambda_env = extend_env(op + 1, insts[old_pc].num, lambda->env);
@@ -145,6 +152,7 @@ Val exec(long init_pc) {
             }
             case TYPE_LAMBDA: {
                 Lambda *lambda = op->lambda_data;
+                args_assert(insts[pc].num == lambda->params);
                 exec_env = extend_env(op + 1, insts[pc].num, lambda->env);
                 stack_ptr = op;
                 pc = op->lambda_data->body;
@@ -190,8 +198,7 @@ Val exec(long init_pc) {
             break;
 
         default:
-            fprintf(stderr, "Error\n");
-            // TODO
+            fprintf(stderr, "Error: unrecognized instruction type %d\n", insts[pc].type);
             exit(-1);
 
         }
