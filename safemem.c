@@ -11,7 +11,7 @@ void *s_malloc(size_t size) {
     void *p = malloc(size);
     if (p == NULL) {
         fprintf(stderr, "Error: out of memory\n");
-        exit(12);
+        exit(3);
     }
     return p;
 }
@@ -20,7 +20,7 @@ void *s_realloc(void *ptr, size_t size) {
     void *p = realloc(ptr, size);
     if (p == NULL) {
         fprintf(stderr, "Error: out of memory\n");
-        exit(12);
+        exit(3);
     }
     return p;
 }
@@ -28,6 +28,6 @@ void *s_realloc(void *ptr, size_t size) {
 void s_ungetc(char c, FILE *stream) {
     if (ungetc(c, stdin) == EOF) {
         fprintf(stderr, "Error: ungetc failed\n");
-        exit(5);
+        exit(3);
     }
 }

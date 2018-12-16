@@ -2,6 +2,7 @@
 
 extern Val stack[];
 Val *stack_ptr;
+Global_env *global_env;
 Env *exec_env;
 
 void stack_push(Val val);

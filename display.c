@@ -76,37 +76,6 @@ void display_val_list(Pair *list) {
     }
 }
 
-void display_list_sexpr(struct sexpr_list *pair);
-
-/* -- display_sexpr
- * Displays an sexpr.
- * Used for error messages about special forms with invalid syntax.
- */
-void display_sexpr(struct sexpr *sexpr) {
-    switch (sexpr->type) {
-    case SEXPR_LITERAL:
-        display_val(sexpr->literal);
-        break;
-    case SEXPR_ATOM:
-        printf("%s", sexpr->atom);
-        break;
-    case SEXPR_CONS:
-        putchar('(');
-        display_list_sexpr(sexpr->cons);
-        putchar(')');
-        break;
-    }
-}
-
-void display_list_sexpr(struct sexpr_list *pair) {
-    if (pair == NULL)
-        return;
-    display_sexpr(pair->car);
-    if (pair->cdr != NULL)
-        putchar(' ');
-    display_list_sexpr(pair->cdr);
-}
-
 /* -- sprint_type
  * Returns a string containing a type name.
  * Used for error messages about invalid types.
@@ -227,6 +196,12 @@ void display_inst(int n) {
         break;
     case INST_CONS:
         printf("CONS\n");
+        break;
+    case INST_EXPR:
+        printf("EXPR\n");
+        break;
+    case INST_EOF:
+        printf("EOF\n");
         break;
     }
 }

@@ -9,7 +9,6 @@
 #include "../parser.h"
 #include "../safemem.h"
 #include "../insts.h"
-#include "../compile.h"
 #include "../exec.h"
 
 Val display_prim(Val *args, int num) {
@@ -40,19 +39,20 @@ Val error_prim(Val *args, int num) {
 }
 
 int read_prim(int num) {
-    args_assert(num == 0);
-    stack_pop();
-    char c = getchar_nospace();
-    if (c == EOF)
-        exit(0);
-    s_ungetc(c, stdin);
-    struct sexpr *sexpr = parse();
-    if (sexpr == NULL) {
-        fprintf(stderr, "Syntax error: unexpected ')'\n");
-        exit(1);
-    }
-    int eval = this_inst();
-    compile_quote(sexpr);
-    insts[next_inst()] = (Inst){INST_RETURN};
-    return eval;
+    //  TODO rewrite this function
+//  args_assert(num == 0);
+//  stack_pop();
+//  char c = getchar_nospace();
+//  if (c == EOF)
+//      exit(0);
+//  s_ungetc(c, stdin);
+//  struct sexpr *sexpr = parse();
+//  if (sexpr == NULL) {
+//      fprintf(stderr, "Syntax error: unexpected ')'\n");
+//      exit(1);
+//  }
+//  int eval = this_inst();
+//  compile_quote(sexpr);
+//  insts[next_inst()] = (Inst){INST_RETURN};
+//  return eval;
 }
