@@ -5,6 +5,7 @@
 #include "../expr.h"
 #include "../insts.h"
 #include "../parser.h"
+#include "../symbol.h"
 
 Val token_buffer;
 int token_buffer_full = 0;
@@ -174,6 +175,12 @@ Val set_cons_prim(Val *args, int num) {
     return (Val){TYPE_VOID};
 }
 
+// awful workaround for or until macros are implemented
+Val zero_symbol_prim(Val *args, int num) {
+    args_assert(num == 0);
+    return (Val){TYPE_SYMBOL, {.string_data = intern_symbol("0")}};
+}
+
 struct prim_binding compiler_prims[] = {
     "read-token", read_token_prim,
     "peek-token", peek_token_prim,
@@ -193,6 +200,7 @@ struct prim_binding compiler_prims[] = {
     "set-return!", set_return_prim,
     "set-delete!", set_delete_prim,
     "set-cons!", set_cons_prim,
+    "zero-symbol", zero_symbol_prim,
 };
 
 size_t compiler_prims_size = sizeof(compiler_prims) / sizeof(struct prim_binding);

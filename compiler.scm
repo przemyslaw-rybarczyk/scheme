@@ -1,8 +1,13 @@
 ;;; replacements for stdlib
 
+(define (map f x)
+  (if (null? x)
+      '()
+      (cons (f (car x)) (map f (cdr x)))))
+
 (define (for-each f x)
   (if (null? x)
-      #f ; TODO void
+      #!void
       (begin (f (car x))
              (for-each f (cdr x)))))
 
@@ -46,7 +51,14 @@
   (cond ((pair? expr)
          (let ((compile-form (assoc (car expr) forms)))
            (if compile-form
-               ((cdr compile-form) expr env forms tail)
+               (let ((type (cadr compile-form))
+                     (f (caddr compile-form)))
+                 (cond ((eq? type 'prim)
+                        (f expr env forms tail))
+                       ((eq? type 'deriv)
+                        (compile (f expr) env forms tail))
+                       (else
+                        (error "Compiler error: unknown primitive type"))))
                (compile-appl expr env forms tail))))
         ((symbol? expr)
          (compile-name expr env tail))
@@ -79,9 +91,8 @@
   (for-each
     (lambda (expr) (compile expr env forms #f))
     expr)
-  (if tail
-      (set-tail-call! (next-inst) (- (length expr) 1))
-      (set-call! (next-inst) (- (length expr) 1))))
+  ((if tail set-tail-call! set-call!)
+   (next-inst) (- (length expr) 1)))
 
 (define (compile-set expr env forms tail)
   (compile (caddr expr) env forms #f)
@@ -99,7 +110,7 @@
       (set-jump-false! jump-false (this-inst))
       (if (null? (cdddr expr))
           (begin
-            (set-const! (next-inst) #f) ; #!void
+            (set-const! (next-inst) #!void)
             (put-tail! tail))
           (compile (cadddr expr) env forms tail))
       (set-jump! jump-true (this-inst)))))
@@ -116,12 +127,67 @@
 (define (compile-begin expr env forms tail)
   (compile-seq (cdr expr) env forms tail))
 
+(define (compile-quote expr env forms tail)
+  (compile-quoted (cadr expr))
+  (put-tail! tail))
+
+(define (compile-quoted expr)
+  (if (pair? expr)
+      (begin
+        (compile-quoted (car expr))
+        (compile-quoted (cdr expr))
+        (set-cons! (next-inst)))
+      (set-const! (next-inst) expr)))
+
+(define (compile-define expr env forms tail)
+  (if (pair? (cadr expr))
+      (begin
+        (compile (cons 'lambda (cons (cdadr expr) (cddr expr))) env forms #f)
+        (set-def! (next-inst) (caadr expr)))
+      (begin
+        (compile (caddr expr) env forms #f)
+        (set-def! (next-inst) (cadr expr))))
+  (put-tail! tail))
+
+(define (transform-let expr)
+  (cons (cons 'lambda (cons (map car (cadr expr)) (cddr expr))) (map cadr (cadr expr))))
+
+(define (transform-cond expr)
+  (cond ((null? (cdr expr))
+         #f)
+        ((eq? (caadr expr) 'else)
+         (cons 'begin (cdadr expr)))
+        (else
+         (list 'if (caadr expr) (cons 'begin (cdadr expr)) (cons 'cond (cddr expr))))))
+
+(define (transform-and expr)
+  (cond ((null? (cdr expr))
+         #f)
+        ((null? (cddr expr))
+         (cadr expr))
+        (else
+         (list 'if (cadr expr) (cons 'and (cddr expr)) #f))))
+
+(define (transform-or expr)
+  (cond ((null? (cdr expr))
+         #t)
+        ((null? (cddr expr))
+         (cadr expr))
+        (else
+         (list 'let (list (list (zero-symbol) (cadr expr))) (list 'if (zero-symbol) (zero-symbol) (cons 'or (cddr expr)))))))
+
 (define builtin-forms
   (list
-    (cons 'set! compile-set)
-    (cons 'if compile-if)
-    (cons 'lambda compile-lambda)
-    (cons 'begin compile-begin)))
+    (list 'set! 'prim compile-set)
+    (list 'if 'prim compile-if)
+    (list 'lambda 'prim compile-lambda)
+    (list 'begin 'prim compile-begin)
+    (list 'quote 'prim compile-quote)
+    (list 'define 'prim compile-define)
+    (list 'let 'deriv transform-let)
+    (list 'cond 'deriv transform-cond)
+    (list 'and 'deriv transform-and)
+    (list 'or 'deriv transform-or)))
 
 (define (compile-seq exprs env forms tail)
   (cond ((null? exprs)

@@ -46,7 +46,7 @@ void display_val(Val val) {
         printf("()");
         break;
     case TYPE_VOID:
-        printf("<void>");
+        printf("#!void");
         break;
     case TYPE_BROKEN_HEART:
         printf("</broken heart/>");

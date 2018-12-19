@@ -94,13 +94,10 @@ void garbage_collect(void) {
     // TODO try allocating less memory in case of malloc failure
     void *new_mem = s_malloc(mem_size);
     free_ptr = new_mem;
-    for (Val *val_ptr = global_env; val_ptr < global_env + global_env_size; val_ptr++)
+//  for (Val *val_ptr = global_env; val_ptr < global_env + global_env_size; val_ptr++)
+//      *val_ptr = move_val(*val_ptr);
+    for (Val *val_ptr = stack; val_ptr < stack_ptr; val_ptr++)
         *val_ptr = move_val(*val_ptr);
-//  printf("Stack ptr is %p\n", stack_ptr);
-    for (Val *val_ptr = stack; val_ptr < stack_ptr; val_ptr++) {
-//      printf("Moving val at %p\n", val_ptr);
-        *val_ptr = move_val(*val_ptr);
-    }
     exec_env = move_env(exec_env);
     for (Env ***env_ptr = env_stack; env_ptr < env_stack_ptr; env_ptr++)
         **env_ptr = move_env(**env_ptr);

@@ -114,16 +114,20 @@ void save_insts(FILE *fp, int start, int end) {
             putc('\0', fp);
             break;
         case INST_JUMP:
-        case INST_JUMP_FALSE:
+        case INST_JUMP_FALSE: {
+            int index = insts[n].index - start;
             for (int i = 3; i >= 0; i--)
-                putc(insts[n].index >> 8 * i, fp);
+                putc(index >> 8 * i, fp);
             break;
-        case INST_LAMBDA:
+        }
+        case INST_LAMBDA: {
             for (int i = 3; i >= 0; i--)
                 putc(insts[n].lambda.params >> 8 * i, fp);
+            int index = insts[n].lambda.index - start;
             for (int i = 3; i >= 0; i--)
-                putc(insts[n].lambda.index >> 8 * i, fp);
+                putc(index >> 8 * i, fp);
             break;
+        }
         case INST_CALL:
         case INST_TAIL_CALL:
             for (int i = 3; i >= 0; i--)
@@ -190,6 +194,7 @@ Val load_val(FILE *fp) {
 }
 
 void load_insts(FILE *fp) {
+    int start = this_inst();
     char s[9];
     fgets(s, 9, fp);
     if (strcmp(s, magic) != 0) {
@@ -218,7 +223,7 @@ void load_insts(FILE *fp) {
             int index = 0;
             for (int i = 0; i < 4; i++)
                 index = index << 8 | getc(fp);
-            insts[n].index = index;
+            insts[n].index = index + start;
             break;
         }
         case INST_LAMBDA: {
@@ -229,7 +234,7 @@ void load_insts(FILE *fp) {
             long long index = 0;
             for (int i = 0; i < 4; i++)
                 index = index << 8 | getc(fp);
-            insts[n].lambda.index = index;
+            insts[n].lambda.index = index + start;
             break;
         }
         case INST_CALL:
