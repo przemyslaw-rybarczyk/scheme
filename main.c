@@ -49,27 +49,28 @@ int main(int argc, char **argv) {
         }
         return 0;
     }
-    int program = read_expr();
-    FILE *compiled = compile_flag ? fopen("compiled.sss", "wb") : NULL;
-    if (compile_flag)
-        save_magic(compiled);
-    while (program != -1) {
+    int program = this_inst();
+    int expr = read_expr();
+    while (expr != -1) {
 #ifdef SHOW_VM_CODE
-        for (int inst = program; inst < this_inst(); inst++)
+        for (int inst = expr; inst < this_inst(); inst++)
             display_inst(inst);
 #endif
-        if (compile_flag)
-            save_insts(compiled, program, this_inst());
-        else {
-            Val val = exec(program);
+        if (!compile_flag) {
+            Val val = exec(expr);
             if (val.type != TYPE_VOID) {
                 display_val(val);
                 putchar('\n');
             }
-        }
-        if (!compile_flag)
             printf("%s", input_prompt);
-        program = read_expr();
+        }
+        expr = read_expr();
     }
-    putchar('\n');
+    if (compile_flag) {
+        FILE *compiled = fopen("compiled.sss", "wb");
+        save_magic(compiled);
+        save_insts(compiled, program, this_inst());
+    } else {
+        putchar('\n');
+    }
 }

@@ -76,7 +76,7 @@ void assign_var(Env_loc var, Val val, Env *env, Global_env *global) {
  * Changes the binding if one already exists in the frame.
  */
 void define_var(char* var, Val val, Global_env **global) {
-    for (int i = 0; i < global_env_size; i++) {
+    for (int i = 0; i < (*global)->size; i++) {
         if (strcmp((*global)->bindings[i].var, var) == 0) {
             (*global)->bindings[i].val = val;
             return;

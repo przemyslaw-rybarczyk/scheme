@@ -1,6 +1,5 @@
 #include "expr.h"
 
-int global_env_size;
 Global_env *make_global_env(void);
 Global_env *make_compile_env(void);
 Val locate_var(Env_loc var, Env *env, Global_env *global);

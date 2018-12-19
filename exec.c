@@ -40,7 +40,8 @@ Val exec(long init_pc) {
 //      printf("pc = %d\n", pc);
 //      printf("insts = %p\n", insts);
 //      printf("insts+pc = %p\n", insts + pc);
-//      printf("Executing inst type %d\n", insts[pc].type);
+//      printf("Executing ");
+//      display_inst(pc);
         switch (insts[pc].type) {
 
         case INST_CONST:
