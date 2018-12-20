@@ -121,7 +121,6 @@ Env *move_env(Env *env) {
     new_env->outer = move_env(new_env->outer);
     for (size_t i = 0; i < new_env->size; i++)
         new_env->vals[i] = move_val(env->vals[i]);
-//  printf("Moved to %p\n", new_env);
     return new_env;
 }
 
@@ -134,7 +133,6 @@ Val move_val(Val val) {
         val.lambda_data = move_lambda(val.lambda_data);
         return val;
     case TYPE_ENV:
-//      printf("Will move memory from %p\n", val.env_data);
         val.env_data = move_env(val.env_data);
         return val;
     default:
