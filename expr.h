@@ -40,7 +40,8 @@ typedef enum Type {
     TYPE_VOID,
     TYPE_BROKEN_HEART,
     TYPE_ENV,
-    TYPE_INST
+    TYPE_INST,
+    TYPE_GLOBAL_ENV,
 } Type;
 
 struct Pair;
@@ -57,6 +58,7 @@ typedef struct Val {
         struct Lambda *lambda_data;
         struct Pair *pair_data;
         struct Env *env_data;
+        struct Global_env *global_env_data;
         int inst_data;
     };
 } Val;
@@ -97,7 +99,7 @@ typedef struct Binding {
 typedef struct Global_env {
     int size;
     int capacity;
-    struct Binding bindings[];
+    struct Binding *bindings;
 } Global_env;
 
 /* -- env

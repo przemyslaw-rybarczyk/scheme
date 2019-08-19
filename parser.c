@@ -33,13 +33,13 @@ char getchar_nospace(void) {
     return c;
 }
 
-Val get_token() {
+Val get_token(void) {
     char c = getchar_nospace();
 
     // simple cases
     if (c == '(' || c == ')' || c == '\'' || c == EOF) {
         Pair *pair = gc_alloc(sizeof(Pair));
-        pair->car = (Val){TYPE_SYMBOL, {.string_data = intern_symbol("token")}};
+        pair->car = (Val){TYPE_SYMBOL, {.string_data = intern_symbol(strdup("token"))}};
         pair->cdr = (Val){TYPE_INT, {.int_data = c}};
         return (Val){TYPE_PAIR, {.pair_data = pair}};
     }
@@ -116,14 +116,9 @@ int read_expr(void) {
     if (c == EOF)
         return -1;
     s_ungetc(c, stdin);
-    Global_env *exec_env = global_env;
-    global_env = make_compile_env();
+    change_global_env(compiler_env);
     int program = next_inst();
     insts[program] = (Inst){INST_EXPR};
-    for (int program = compiler_pc; insts[program].type != INST_EOF; program = next_expr(program + 1))
-        exec(program);
     exec(compile_pc);
-    free(global_env);
-    global_env = exec_env;
     return program;
 }

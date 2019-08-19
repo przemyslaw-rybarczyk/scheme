@@ -21,6 +21,20 @@
 
 ;;; proper compiler
 
+(define token-buffer '())
+
+(define (read-token)
+  (if (eq? token-buffer '())
+      (next-token)
+      (let ((token token-buffer))
+        (set! token-buffer '())
+        token)))
+
+(define (peek-token)
+  (if (eq? token-buffer '())
+      (set! token-buffer (next-token)))
+  token-buffer)
+
 (define quote-char 39)
 (define left-paren 40)
 (define right-paren 41)

@@ -57,6 +57,9 @@ void display_val(Val val) {
     case TYPE_INST:
         printf("</instruction pointer to %d/>", val.inst_data);
         break;
+    case TYPE_GLOBAL_ENV:
+        printf("</global environment at %p/>", val.global_env_data);
+        break;
     }
 }
 
@@ -109,6 +112,8 @@ const char *sprint_type(Type type) {
         return "/environment/";
     case TYPE_INST:
         return "/instruction pointer/";
+    case TYPE_GLOBAL_ENV:
+        return "/global environment/";
     }
 }
 

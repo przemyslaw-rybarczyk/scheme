@@ -25,8 +25,11 @@ void setup_insts(void) {
     insts[tail_call_inst] = (Inst){INST_TAIL_CALL};
     compiler_pc = this_inst();
     load_insts(fopen("compiler.sss", "rb"));
-    compile_pc = next_inst();
-    insts[compile_pc] = (Inst){INST_NAME, {.name = "parse-and-compile"}};
+    compile_pc = this_inst();
+    insts[next_inst()] = (Inst){INST_NAME, {.name = "parse-and-compile"}};
+    insts[next_inst()] = (Inst){INST_TAIL_CALL, {.num = 0}};
+    parse_pc = this_inst();
+    insts[next_inst()] = (Inst){INST_NAME, {.name = "parse"}};
     insts[next_inst()] = (Inst){INST_TAIL_CALL, {.num = 0}};
 }
 
