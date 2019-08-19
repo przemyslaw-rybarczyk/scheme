@@ -10,6 +10,7 @@
 #include "../safemem.h"
 #include "../insts.h"
 #include "../exec.h"
+#include "../env.h"
 
 Val display_prim(Val *args, int num) {
     args_assert(num == 1);
@@ -39,20 +40,12 @@ Val error_prim(Val *args, int num) {
 }
 
 int read_prim(int num) {
-    //  TODO rewrite this function
-//  args_assert(num == 0);
-//  stack_pop();
-//  char c = getchar_nospace();
-//  if (c == EOF)
-//      exit(0);
-//  s_ungetc(c, stdin);
-//  struct sexpr *sexpr = parse();
-//  if (sexpr == NULL) {
-//      fprintf(stderr, "Syntax error: unexpected ')'\n");
-//      exit(1);
-//  }
-//  int eval = this_inst();
-//  compile_quote(sexpr);
-//  insts[next_inst()] = (Inst){INST_RETURN};
-//  return eval;
+    args_assert(num == 0);
+    stack_pop();
+    char c = getchar_nospace();
+    if (c == EOF)
+        exit(0);
+    s_ungetc(c, stdin);
+    change_global_env(compiler_env);
+    return parse_pc;
 }

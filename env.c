@@ -9,11 +9,17 @@
 #include "memory.h"
 #include "exec.h"
 #include "primitives/compiler.h"
+#include "insts.h"
+
+// TODO REWRITE
+
+Global_env *compiler_env;
 
 Global_env *make_global_env(void) {
     int size = prims_size + high_prims_size;
-    Global_env *env = s_malloc(sizeof(Global_env) + size * sizeof(Binding));
+    Global_env *env = s_malloc(sizeof(Global_env));
     env->size = env->capacity = size;
+    env->bindings = s_malloc(sizeof(Binding) * size);
     for (int i = 0; i < prims_size; i++)
         env->bindings[i] = (Binding){{TYPE_PRIM, {.prim_data = prims[i].val}}, prims[i].var};
     for (int i = 0; i < high_prims_size; i++)
@@ -23,8 +29,9 @@ Global_env *make_global_env(void) {
 
 Global_env *make_compile_env(void) {
     int size = prims_size + high_prims_size + compiler_prims_size;
-    Global_env *env = s_malloc(sizeof(Global_env) + size * sizeof(Binding));
+    Global_env *env = s_malloc(sizeof(Global_env));
     env->size = env->capacity = size;
+    env->bindings = s_malloc(sizeof(Binding) * size);
     for (int i = 0; i < prims_size; i++)
         env->bindings[i] = (Binding){{TYPE_PRIM, {.prim_data = prims[i].val}}, prims[i].var};
     size_t d = prims_size;
@@ -34,6 +41,14 @@ Global_env *make_compile_env(void) {
     for (int i = 0; i < compiler_prims_size; i++)
         env->bindings[d + i] = (Binding){{TYPE_PRIM, {.prim_data = compiler_prims[i].val}}, compiler_prims[i].var};
     return env;
+}
+
+void setup_env(void) {
+    compiler_env = make_compile_env();
+    for (int program = compiler_pc; insts[program].type != INST_EOF; program = next_expr(program + 1)) {
+        change_global_env(compiler_env);
+        exec(program);
+    }
 }
 
 /* -- locate_var
@@ -75,18 +90,18 @@ void assign_var(Env_loc var, Val val, Env *env, Global_env *global) {
  * Binds a value to a variable name in the first frame of a given environment.
  * Changes the binding if one already exists in the frame.
  */
-void define_var(char* var, Val val, Global_env **global) {
-    for (int i = 0; i < (*global)->size; i++) {
-        if (strcmp((*global)->bindings[i].var, var) == 0) {
-            (*global)->bindings[i].val = val;
+void define_var(char* var, Val val, Global_env *global) {
+    for (int i = 0; i < global->size; i++) {
+        if (strcmp(global->bindings[i].var, var) == 0) {
+            global->bindings[i].val = val;
             return;
         }
     }
-    if ((*global)->size == (*global)->capacity) {
-        (*global)->capacity *= 2;
-        *global = s_realloc(*global, sizeof(Global_env) + (*global)->capacity * sizeof(Binding));
+    if (global->size == global->capacity) {
+        global->capacity *= 2;
+        global->bindings = s_realloc(global->bindings, global->capacity * sizeof(Binding));
     }
-    (*global)->bindings[(*global)->size++] = (Binding){val, var};
+    global->bindings[global->size++] = (Binding){val, var};
 }
 
 void argnum_assert(int assertion) {

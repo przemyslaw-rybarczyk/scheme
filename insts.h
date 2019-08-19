@@ -6,6 +6,7 @@ int return_inst;
 int tail_call_inst;
 int compiler_pc;
 int compile_pc;
+int parse_pc;
 void setup_insts(void);
 int next_inst(void);
 int this_inst(void);

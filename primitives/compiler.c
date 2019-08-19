@@ -7,26 +7,9 @@
 #include "../parser.h"
 #include "../symbol.h"
 
-Val token_buffer;
-int token_buffer_full = 0;
-
-Val read_token_prim(Val *args, int num) {
+Val next_token_prim(Val *args, int num) {
     args_assert(num == 0);
-    if (token_buffer_full) {
-        token_buffer_full = 0;
-        return token_buffer;
-    } else {
-        return get_token();
-    }
-}
-
-Val peek_token_prim(Val *args, int num) {
-    args_assert(num == 0);
-    if (!token_buffer_full) {
-        token_buffer = get_token();
-        token_buffer_full = 1;
-    }
-    return token_buffer;
+    return get_token();
 }
 
 Val this_inst_prim(Val *args, int num) {
@@ -182,8 +165,7 @@ Val zero_symbol_prim(Val *args, int num) {
 }
 
 struct prim_binding compiler_prims[] = {
-    "read-token", read_token_prim,
-    "peek-token", peek_token_prim,
+    "next-token", next_token_prim,
     "this-inst", this_inst_prim,
     "next-inst", next_inst_prim,
     "set-const!", set_const_prim,

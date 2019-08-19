@@ -21,6 +21,7 @@ int main(int argc, char **argv) {
     setup_memory();
     setup_obarray();
     setup_insts();
+    setup_env();
     global_env = make_global_env();
     if (argc == 2 && strcmp(argv[1], "--compile") == 0)
         compile_flag = 1;

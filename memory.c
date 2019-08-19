@@ -94,8 +94,8 @@ void garbage_collect(void) {
     // TODO try allocating less memory in case of malloc failure
     void *new_mem = s_malloc(mem_size);
     free_ptr = new_mem;
-//  for (Val *val_ptr = global_env; val_ptr < global_env + global_env_size; val_ptr++)
-//      *val_ptr = move_val(*val_ptr);
+    for (Binding *bind_ptr = global_env->bindings; bind_ptr < global_env->bindings + global_env->size; bind_ptr++)
+        bind_ptr->val = move_val(bind_ptr->val);
     for (Val *val_ptr = stack; val_ptr < stack_ptr; val_ptr++)
         *val_ptr = move_val(*val_ptr);
     exec_env = move_env(exec_env);

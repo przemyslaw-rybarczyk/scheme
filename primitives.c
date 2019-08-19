@@ -19,6 +19,8 @@
  * `primitives` directory.
  */
 
+// TODO REWRITE
+
 struct prim_binding prims[] = {
     "cons", cons_prim,
     "car", car_prim,

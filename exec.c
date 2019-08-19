@@ -4,15 +4,15 @@
 #include "exec.h"
 #include "expr.h"
 #include "env.h"
-#include "memory.h"
 #include "display.h"
+#include "memory.h"
 #include "insts.h"
 #include "primitives/assert.h"
 
 #define STACK_SIZE 65536
 
 Val stack[STACK_SIZE];
-Val *stack_ptr;
+Val *stack_ptr = stack;
 Global_env *global_env;
 Env *exec_env;
 int pc;
@@ -29,19 +29,19 @@ Val stack_pop(void) {
     return *--stack_ptr;
 }
 
+void change_global_env(Global_env *new_global_env) {
+//  if (stack_ptr == stack || stack_ptr[-1].type != TYPE_GLOBAL_ENV)
+    stack_push((Val){TYPE_GLOBAL_ENV, {.global_env_data = global_env}});
+    global_env = new_global_env;
+}
+
 /* -- exec
- * Executes the virual machine instructions, starting at `inst`.
+ * Executes the virtual machine instructions, starting at `inst`.
  */
-Val exec(long init_pc) {
+Val exec(long pc) {
     stack_ptr = stack;
     exec_env = NULL;
-    pc = init_pc;
     while (1) {
-//      printf("pc = %d\n", pc);
-//      printf("insts = %p\n", insts);
-//      printf("insts+pc = %p\n", insts + pc);
-//      printf("Executing ");
-//      display_inst(pc);
         switch (insts[pc].type) {
 
         case INST_CONST:
@@ -59,7 +59,7 @@ Val exec(long init_pc) {
         }
 
         case INST_DEF:
-            define_var(insts[pc++].name, stack_pop(), &global_env);
+            define_var(insts[pc++].name, stack_pop(), global_env);
             stack_push((Val){TYPE_VOID});
             break;
 
@@ -174,7 +174,12 @@ Val exec(long init_pc) {
             if (stack_ptr == stack + 1)
                 return stack_pop();
             Val result = stack_pop();
-            pc = stack_pop().inst_data;
+            Val v = stack_pop();
+            if (v.type == TYPE_GLOBAL_ENV) {
+                global_env = v.global_env_data;
+                v = stack_pop();
+            }
+            pc = v.inst_data;
             exec_env = stack_pop().env_data;
             stack_push(result);
             break;
