@@ -30,7 +30,6 @@ Val stack_pop(void) {
 }
 
 void change_global_env(Global_env *new_global_env) {
-//  if (stack_ptr == stack || stack_ptr[-1].type != TYPE_GLOBAL_ENV)
     stack_push((Val){TYPE_GLOBAL_ENV, {.global_env_data = global_env}});
     global_env = new_global_env;
 }
@@ -171,12 +170,14 @@ Val exec(long pc) {
         }
 
         case INST_RETURN: {
-            if (stack_ptr == stack + 1)
-                return stack_pop();
             Val result = stack_pop();
+            if (stack_ptr == stack)
+                return result;
             Val v = stack_pop();
             if (v.type == TYPE_GLOBAL_ENV) {
                 global_env = v.global_env_data;
+                if (stack_ptr == stack)
+                    return result;
                 v = stack_pop();
             }
             pc = v.inst_data;
@@ -210,6 +211,8 @@ Val exec(long pc) {
         }
     }
 }
+
+// TODO move elsewhere
 
 int is_true(Val val) {
     return !(val.type == TYPE_BOOL && val.int_data == 0);
