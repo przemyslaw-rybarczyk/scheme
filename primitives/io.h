@@ -3,4 +3,4 @@
 Val display_prim(Val *args, int num);
 Val newline_prim(Val *args, int num);
 Val error_prim(Val *args, int num);
-void read_prim(int num, int *pc, Global_env **global_env);
+High_prim_return read_prim(int num);

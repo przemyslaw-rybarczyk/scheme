@@ -1,5 +1,14 @@
 #pragma once
 
+struct Pair;
+struct Lambda;
+struct Global_env;
+
+typedef struct High_prim_return {
+    int pc;
+    struct Global_env *global_env;
+} High_prim_return;
+
 /* -- val
  * Contains a Scheme value with `type` representing its type and data
  * containing the value.
@@ -44,10 +53,6 @@ typedef enum Type {
     TYPE_GLOBAL_ENV,
 } Type;
 
-struct Pair;
-struct Lambda;
-struct Global_env;
-
 typedef struct Val {
     enum Type type;
     union {
@@ -55,7 +60,7 @@ typedef struct Val {
         double float_data;
         char *string_data;
         struct Val (*prim_data)(struct Val *, int);
-        void (*high_prim_data)(int, int *, struct Global_env **);
+        struct High_prim_return (*high_prim_data)(int);
         struct Lambda *lambda_data;
         struct Pair *pair_data;
         struct Env *env_data;
@@ -131,7 +136,7 @@ struct prim_binding {
 
 struct high_prim_binding {
     char *var;
-    void (*val)(int, int *, Global_env **);
+    High_prim_return (*val)(int);
 };
 
 /* -- name_env
