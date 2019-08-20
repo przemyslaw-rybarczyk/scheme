@@ -45,10 +45,8 @@ Global_env *make_compile_env(void) {
 
 void setup_env(void) {
     compiler_env = make_compile_env();
-    for (int program = compiler_pc; insts[program].type != INST_EOF; program = next_expr(program + 1)) {
-        change_global_env(compiler_env);
-        exec(program);
-    }
+    for (int program = compiler_pc; insts[program].type != INST_EOF; program = next_expr(program + 1))
+        exec(program, compiler_env);
 }
 
 /* -- locate_var

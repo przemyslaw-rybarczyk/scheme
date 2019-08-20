@@ -37,9 +37,9 @@ const char *input_prompt = ">>> ";
 int main(int argc, char **argv) {
     setup_memory();
     setup_obarray();
+    Global_env *global_env = make_global_env();
     setup_insts();
     setup_env();
-    global_env = make_global_env();
 
     enum input_mode input_mode = INPUT_FILE;
     enum output_mode output_mode = OUTPUT_INTERACTIVE;
@@ -129,7 +129,7 @@ int main(int argc, char **argv) {
 
         switch (output_mode) {
         case OUTPUT_INTERACTIVE: {
-            Val val = exec(expr);
+            Val val = exec(expr, global_env);
             if (val.type != TYPE_VOID) {
                 display_val(val);
                 putchar('\n');
@@ -139,7 +139,7 @@ int main(int argc, char **argv) {
             break;
         }
         case OUTPUT_RUN:
-            exec(expr);
+            exec(expr, global_env);
             break;
         case OUTPUT_BYTECODE:
             break;
