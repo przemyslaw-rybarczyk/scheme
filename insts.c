@@ -24,6 +24,7 @@ void setup_insts(void) {
     tail_call_inst = next_inst();
     insts[tail_call_inst] = (Inst){INST_TAIL_CALL};
     compiler_pc = this_inst();
+    // FIXME CHECK FOR NULL
     load_insts(fopen("compiler.sss", "rb"));
     compile_pc = this_inst();
     insts[next_inst()] = (Inst){INST_NAME, {.name = "parse-and-compile"}};

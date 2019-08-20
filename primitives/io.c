@@ -11,6 +11,7 @@
 #include "../insts.h"
 #include "../exec.h"
 #include "../env.h"
+#include "compiler.h"
 
 Val display_prim(Val *args, int num) {
     args_assert(num == 1);
@@ -42,10 +43,11 @@ Val error_prim(Val *args, int num) {
 int read_prim(int num) {
     args_assert(num == 0);
     stack_pop();
-    char c = getchar_nospace();
+    char c = getc_nospace(stdin);
     if (c == EOF)
         exit(0);
     s_ungetc(c, stdin);
     change_global_env(compiler_env);
+    compiler_input_file = stdin;
     return parse_pc;
 }
