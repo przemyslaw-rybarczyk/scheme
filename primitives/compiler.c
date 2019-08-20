@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <stdio.h>
 
 #include "compiler.h"
 #include "assert.h"
@@ -6,6 +7,7 @@
 #include "../insts.h"
 #include "../parser.h"
 #include "../symbol.h"
+#include "../safemem.h"
 
 FILE *compiler_input_file;
 
@@ -160,10 +162,14 @@ Val set_cons_prim(Val *args, int num) {
     return (Val){TYPE_VOID};
 }
 
-// awful workaround for or until macros are implemented
-Val zero_symbol_prim(Val *args, int num) {
+unsigned int new_symbol_counter = 0;
+
+// awful workaround for until macros are implemented
+Val new_symbol_prim(Val *args, int num) {
     args_assert(num == 0);
-    return (Val){TYPE_SYMBOL, {.string_data = intern_symbol("0")}};
+    char *s = s_malloc(32);
+    sprintf(s, "%d", new_symbol_counter++);
+    return (Val){TYPE_SYMBOL, {.string_data = intern_symbol(s)}};
 }
 
 struct prim_binding compiler_prims[] = {
@@ -184,7 +190,7 @@ struct prim_binding compiler_prims[] = {
     "set-return!", set_return_prim,
     "set-delete!", set_delete_prim,
     "set-cons!", set_cons_prim,
-    "zero-symbol", zero_symbol_prim,
+    "new-symbol", new_symbol_prim,
 };
 
 size_t compiler_prims_size = sizeof(compiler_prims) / sizeof(struct prim_binding);

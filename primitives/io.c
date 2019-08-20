@@ -40,14 +40,14 @@ Val error_prim(Val *args, int num) {
     exit(2);
 }
 
-int read_prim(int num) {
+void read_prim(int num, int *pc, Global_env **global_env) {
     args_assert(num == 0);
     stack_pop();
     char c = getc_nospace(stdin);
     if (c == EOF)
         exit(0);
     s_ungetc(c, stdin);
-    change_global_env(compiler_env);
     compiler_input_file = stdin;
-    return parse_pc;
+    *pc = parse_pc;
+    *global_env = compiler_env;
 }

@@ -119,10 +119,9 @@ int read_expr(FILE *f) {
     if (c == EOF)
         return -1;
     s_ungetc(c, f);
-    change_global_env(compiler_env);
     compiler_input_file = f;
     int program = next_inst();
     insts[program] = (Inst){INST_EXPR};
-    exec(compile_pc);
+    exec(compile_pc, compiler_env);
     return program;
 }

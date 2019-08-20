@@ -46,6 +46,7 @@ typedef enum Type {
 
 struct Pair;
 struct Lambda;
+struct Global_env;
 
 typedef struct Val {
     enum Type type;
@@ -54,7 +55,7 @@ typedef struct Val {
         double float_data;
         char *string_data;
         struct Val (*prim_data)(struct Val *, int);
-        int (*high_prim_data)(int);
+        void (*high_prim_data)(int, int *, struct Global_env **);
         struct Lambda *lambda_data;
         struct Pair *pair_data;
         struct Env *env_data;
@@ -130,7 +131,7 @@ struct prim_binding {
 
 struct high_prim_binding {
     char *var;
-    int (*val)(int);
+    void (*val)(int, int *, Global_env **);
 };
 
 /* -- name_env

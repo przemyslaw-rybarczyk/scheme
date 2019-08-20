@@ -35,7 +35,7 @@ Val length_prim(Val *args, int num) {
     return (Val){TYPE_INT, {.int_data = get_length(args[0])}};
 }
 
-int apply_prim(int num) {
+void apply_prim(int num, int *pc, Global_env **global_env) {
     args_assert(num == 2);
     Val args = stack_pop();
     Val proc = stack_pop();
@@ -50,5 +50,5 @@ int apply_prim(int num) {
     if (arg_list.type != TYPE_NIL)
         type_error(args);
     insts[tail_call_inst].num = arg_num;
-    return tail_call_inst;
+    *pc = tail_call_inst;
 }

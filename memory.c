@@ -6,6 +6,7 @@
 #include "expr.h"
 #include "env.h"
 #include "exec.h"
+#include "exec_gc.h"
 
 void *mem_start;
 size_t mem_size = 32 * 65536;
