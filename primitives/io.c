@@ -40,7 +40,7 @@ Val error_prim(Val *args, int num) {
     exit(2);
 }
 
-void read_prim(int num, int *pc, Global_env **global_env) {
+High_prim_return read_prim(int num) {
     args_assert(num == 0);
     stack_pop();
     char c = getc_nospace(stdin);
@@ -48,6 +48,5 @@ void read_prim(int num, int *pc, Global_env **global_env) {
         exit(0);
     s_ungetc(c, stdin);
     compiler_input_file = stdin;
-    *pc = parse_pc;
-    *global_env = compiler_env;
+    return (High_prim_return){ parse_pc, compiler_env };
 }

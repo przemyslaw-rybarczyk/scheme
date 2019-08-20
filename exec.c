@@ -119,11 +119,16 @@ Val exec(int pc, Global_env *global_env) {
                 for (Val *arg_ptr = stack_ptr - 1; arg_ptr > op; arg_ptr--)
                     *(arg_ptr + 2) = *arg_ptr;
                 stack_ptr += 2;
-                void (*high_prim)(int, int *, Global_env **) = op->high_prim_data;
+                High_prim_return (*high_prim)(int) = op->high_prim_data;
                 *(op + 2) = *op;
                 *op = (Val){TYPE_ENV, {.env_data = exec_env}};
                 *(op + 1) = (Val){TYPE_INST, {.inst_data = pc + 1}};
-                high_prim(insts[pc].num, &pc, &global_env);
+                High_prim_return r = high_prim(insts[pc].num);
+                if (r.global_env != NULL && r.global_env != global_env) {
+                    stack_push((Val){TYPE_GLOBAL_ENV, {.global_env_data = global_env}});
+                    global_env = r.global_env;
+                }
+                pc = r.pc;
                 break;
             }
             default:
@@ -152,9 +157,15 @@ Val exec(int pc, Global_env *global_env) {
                 pc = op->lambda_data->body;
                 break;
             }
-            case TYPE_HIGH_PRIM:
-                op->high_prim_data(insts[pc].num, &pc, &global_env);
+            case TYPE_HIGH_PRIM: {
+                High_prim_return r = op->high_prim_data(insts[pc].num);
+                if (r.global_env != NULL && r.global_env != global_env) {
+                    stack_push((Val){TYPE_GLOBAL_ENV, {.global_env_data = global_env}});
+                    global_env = r.global_env;
+                }
+                pc = r.pc;
                 break;
+            }
             default:
                 fprintf(stderr, "Error: %s is not an applicable type\n",
                         sprint_type(op->type));

@@ -1,6 +1,5 @@
 #include <stdlib.h>
 
-#include "primitives.h"
 #include "expr.h"
 #include "primitives/io.h"
 #include "primitives/list.h"
