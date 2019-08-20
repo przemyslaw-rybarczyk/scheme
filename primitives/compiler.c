@@ -7,9 +7,11 @@
 #include "../parser.h"
 #include "../symbol.h"
 
+FILE *compiler_input_file;
+
 Val next_token_prim(Val *args, int num) {
     args_assert(num == 0);
-    return get_token();
+    return get_token(compiler_input_file);
 }
 
 Val this_inst_prim(Val *args, int num) {

@@ -12,19 +12,22 @@
 #include "env.h"
 #include "exec.h"
 #include "insts.h"
+#include "primitives/compiler.h"
 
 #define INIT_TOKEN_LENGTH 16
+
+// TODO getc error checking
 
 /* -- getchar_nospace
  * Gets the next character from stdin, skipping whitespace and comments.
  */
-char getchar_nospace(void) {
+int getc_nospace(FILE *f) {
     char c;
     while (1) {
-        while (isspace(c = getchar()))
+        while (isspace(c = getc(f)))
             ;
         if (c == ';') {
-            while ((c = getchar()) != '\n' && c != EOF)
+            while ((c = getc(f)) != '\n' && c != EOF)
                 ;
             continue;
         }
@@ -33,8 +36,8 @@ char getchar_nospace(void) {
     return c;
 }
 
-Val get_token(void) {
-    char c = getchar_nospace();
+Val get_token(FILE *f) {
+    int c = getc_nospace(f);
 
     // simple cases
     if (c == '(' || c == ')' || c == '\'' || c == EOF) {
@@ -50,7 +53,7 @@ Val get_token(void) {
     // string literal
     if (c == '"') {
         size_t i = 0;
-        while ((s[i] = getchar()) != '"') {
+        while ((s[i] = getc(f)) != '"') {
             if (s[i] == EOF) {
                 fprintf(stderr, "Syntax error: premature end of file - '\"' expected\n");
                 exit(1);
@@ -68,7 +71,7 @@ Val get_token(void) {
     // name
     size_t i = 1;
     s[0] = c;
-    while ((s[i] = getchar()) != EOF && !isspace(s[i])
+    while ((s[i] = getc(f)) != EOF && !isspace(s[i]) && s[i] != ';'
             && s[i] != '(' && s[i] != ')' && s[i] != '\'' && s[i] != '"') {
         i++;
         if (i >= token_length) {
@@ -76,7 +79,7 @@ Val get_token(void) {
             s = s_realloc(s, token_length);
         }
     }
-    s_ungetc(s[i], stdin);
+    s_ungetc(s[i], f);
     s[i] = '\0';
 
     // numeric literal
@@ -111,12 +114,13 @@ Val get_token(void) {
  * Performs the entire parsing process.
  * Prevents syntax error on exit.
  */
-int read_expr(void) {
-    char c = getchar_nospace();
+int read_expr(FILE *f) {
+    int c = getc_nospace(f);
     if (c == EOF)
         return -1;
-    s_ungetc(c, stdin);
+    s_ungetc(c, f);
     change_global_env(compiler_env);
+    compiler_input_file = f;
     int program = next_inst();
     insts[program] = (Inst){INST_EXPR};
     exec(compile_pc);

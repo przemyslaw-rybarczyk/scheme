@@ -1,5 +1,5 @@
 #include "expr.h"
 
-char getchar_nospace(void);
-Val get_token(void);
-int read_expr(void);
+int getc_nospace(FILE *f);
+Val get_token(FILE *f);
+int read_expr(FILE *f);

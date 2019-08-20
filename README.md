@@ -3,12 +3,20 @@
 A basic implementation of Scheme in C that I initially made as exercise 5.51 from [Structure and Interpretation of Computer Programs](https://mitpress.mit.edu/sites/default/files/sicp/index.html).
 
 ## Compilation
-
 To compile the interpreter, run `./compile.sh`.
 
 ### Flags
 - `GC_ALWAYS` makes the garbage collector activate on every allocation. Useful for debugging.
 - `SHOW_VM_CODE` shows the compiled VM code after inputting an expression.
+
+## Usage
+`./scheme [FILE] [--run] [--compile FILE] [--bytecode] [--show-bytecode]`
+
+### Flags
+- `--bytecode` - Reads the file as compiled bytecode, rather than a Scheme file.
+- `--compile FILE` - Compiles the file and saves the bytecode to the given file.
+- `--run` - Disables displaying of values of top-level expressions.
+- `--show-bytecode` - Shows the compiled bytecode.
 
 ## Progress
 
@@ -27,7 +35,7 @@ The completion status of the interpreter, grouped by chapters of R5RS which it c
 - 5. Program structure
     - ███░░░ 5.1. Programs
     - ██░░░░ 5.2. Definitions
-    - ░░░░░░ 5.3. Internal definitions
+    - ░░░░░░ 5.3. Syntax definitions
 - 6. Standard procedures
     - ████░░ 6.1. Equivalence predicates
     - █░░░░░ 6.2. Numbers

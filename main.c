@@ -10,68 +10,162 @@
 #include "insts.h"
 #include "exec.h"
 
+/* -- input_mode
+ * Possible values and corresponding command-line options:
+ * - INPUT_FILE / (default)
+ * - INPUT_BYTECODE / --bytecode
+ */
+enum input_mode {
+    INPUT_FILE,
+    INPUT_BYTECODE,
+};
+
+/* -- output_mode
+ * Possible values and corresponding command-line options:
+ * - OUTPUT_INTERACTIVE / (default)
+ * - OUTPUT_RUN / --run
+ * - OUTPUT_BYTECODE / --compile
+ */
+enum output_mode {
+    OUTPUT_INTERACTIVE,
+    OUTPUT_RUN,
+    OUTPUT_BYTECODE,
+};
+
 const char *input_prompt = ">>> ";
 
-/* -- main
- * Sets up the necessary variables and runs the REPL.
- */
 int main(int argc, char **argv) {
-    int compile_flag = 0;
-    int load_flag = 0;
     setup_memory();
     setup_obarray();
     setup_insts();
     setup_env();
     global_env = make_global_env();
-    if (argc == 2 && strcmp(argv[1], "--compile") == 0)
-        compile_flag = 1;
-    else if (argc == 2 && strcmp(argv[1], "--load") == 0)
-        load_flag = 1;
-    else if (argc != 1) {
-        fprintf(stderr, "Error: invalid arguments\n");
-        exit(1);
-    }
-    if (!compile_flag)
-        printf("%s", input_prompt);
-    if (load_flag) {
-        int program = this_inst();
-        load_insts(fopen("compiled.sss", "rb"));
-#ifdef SHOW_VM_CODE
-        for (int inst = program; inst < this_inst() - 1; inst++)
-            display_inst(inst);
-#endif
-        while (insts[program].type != INST_EOF) {
-            Val val = exec(program);
-            if (val.type != TYPE_VOID) {
-                display_val(val);
-                putchar('\n');
+
+    enum input_mode input_mode = INPUT_FILE;
+    enum output_mode output_mode = OUTPUT_INTERACTIVE;
+    char *input_file_name = NULL;
+    char *output_file_name = NULL;
+    int show_bytecode = 0;
+
+    for (char **p = argv + 1; *p != NULL; p++) {
+        char *arg = *p;
+        if (strcmp(arg, "--bytecode") == 0) {
+            if (input_mode != INPUT_FILE) {
+                fprintf(stderr, "Error: multiple input modes specified\n");
+                return 1;
             }
-            program = next_expr(program + 1);
+            input_mode = INPUT_BYTECODE;
+        } else if (strcmp(arg, "--run") == 0) {
+            if (output_mode != OUTPUT_INTERACTIVE) {
+                fprintf(stderr, "Error: multiple output modes specified\n");
+                return 1;
+            }
+            output_mode = OUTPUT_RUN;
+        } else if (strcmp(arg, "--compile") == 0) {
+            if (output_mode != OUTPUT_INTERACTIVE) {
+                fprintf(stderr, "Error: multiple output modes specified\n");
+                return 1;
+            }
+            output_mode = OUTPUT_BYTECODE;
+            arg = *++p;
+            if (arg == NULL || strncmp(arg, "--", 2) == 0) {
+                fprintf(stderr, "Error: no filename provided for --compile option\n");
+                return 1;
+            }
+            if (output_file_name != NULL) {
+                fprintf(stderr, "Error: multiple output files specified\n");
+                return 1;
+            }
+            output_file_name = arg;
+        } else if (strcmp(arg, "--show-bytecode") == 0) {
+            show_bytecode = 1;
+        } else if (strncmp(arg, "--", 2) == 0) {
+            fprintf(stderr, "Error: invalid command-line option %s\n", arg);
+            return 1;
+        } else {
+            if (input_file_name != NULL) {
+                fprintf(stderr, "Error: multiple input files specified\n");
+                return 1;
+            }
+            input_file_name = arg;
         }
-        return 0;
     }
+
+    // TODO: CHECK FOR FOPEN ERROR CODES
+
+    FILE *input_file = stdin;
+    switch (input_mode) {
+    case INPUT_FILE:
+        if (input_file_name != NULL)
+            input_file = fopen(input_file_name, "r");
+        break;
+    case INPUT_BYTECODE:
+        input_file = fopen(input_file_name, "rb");
+        break;
+    }
+
     int program = this_inst();
-    int expr = read_expr();
+    int expr;
+
+    if (output_mode == OUTPUT_INTERACTIVE && input_file_name == NULL)
+        printf("%s", input_prompt);
+
+    switch (input_mode) {
+    case INPUT_FILE:
+        expr = read_expr(input_file);
+        break;
+    case INPUT_BYTECODE:
+        load_insts(input_file);
+        expr = program;
+        if (insts[expr].type == INST_EOF)
+            expr = -1;
+        break;
+    }
+
     while (expr != -1) {
-#ifdef SHOW_VM_CODE
-        for (int inst = expr; inst < this_inst(); inst++)
-            display_inst(inst);
-#endif
-        if (!compile_flag) {
+        if (show_bytecode)
+            for (int inst = expr; inst < this_inst(); inst++)
+                display_inst(inst);
+
+        switch (output_mode) {
+        case OUTPUT_INTERACTIVE: {
             Val val = exec(expr);
             if (val.type != TYPE_VOID) {
                 display_val(val);
                 putchar('\n');
             }
-            printf("%s", input_prompt);
+            if (input_file_name == NULL)
+                printf("%s", input_prompt);
+            break;
         }
-        expr = read_expr();
+        case OUTPUT_RUN:
+            exec(expr);
+            break;
+        case OUTPUT_BYTECODE:
+            break;
+        }
+
+        switch (input_mode) {
+        case INPUT_FILE:
+            expr = read_expr(input_file);
+            break;
+        case INPUT_BYTECODE:
+            expr = next_expr(expr + 1);
+            if (insts[expr].type == INST_EOF)
+                expr = -1;
+            break;
+        }
     }
-    if (compile_flag) {
-        FILE *compiled = fopen("compiled.sss", "wb");
-        save_magic(compiled);
-        save_insts(compiled, program, this_inst());
+
+    if (output_mode == OUTPUT_BYTECODE) {
+        FILE *output_file = fopen(output_file_name, "wb");
+        save_magic(output_file);
+        int end = this_inst();
+        if (input_mode == INPUT_BYTECODE)
+            end--;
+        save_insts(output_file, program, end);
     } else {
         putchar('\n');
     }
+
 }
