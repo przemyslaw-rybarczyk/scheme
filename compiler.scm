@@ -1,9 +1,19 @@
 ;;; replacements for stdlib
 
+(define (append x y)
+  (if (null? x)
+      y
+      (cons (car x) (append (cdr x) y))))
+
 (define (map f x)
   (if (null? x)
       '()
       (cons (f (car x)) (map f (cdr x)))))
+
+(define (map2 f x y)
+  (if (or (null? x) (null? y))
+      '()
+      (cons (f (car x) (car y)) (map2 f (cdr x) (cdr y)))))
 
 (define (for-each f x)
   (if (null? x)
@@ -60,6 +70,8 @@
       (let ((head (parse)))
         (let ((tail (parse-list)))
           (cons head tail)))))
+
+(define undef +)
 
 (define (compile expr env forms tail)
   (cond ((pair? expr)
@@ -169,6 +181,14 @@
 (define (transform-let expr)
   (cons (cons 'lambda (cons (map car (cadr expr)) (cddr expr))) (map cadr (cadr expr))))
 
+(define (transform-letrec expr)
+  (list 'let
+        (map (lambda (x) (list (car x) undef)) (cadr expr))
+        (let ((new-symbols (map (lambda (x) (new-symbol)) (cadr expr))))
+          (append (list 'let (map2 (lambda (x y) (list x (cadr y))) new-symbols (cadr expr)))
+                  (append (map2 (lambda (x y) (list 'set! (car x) y)) (cadr expr) new-symbols)
+                          (cddr expr))))))
+
 (define (transform-cond expr)
   (cond ((null? (cdr expr))
          #f)
@@ -203,6 +223,7 @@
     (list 'quote 'prim compile-quote)
     (list 'define 'prim compile-define)
     (list 'let 'deriv transform-let)
+    (list 'letrec 'deriv transform-letrec)
     (list 'cond 'deriv transform-cond)
     (list 'and 'deriv transform-and)
     (list 'or 'deriv transform-or)))
