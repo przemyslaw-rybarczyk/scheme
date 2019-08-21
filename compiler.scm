@@ -50,7 +50,7 @@
 (define right-paren 41)
 
 (define (parse-and-compile)
-  (compile (parse) '() builtin-forms #t))
+  (compile-top-level (parse) '() builtin-forms #t))
 
 (define (parse)
   (let ((token (read-token)))
@@ -72,6 +72,28 @@
           (cons head tail)))))
 
 (define undef +)
+
+(define (compile-top-level expr env forms tail)
+  (cond ((and (pair? expr) (eq? 'define (car expr)))
+         (compile-define expr env forms tail))
+        ((and (pair? expr) (eq? 'begin (car expr)))
+         (cond ((null? (cdr expr))
+                (put-tail! tail))
+               ((null? (cddr expr))
+                (compile-top-level (cadr expr) env forms tail)
+                (put-tail! tail))
+               (else
+                (compile-top-level (cadr expr) env forms #f)
+                (set-delete! (next-inst))
+                (compile-top-level (cons 'begin (cddr expr)) env forms tail))))
+        (else
+         (compile expr env forms tail))))
+
+(define (compile-define expr env forms tail)
+  (let ((expr (transform-define expr)))
+    (compile (caddr expr) env forms #f)
+    (set-def! (next-inst) (cadr expr))
+    (put-tail! tail)))
 
 (define (compile expr env forms tail)
   (cond ((pair? expr)
@@ -147,7 +169,7 @@
 (define (compile-lambda expr env forms tail)
   (let ((jump-after (next-inst))
         (lambda-address (this-inst)))
-    (compile-seq (cddr expr) (cons (cadr expr) env) forms #t)
+    (compile-body (cddr expr) (cons (cadr expr) env) forms #t)
     (let ((lambda-inst (next-inst)))
       (set-lambda! lambda-inst (length (cadr expr)) lambda-address)
       (set-jump! jump-after lambda-inst)
@@ -167,16 +189,6 @@
         (compile-quoted (cdr expr))
         (set-cons! (next-inst)))
       (set-const! (next-inst) expr)))
-
-(define (compile-define expr env forms tail)
-  (if (pair? (cadr expr))
-      (begin
-        (compile (cons 'lambda (cons (cdadr expr) (cddr expr))) env forms #f)
-        (set-def! (next-inst) (caadr expr)))
-      (begin
-        (compile (caddr expr) env forms #f)
-        (set-def! (next-inst) (cadr expr))))
-  (put-tail! tail))
 
 (define (transform-let expr)
   (cons (cons 'lambda (cons (map car (cadr expr)) (cddr expr))) (map cadr (cadr expr))))
@@ -214,20 +226,6 @@
           (let ((v (new-symbol)))
             (list 'let (list (list v (cadr expr))) (list 'if v v (cons 'or (cddr expr))))))))
 
-(define builtin-forms
-  (list
-    (list 'set! 'prim compile-set)
-    (list 'if 'prim compile-if)
-    (list 'lambda 'prim compile-lambda)
-    (list 'begin 'prim compile-begin)
-    (list 'quote 'prim compile-quote)
-    (list 'define 'prim compile-define)
-    (list 'let 'deriv transform-let)
-    (list 'letrec 'deriv transform-letrec)
-    (list 'cond 'deriv transform-cond)
-    (list 'and 'deriv transform-and)
-    (list 'or 'deriv transform-or)))
-
 (define (compile-seq exprs env forms tail)
   (cond ((null? exprs)
          (put-tail! tail))
@@ -238,6 +236,43 @@
          (set-delete! (next-inst))
          (compile-seq (cdr exprs) env forms tail))))
 
+(define (transform-define expr)
+  (if (pair? (cadr expr))
+      (list 'define (caadr expr) (cons 'lambda (cons (cdadr expr) (cddr expr))))
+      expr))
+
+(define (split-defines exprs)
+  (cond ((null? exprs)
+         (cons '() '()))
+        ((eq? 'define (caar exprs))
+         (let ((x (split-defines (cdr exprs))))
+           (cons (cons (car exprs) (car x)) (cdr x))))
+        ((eq? 'begin (caar exprs))
+         (split-defines (append (cdar exprs) (cdr exprs))))
+        (else
+         (cons '() exprs))))
+
+(define (compile-body exprs env forms tail)
+  (let ((x (split-defines exprs)))
+    (let ((defines (car x))
+          (seq (cdr x)))
+      (if (null? defines)
+          (compile-seq seq env forms tail) ; prevent infinite loop
+          (compile (cons 'letrec (cons (map cdr (map transform-define defines)) seq)) env forms tail)))))
+
 (define (put-tail! tail)
   (if tail
       (set-return! (next-inst))))
+
+(define builtin-forms
+  (list
+    (list 'set! 'prim compile-set)
+    (list 'if 'prim compile-if)
+    (list 'lambda 'prim compile-lambda)
+    (list 'begin 'prim compile-begin)
+    (list 'quote 'prim compile-quote)
+    (list 'let 'deriv transform-let)
+    (list 'letrec 'deriv transform-letrec)
+    (list 'cond 'deriv transform-cond)
+    (list 'and 'deriv transform-and)
+    (list 'or 'deriv transform-or)))
