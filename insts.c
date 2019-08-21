@@ -87,6 +87,7 @@ void save_val(FILE *fp, Val val) {
         break;
     case TYPE_NIL:
     case TYPE_VOID:
+    case TYPE_UNDEF:
         break;
     default:
         fprintf(stderr, "Error: value of type %s not a valid literal\n", sprint_type(val.type));
@@ -191,6 +192,8 @@ Val load_val(FILE *fp) {
         return (Val){TYPE_NIL};
     case TYPE_VOID:
         return (Val){TYPE_VOID};
+    case TYPE_UNDEF:
+        return (Val){TYPE_UNDEF};
     default:
         fprintf(stderr, "Error: invalid type (%d)\n", type);
         exit(3);

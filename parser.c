@@ -13,6 +13,7 @@
 #include "exec.h"
 #include "insts.h"
 #include "primitives/compiler.h"
+#include "primitives/number.h"
 
 #define INIT_TOKEN_LENGTH 16
 
@@ -103,6 +104,8 @@ Val get_token(FILE *f) {
             return (Val){TYPE_BOOL, {.int_data = 1}};
         if (strcmp(s, "#!void") == 0)
             return (Val){TYPE_VOID};
+        if (strcmp(s, "#!undef") == 0)
+            return (Val){TYPE_PRIM, {.prim_data = add_prim}};
         fprintf(stderr, "Syntax error: incorrect boolean or special literal %s\n", s);
         exit(1);
     }
