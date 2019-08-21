@@ -21,6 +21,14 @@
       (begin (f (car x))
              (for-each f (cdr x)))))
 
+(define (memq obj list)
+  (cond ((null? list)
+         #f)
+        ((eq? obj (car list))
+         list)
+        (else
+         (memq obj (cdr list)))))
+
 (define (assoc obj alist)
   (cond ((null? alist)
          #f)
@@ -78,6 +86,7 @@
          (compile-define expr env forms tail))
         ((and (pair? expr) (eq? 'begin (car expr)))
          (cond ((null? (cdr expr))
+                (set-const! (next-inst) #!void)
                 (put-tail! tail))
                ((null? (cddr expr))
                 (compile-top-level (cadr expr) env forms tail)
@@ -113,6 +122,8 @@
         ((procedure? expr)
          (set-const! (next-inst) #!undef)
          (put-tail! tail))
+        ((null? expr)
+         (error "() is not a valid expression"))
         (else
          (set-const! (next-inst) expr)
          (put-tail! tail))))
@@ -146,6 +157,8 @@
    (next-inst) (- (length expr) 1)))
 
 (define (compile-set expr env forms tail)
+  (if (not (null? (cdddr expr)))
+      (error "set! expression too long"))
   (compile (caddr expr) env forms #f)
   (let ((loc (locate-name (cadr expr) env)))
     (if loc
@@ -154,6 +167,8 @@
     (put-tail! tail)))
 
 (define (compile-if expr env forms tail)
+  (if (and (not (null? (cdddr expr))) (not (null? (cddddr expr))))
+      (error "if expression too long"))
   (compile (cadr expr) env forms #f)
   (let ((jump-false (next-inst)))
     (compile (caddr expr) env forms tail)
@@ -166,7 +181,19 @@
           (compile (cadddr expr) env forms tail))
       (set-jump! jump-true (this-inst)))))
 
+(define (has-duplicates? list)
+  (cond ((null? list)
+         #f)
+        ((memq (car list) (cdr list))
+         #t)
+        (else
+         (has-duplicates? (cdr list)))))
+
 (define (compile-lambda expr env forms tail)
+  (if (memq #f (map symbol? (cadr expr)))
+      (error "lambda argument is not a variable"))
+  (if (has-duplicates? (cadr expr))
+      (error "duplicate lambda argument name"))
   (let ((jump-after (next-inst))
         (lambda-address (this-inst)))
     (compile-body (cddr expr) (cons (cadr expr) env) forms #t)
@@ -179,6 +206,8 @@
   (compile-seq (cdr expr) env forms tail))
 
 (define (compile-quote expr env forms tail)
+  (if (not (null? (cddr expr)))
+      (error "quote expression too long"))
   (compile-quoted (cadr expr))
   (put-tail! tail))
 
@@ -191,9 +220,13 @@
       (set-const! (next-inst) expr)))
 
 (define (transform-let expr)
+  (if (memq #f (map null? (map cddr (cadr expr))))
+      (error "invalid let expression binding"))
   (cons (cons 'lambda (cons (map car (cadr expr)) (cddr expr))) (map cadr (cadr expr))))
 
 (define (transform-letrec expr)
+  (if (memq #f (map null? (map cddr (cadr expr))))
+      (error "invalid letrec expression binding"))
   (list 'let
         (map (lambda (x) (list (car x) undef)) (cadr expr))
         (let ((new-symbols (map (lambda (x) (new-symbol)) (cadr expr))))
@@ -228,6 +261,7 @@
 
 (define (compile-seq exprs env forms tail)
   (cond ((null? exprs)
+         (set-const! (next-inst) #!void)
          (put-tail! tail))
         ((null? (cdr exprs))
          (compile (car exprs) env forms tail))
@@ -239,7 +273,10 @@
 (define (transform-define expr)
   (if (pair? (cadr expr))
       (list 'define (caadr expr) (cons 'lambda (cons (cdadr expr) (cddr expr))))
-      expr))
+      (begin
+        (if (not (null? (cdddr expr)))
+            (error "define expression too long"))
+        expr)))
 
 (define (split-defines exprs)
   (cond ((null? exprs)
