@@ -48,6 +48,9 @@ void display_val(Val val) {
     case TYPE_VOID:
         printf("#!void");
         break;
+    case TYPE_UNDEF:
+        printf("#!undef");
+        break;
     case TYPE_BROKEN_HEART:
         printf("</broken heart/>");
         break;
@@ -106,6 +109,8 @@ const char *sprint_type(Type type) {
         return "nil";
     case TYPE_VOID:
         return "void";
+    case TYPE_UNDEF:
+        return "undef";
     case TYPE_BROKEN_HEART:
         return "/broken heart/";
     case TYPE_ENV:

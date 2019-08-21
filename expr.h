@@ -47,6 +47,7 @@ typedef enum Type {
     TYPE_PAIR,
     TYPE_NIL,
     TYPE_VOID,
+    TYPE_UNDEF,
     TYPE_BROKEN_HEART,
     TYPE_ENV,
     TYPE_INST,

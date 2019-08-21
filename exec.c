@@ -14,6 +14,7 @@
 Val stack[STACK_SIZE];
 Val *stack_ptr = stack;
 Env *exec_env;
+Global_env *global_env;
 int pc;
 
 void stack_push(Val val) {
@@ -31,8 +32,9 @@ Val stack_pop(void) {
 /* -- exec
  * Executes the virtual machine instructions, starting at `inst`.
  */
-Val exec(int pc, Global_env *global_env) {
+Val exec(int pc, Global_env *init_global_env) {
     stack_ptr = stack;
+    global_env = init_global_env;
     exec_env = NULL;
     while (1) {
         switch (insts[pc].type) {
@@ -43,6 +45,10 @@ Val exec(int pc, Global_env *global_env) {
 
         case INST_VAR:
             stack_push(locate_var(insts[pc++].var, exec_env, global_env));
+            if (stack_ptr[-1].type == TYPE_UNDEF) {
+                fprintf(stderr, "Error: use of undefined value\n");
+                exit(1);
+            }
             break;
 
         case INST_NAME: {

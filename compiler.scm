@@ -76,6 +76,9 @@
                (compile-appl expr env forms tail))))
         ((symbol? expr)
          (compile-name expr env tail))
+        ((procedure? expr)
+         (set-const! (next-inst) #!undef)
+         (put-tail! tail))
         (else
          (set-const! (next-inst) expr)
          (put-tail! tail))))
@@ -188,7 +191,8 @@
         ((null? (cddr expr))
          (cadr expr))
         (else
-         (list 'let (list (list (zero-symbol) (cadr expr))) (list 'if (zero-symbol) (zero-symbol) (cons 'or (cddr expr)))))))
+          (let ((v (new-symbol)))
+            (list 'let (list (list v (cadr expr))) (list 'if v v (cons 'or (cddr expr))))))))
 
 (define builtin-forms
   (list

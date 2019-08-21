@@ -80,6 +80,11 @@ Val string_prim(Val *args, int num) {
     return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_STRING}};
 }
 
+Val procedure_prim(Val *args, int num) {
+    args_assert(num == 1);
+    return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_PRIM || args[0].type == TYPE_LAMBDA || args[0].type == TYPE_HIGH_PRIM}};
+}
+
 Val not_prim(Val *args, int num) {
     args_assert(num == 1);
     if (is_true(args[0]))

@@ -7,4 +7,5 @@ Val null_prim(Val *args, int num);
 Val number_prim(Val *args, int num);
 Val symbol_prim(Val *args, int num);
 Val string_prim(Val *args, int num);
+Val procedure_prim(Val *args, int num);
 Val not_prim(Val *args, int num);

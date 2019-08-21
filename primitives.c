@@ -51,6 +51,7 @@ struct prim_binding prims[] = {
     "number?", number_prim,
     "symbol?", symbol_prim,
     "string?", string_prim,
+    "procedure?", procedure_prim,
     "error", error_prim,
     "caar", caar_prim,
     "caaar", caaar_prim,
