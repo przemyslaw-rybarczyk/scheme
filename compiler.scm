@@ -244,6 +244,8 @@
 (define (split-defines exprs)
   (cond ((null? exprs)
          (cons '() '()))
+        ((not (pair? (car exprs)))
+         (cons '() exprs))
         ((eq? 'define (caar exprs))
          (let ((x (split-defines (cdr exprs))))
            (cons (cons (car exprs) (car x)) (cdr x))))
