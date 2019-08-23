@@ -11,6 +11,5 @@ void setup_insts(void);
 uint32_t next_inst(void);
 uint32_t this_inst(void);
 uint32_t next_expr(uint32_t start);
-void save_magic(FILE *fp);
 void save_insts(FILE *fp, uint32_t start, uint32_t end);
 void load_insts(FILE *fp);
