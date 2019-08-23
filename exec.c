@@ -2,11 +2,13 @@
 #include <stdlib.h>
 
 #include "exec.h"
-#include "expr.h"
+#include "exec_gc.h"
+#include "exec_stack.h"
+#include "types.h"
 #include "env.h"
 #include "display.h"
-#include "memory.h"
 #include "insts.h"
+#include "memory.h"
 #include "primitives/assert.h"
 
 #define STACK_SIZE 65536
@@ -15,12 +17,12 @@ Val stack[STACK_SIZE];
 Val *stack_ptr = stack;
 Env *exec_env;
 Global_env *global_env;
-int pc;
+uint32_t pc;
 
 void stack_push(Val val) {
     if (stack_ptr - stack >= STACK_SIZE) {
-        fprintf(stderr, "Error: stack overflow\n");
-        exit(2);
+        eprintf("Error: stack overflow\n");
+        exit(1);
     }
     *stack_ptr++ = val;
 }
@@ -32,7 +34,7 @@ Val stack_pop(void) {
 /* -- exec
  * Executes the virtual machine instructions, starting at `inst`.
  */
-Val exec(int pc, Global_env *init_global_env) {
+Val exec(uint32_t pc, Global_env *init_global_env) {
     stack_ptr = stack;
     global_env = init_global_env;
     exec_env = NULL;
@@ -46,14 +48,14 @@ Val exec(int pc, Global_env *init_global_env) {
         case INST_VAR:
             stack_push(locate_var(insts[pc++].var, exec_env, global_env));
             if (stack_ptr[-1].type == TYPE_UNDEF) {
-                fprintf(stderr, "Error: use of undefined value\n");
+                eprintf("Error: use of undefined value\n");
                 exit(1);
             }
             break;
 
         case INST_NAME: {
-            int index = locate_global_var(insts[pc].name, global_env);
-            insts[pc] = (Inst){INST_VAR, {.var = (Env_loc){-1, index}}};
+            uint32_t index = locate_global_var(insts[pc].name, global_env);
+            insts[pc] = (Inst){INST_VAR, {.var = (Env_loc){UINT32_MAX, index}}};
             break;
         }
 
@@ -68,8 +70,8 @@ Val exec(int pc, Global_env *init_global_env) {
             break;
 
         case INST_SET_NAME: {
-            int index = locate_global_var(insts[pc].name, global_env);
-            insts[pc] = (Inst){INST_SET, {.var = (Env_loc){-1, index}}};
+            uint32_t index = locate_global_var(insts[pc].name, global_env);
+            insts[pc] = (Inst){INST_SET, {.var = (Env_loc){UINT32_MAX, index}}};
             break;
         }
 
@@ -89,7 +91,6 @@ Val exec(int pc, Global_env *init_global_env) {
             lambda->params = insts[pc].lambda.params;
             lambda->body = insts[pc].lambda.index;
             lambda->env = exec_env;
-            lambda->new_ptr = NULL;
             stack_push((Val){TYPE_LAMBDA, {.lambda_data = lambda}});
             pc++;
             break;
@@ -108,7 +109,7 @@ Val exec(int pc, Global_env *init_global_env) {
             case TYPE_LAMBDA: {
                 Lambda *lambda = op->lambda_data;
                 args_assert(insts[pc].num == lambda->params);
-                int old_pc = pc;
+                uint32_t old_pc = pc;
                 pc = lambda->body;
                 Env *lambda_env = extend_env(op + 1, insts[old_pc].num, lambda->env);
                 stack_ptr = op;
@@ -125,7 +126,7 @@ Val exec(int pc, Global_env *init_global_env) {
                 for (Val *arg_ptr = stack_ptr - 1; arg_ptr > op; arg_ptr--)
                     *(arg_ptr + 2) = *arg_ptr;
                 stack_ptr += 2;
-                High_prim_return (*high_prim)(int) = op->high_prim_data;
+                High_prim high_prim = op->high_prim_data;
                 *(op + 2) = *op;
                 *op = (Val){TYPE_ENV, {.env_data = exec_env}};
                 *(op + 1) = (Val){TYPE_INST, {.inst_data = pc + 1}};
@@ -138,9 +139,8 @@ Val exec(int pc, Global_env *init_global_env) {
                 break;
             }
             default:
-                fprintf(stderr, "Error: %s is not an applicable type\n",
-                        sprint_type(op->type));
-                exit(2);
+                eprintf("Error: %s is not an applicable type\n", type_name(op->type));
+                exit(1);
             }
             break;
         }
@@ -173,9 +173,8 @@ Val exec(int pc, Global_env *init_global_env) {
                 break;
             }
             default:
-                fprintf(stderr, "Error: %s is not an applicable type\n",
-                        sprint_type(op->type));
-                exit(2);
+                eprintf("Error: %s is not an applicable type\n", type_name(op->type));
+                exit(1);
             }
             break;
         }
@@ -216,15 +215,9 @@ Val exec(int pc, Global_env *init_global_env) {
             break;
 
         default:
-            fprintf(stderr, "Error: unrecognized instruction type %d\n", insts[pc].type);
-            exit(-1);
+            eprintf("Error: unrecognized instruction type %d\n", insts[pc].type);
+            exit(1);
 
         }
     }
-}
-
-// TODO move elsewhere
-
-int is_true(Val val) {
-    return !(val.type == TYPE_BOOL && val.int_data == 0);
 }

@@ -1,6 +1,6 @@
-#include "expr.h"
+#include "types.h"
 
+void print_val(Val val);
+const char *type_name(Type);
 void display_val(Val val);
-const char *sprint_type(Type);
-void inner_display_val(Val val);
-void display_inst(int n);
+void print_inst(int n);

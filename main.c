@@ -2,13 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "env.h"
-#include "parser.h"
+#include "types.h"
 #include "display.h"
-#include "memory.h"
-#include "symbol.h"
-#include "insts.h"
+#include "env.h"
 #include "exec.h"
+#include "insts.h"
+#include "memory.h"
+#include "parser.h"
+#include "safestd.h"
+#include "symbol.h"
 
 /* -- input_mode
  * Possible values and corresponding command-line options:
@@ -37,7 +39,7 @@ const char *input_prompt = ">>> ";
 int main(int argc, char **argv) {
     setup_memory();
     setup_obarray();
-    Global_env *global_env = make_global_env();
+    Global_env *global_env = make_global_env(1, 0);
     setup_insts();
     setup_env();
 
@@ -51,61 +53,63 @@ int main(int argc, char **argv) {
         char *arg = *p;
         if (strcmp(arg, "--bytecode") == 0) {
             if (input_mode != INPUT_FILE) {
-                fprintf(stderr, "Error: multiple input modes specified\n");
+                eprintf("Error: multiple input modes specified\n");
                 return 1;
             }
             input_mode = INPUT_BYTECODE;
         } else if (strcmp(arg, "--run") == 0) {
             if (output_mode != OUTPUT_INTERACTIVE) {
-                fprintf(stderr, "Error: multiple output modes specified\n");
+                eprintf("Error: multiple output modes specified\n");
                 return 1;
             }
             output_mode = OUTPUT_RUN;
         } else if (strcmp(arg, "--compile") == 0) {
             if (output_mode != OUTPUT_INTERACTIVE) {
-                fprintf(stderr, "Error: multiple output modes specified\n");
+                eprintf("Error: multiple output modes specified\n");
                 return 1;
             }
             output_mode = OUTPUT_BYTECODE;
             arg = *++p;
             if (arg == NULL || strncmp(arg, "--", 2) == 0) {
-                fprintf(stderr, "Error: no filename provided for --compile option\n");
+                eprintf("Error: no filename provided for --compile option\n");
                 return 1;
             }
             if (output_file_name != NULL) {
-                fprintf(stderr, "Error: multiple output files specified\n");
+                eprintf("Error: multiple output files specified\n");
                 return 1;
             }
             output_file_name = arg;
         } else if (strcmp(arg, "--show-bytecode") == 0) {
             show_bytecode = 1;
         } else if (strncmp(arg, "--", 2) == 0) {
-            fprintf(stderr, "Error: invalid command-line option %s\n", arg);
+            eprintf("Error: invalid command-line option %s\n", arg);
             return 1;
         } else {
             if (input_file_name != NULL) {
-                fprintf(stderr, "Error: multiple input files specified\n");
+                eprintf("Error: multiple input files specified\n");
                 return 1;
             }
             input_file_name = arg;
         }
     }
 
-    // TODO: CHECK FOR FOPEN ERROR CODES
-
     FILE *input_file = stdin;
     switch (input_mode) {
     case INPUT_FILE:
         if (input_file_name != NULL)
-            input_file = fopen(input_file_name, "r");
+            input_file = s_fopen(input_file_name, "r");
         break;
     case INPUT_BYTECODE:
-        input_file = fopen(input_file_name, "rb");
+        if (input_file_name == NULL) {
+            eprintf("Error: no bytecode input file specified\n");
+            return 1;
+        }
+        input_file = s_fopen(input_file_name, "rb");
         break;
     }
 
-    int program = this_inst();
-    int expr;
+    uint32_t program = this_inst();
+    uint32_t expr;
 
     if (output_mode == OUTPUT_INTERACTIVE && input_file_name == NULL)
         printf("%s", input_prompt);
@@ -118,20 +122,20 @@ int main(int argc, char **argv) {
         load_insts(input_file);
         expr = program;
         if (insts[expr].type == INST_EOF)
-            expr = -1;
+            expr = UINT32_MAX;
         break;
     }
 
-    while (expr != -1) {
+    while (expr != UINT32_MAX) {
         if (show_bytecode)
-            for (int inst = expr; inst < this_inst(); inst++)
-                display_inst(inst);
+            for (uint32_t inst = expr; inst < this_inst(); inst++)
+                print_inst(inst);
 
         switch (output_mode) {
         case OUTPUT_INTERACTIVE: {
             Val val = exec(expr, global_env);
             if (val.type != TYPE_VOID) {
-                display_val(val);
+                print_val(val);
                 putchar('\n');
             }
             if (input_file_name == NULL)
@@ -152,15 +156,15 @@ int main(int argc, char **argv) {
         case INPUT_BYTECODE:
             expr = next_expr(expr + 1);
             if (insts[expr].type == INST_EOF)
-                expr = -1;
+                expr = UINT32_MAX;
             break;
         }
     }
 
     if (output_mode == OUTPUT_BYTECODE) {
-        FILE *output_file = fopen(output_file_name, "wb");
+        FILE *output_file = s_fopen(output_file_name, "wb");
         save_magic(output_file);
-        int end = this_inst();
+        uint32_t end = this_inst();
         if (input_mode == INPUT_BYTECODE)
             end--;
         save_insts(output_file, program, end);

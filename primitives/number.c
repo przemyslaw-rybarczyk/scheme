@@ -2,10 +2,10 @@
 #include <stdlib.h>
 
 #include "number.h"
-#include "../expr.h"
+#include "../types.h"
 #include "assert.h"
 
-Val add_prim(Val *args, int num) {
+Val add_prim(Val *args, uint32_t num) {
     long long int_sum = 0;
     double float_sum;
     int float_val = 0;
@@ -34,7 +34,7 @@ Val add_prim(Val *args, int num) {
         return (Val){TYPE_INT, {.int_data = int_sum}};
 }
 
-Val sub_prim(Val *args, int num) {
+Val sub_prim(Val *args, uint32_t num) {
     long long int_diff;
     double float_diff;
     int float_val = 0;
@@ -85,7 +85,7 @@ Val sub_prim(Val *args, int num) {
         return (Val){TYPE_INT, {.int_data = int_diff}};
 }
 
-Val mul_prim(Val *args, int num) {
+Val mul_prim(Val *args, uint32_t num) {
     long long int_prod = 1;
     double float_prod;
     int float_val = 0;
@@ -114,7 +114,7 @@ Val mul_prim(Val *args, int num) {
         return (Val){TYPE_INT, {.int_data = int_prod}};
 }
 
-Val div_prim(Val *args, int num) {
+Val div_prim(Val *args, uint32_t num) {
     double quot;
     args_assert(num != 0);
     if (num == 1) {
@@ -155,7 +155,7 @@ Val div_prim(Val *args, int num) {
 Val false_val = (Val){TYPE_BOOL, {.int_data = 0}};
 Val true_val = (Val){TYPE_BOOL, {.int_data = 1}};
 
-Val equ_prim(Val *args, int num) {
+Val equ_prim(Val *args, uint32_t num) {
     if (num == 0)
         return true_val;
     for (Val *arg_ptr = args; arg_ptr < args + num - 1; arg_ptr++) {
@@ -195,7 +195,7 @@ Val equ_prim(Val *args, int num) {
     return true_val;
 }
 
-Val lt_prim(Val *args, int num) {
+Val lt_prim(Val *args, uint32_t num) {
     if (num == 0)
         return true_val;
     for (Val *arg_ptr = args; arg_ptr < args + num - 1; arg_ptr++) {
@@ -235,7 +235,7 @@ Val lt_prim(Val *args, int num) {
     return true_val;
 }
 
-Val gt_prim(Val *args, int num) {
+Val gt_prim(Val *args, uint32_t num) {
     if (num == 0)
         return true_val;
     for (Val *arg_ptr = args; arg_ptr < args + num - 1; arg_ptr++) {

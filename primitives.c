@@ -1,6 +1,7 @@
 #include <stdlib.h>
 
-#include "expr.h"
+#include "types.h"
+#include "primitives/compiler.h"
 #include "primitives/io.h"
 #include "primitives/list.h"
 #include "primitives/number.h"
@@ -9,78 +10,95 @@
 
 /* == primitives.c
  * This file specifies all primitives included in this Scheme implementation.
- * Their bindings are listed in the `prims` array.
- * They are listed roughly in order of usage frequency, to minimize lookup
- * times, since the primitives are added from the end of the array.
- * Similarily, the `high_prims` array contains all bindings of the high-order
- * primitives.
- * The actual functions of the primitives are defined in various files in the
- * `primitives` directory.
+ * The actual definitions of the primitives are located in the `primitives` directory.
  */
 
-// TODO REWRITE
+#define PRIM2(name, internal_name) {{TYPE_PRIM, {.prim_data = internal_name##_prim}}, name}
+#define PRIM(name) PRIM2(#name, name)
+#define PRIM_E(name) PRIM2(#name"!", name)
+#define PRIM_Q(name) PRIM2(#name"?", name)
+#define H_PRIM(name) {{TYPE_HIGH_PRIM, {.high_prim_data = name##_prim}}, #name}
 
-struct prim_binding prims[] = {
-    "cons", cons_prim,
-    "car", car_prim,
-    "cdr", cdr_prim,
-    "null?", null_prim,
-    "eq?", eq_prim,
-    "=", equ_prim,
-    "+", add_prim,
-    "-", sub_prim,
-    "*", mul_prim,
-    "/", div_prim,
-    "cadr", cadr_prim,
-    "caddr", caddr_prim,
-    "cadddr", cadddr_prim,
-    "pair?", pair_prim,
-    "not", not_prim,
-    "<", lt_prim,
-    ">", gt_prim,
-    "list", list_prim,
-    "cddr", cddr_prim,
-    "cdddr", cdddr_prim,
-    "cddddr", cddddr_prim,
-    "equal?", equal_prim,
-    "set-car!", set_car_prim,
-    "set-cdr!", set_cdr_prim,
-    "length", length_prim,
-    "display", display_prim,
-    "newline", newline_prim,
-    "number?", number_prim,
-    "symbol?", symbol_prim,
-    "string?", string_prim,
-    "procedure?", procedure_prim,
-    "error", error_prim,
-    "caar", caar_prim,
-    "caaar", caaar_prim,
-    "caaaar", caaaar_prim,
-    "cdaaar", cdaaar_prim,
-    "cdaar", cdaar_prim,
-    "cadaar", cadaar_prim,
-    "cddaar", cddaar_prim,
-    "cdar", cdar_prim,
-    "cadar", cadar_prim,
-    "caadar", caadar_prim,
-    "cdadar", cdadar_prim,
-    "cddar", cddar_prim,
-    "caddar", caddar_prim,
-    "cdddar", cdddar_prim,
-    "caadr", caadr_prim,
-    "caaadr", caaadr_prim,
-    "cdaadr", cdaadr_prim,
-    "cdadr", cdadr_prim,
-    "cadadr", cadadr_prim,
-    "cddadr", cddadr_prim,
-    "caaddr", caaddr_prim,
-    "cdaddr", cdaddr_prim,
+Binding r5rs_bindings[] = {
+    PRIM(cons),
+    PRIM(car),
+    PRIM(caar),
+    PRIM(caaar),
+    PRIM(caaaar),
+    PRIM(cdaaar),
+    PRIM(cdaar),
+    PRIM(cadaar),
+    PRIM(cddaar),
+    PRIM(cdar),
+    PRIM(cadar),
+    PRIM(caadar),
+    PRIM(cdadar),
+    PRIM(cddar),
+    PRIM(caddar),
+    PRIM(cdddar),
+    PRIM(cdr),
+    PRIM(cadr),
+    PRIM(caadr),
+    PRIM(caaadr),
+    PRIM(cdaadr),
+    PRIM(cdadr),
+    PRIM(cadadr),
+    PRIM(cddadr),
+    PRIM(cddr),
+    PRIM(caddr),
+    PRIM(caaddr),
+    PRIM(cdaddr),
+    PRIM(cdddr),
+    PRIM(cadddr),
+    PRIM(cddddr),
+    PRIM2("set-car!", set_car),
+    PRIM2("set-cdr!", set_cdr),
+    PRIM_Q(eq),
+    PRIM_Q(equal),
+    PRIM_Q(pair),
+    PRIM_Q(null),
+    PRIM_Q(number),
+    PRIM_Q(symbol),
+    PRIM_Q(string),
+    PRIM_Q(procedure),
+    PRIM(not),
+    PRIM2("+", add),
+    PRIM2("-", sub),
+    PRIM2("*", mul),
+    PRIM2("/", div),
+    PRIM2("=", equ),
+    PRIM2("<", lt),
+    PRIM2(">", gt),
+    PRIM(list),
+    PRIM(length),
+    H_PRIM(apply),
+    PRIM(display),
+    PRIM(newline),
+    PRIM(error),
+    H_PRIM(read),
 };
 
-struct high_prim_binding high_prims[] = {
-    "apply", apply_prim,
-    "read", read_prim,
+uint32_t r5rs_bindings_size = sizeof(r5rs_bindings) / sizeof(Binding);
+
+Binding compiler_bindings[] = {
+    PRIM2("next-token", next_token),
+    PRIM2("this-inst", this_inst),
+    PRIM2("next-inst", next_inst),
+    PRIM2("set-const!", set_const),
+    PRIM2("set-var!", set_var),
+    PRIM2("set-name!", set_name),
+    PRIM2("set-def!", set_def),
+    PRIM2("set-set!", set_set),
+    PRIM2("set-set-name!", set_set_name),
+    PRIM2("set-jump!", set_jump),
+    PRIM2("set-jump-false!", set_jump_false),
+    PRIM2("set-lambda!", set_lambda),
+    PRIM2("set-call!", set_call),
+    PRIM2("set-tail-call!", set_tail_call),
+    PRIM2("set-return!", set_return),
+    PRIM2("set-delete!", set_delete),
+    PRIM2("set-cons!", set_cons),
+    PRIM2("new-symbol", new_symbol),
 };
 
-size_t prims_size = sizeof(prims) / sizeof(struct prim_binding);
-size_t high_prims_size = sizeof(high_prims) / sizeof(struct high_prim_binding);
+uint32_t compiler_bindings_size = sizeof(compiler_bindings) / sizeof(Binding);

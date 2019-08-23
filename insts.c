@@ -2,20 +2,14 @@
 #include <string.h>
 
 #include "insts.h"
-#include "expr.h"
-#include "safemem.h"
+#include "types.h"
 #include "display.h"
+#include "safestd.h"
 #include "symbol.h"
 
 Inst *insts;
-int insts_size = 4096;
-int inst_index = 0;
-
-/* == insts.c
- * Allocates program memory to the compiler.
- * The program memory consists of a linked list of instruction arrays.
- * Each block ends in a BLOCK_JUMP instruction to give the illusion of continuous memory.
- */
+uint32_t insts_size = 4096;
+uint32_t inst_index = 0;
 
 void setup_insts(void) {
     insts = s_malloc(insts_size * sizeof(Inst));
@@ -24,8 +18,7 @@ void setup_insts(void) {
     tail_call_inst = next_inst();
     insts[tail_call_inst] = (Inst){INST_TAIL_CALL};
     compiler_pc = this_inst();
-    // FIXME CHECK FOR NULL
-    load_insts(fopen("compiler.sss", "rb"));
+    load_insts(s_fopen("compiler.sss", "rb"));
     compile_pc = this_inst();
     insts[next_inst()] = (Inst){INST_NAME, {.name = "parse-and-compile"}};
     insts[next_inst()] = (Inst){INST_TAIL_CALL, {.num = 0}};
@@ -38,7 +31,7 @@ void setup_insts(void) {
  * Returns the next instruction in program memory and moves the allocation
  * pointer forward.
  */
-int next_inst(void) {
+uint32_t next_inst(void) {
     if (inst_index >= insts_size) {
         insts_size *= 2;
         insts = s_realloc(insts, insts_size * sizeof(Inst));
@@ -50,12 +43,16 @@ int next_inst(void) {
  * Returns the next instruction in program memory without moving
  * the allocation pointer.
  */
-int this_inst(void) {
+uint32_t this_inst(void) {
     return inst_index;
 }
 
-int next_expr(int start) {
-    for (int i = start; ; i++)
+/* -- next_expr
+ * Finds the beginning of the next expression or end of code starting
+ * from the given index.
+ */
+uint32_t next_expr(uint32_t start) {
+    for (uint32_t i = start; ; i++)
         if (insts[i].type == INST_EXPR || insts[i].type == INST_EOF)
             return i;
 }
@@ -90,8 +87,8 @@ void save_val(FILE *fp, Val val) {
     case TYPE_UNDEF:
         break;
     default:
-        fprintf(stderr, "Error: value of type %s not a valid literal\n", sprint_type(val.type));
-        exit(3);
+        eprintf("Error: value of type %s not a valid literal\n", type_name(val.type));
+        exit(1);
     }
 }
 
@@ -101,8 +98,8 @@ void save_magic(FILE *fp) {
     fputs(magic, fp);
 }
 
-void save_insts(FILE *fp, int start, int end) {
-    for (int n = start; n != end; n++) {
+void save_insts(FILE *fp, uint32_t start, uint32_t end) {
+    for (uint32_t n = start; n != end; n++) {
         putc(insts[n].type, fp);
         switch (insts[n].type) {
         case INST_CONST:
@@ -120,7 +117,7 @@ void save_insts(FILE *fp, int start, int end) {
             break;
         case INST_JUMP:
         case INST_JUMP_FALSE: {
-            int index = insts[n].index - start;
+            uint32_t index = insts[n].index - start;
             for (int i = 3; i >= 0; i--)
                 putc(index >> 8 * i, fp);
             break;
@@ -128,7 +125,7 @@ void save_insts(FILE *fp, int start, int end) {
         case INST_LAMBDA: {
             for (int i = 3; i >= 0; i--)
                 putc(insts[n].lambda.params >> 8 * i, fp);
-            int index = insts[n].lambda.index - start;
+            uint32_t index = insts[n].lambda.index - start;
             for (int i = 3; i >= 0; i--)
                 putc(index >> 8 * i, fp);
             break;
@@ -195,22 +192,22 @@ Val load_val(FILE *fp) {
     case TYPE_UNDEF:
         return (Val){TYPE_UNDEF};
     default:
-        fprintf(stderr, "Error: invalid type (%d)\n", type);
-        exit(3);
+        eprintf("Error: invalid type (%d)\n", type);
+        exit(1);
     }
 }
 
 void load_insts(FILE *fp) {
-    int start = this_inst();
+    uint32_t start = this_inst();
     char s[9];
     fgets(s, 9, fp);
     if (strcmp(s, magic) != 0) {
-        fprintf(stderr, "Error: not a valid bytecode file\n");
-        exit(3);
+        eprintf("Error: not a valid bytecode file\n");
+        exit(1);
     }
     char c;
     while ((c = getc(fp)) != EOF) {
-        int n = next_inst();
+        uint32_t n = next_inst();
         insts[n].type = c;
         switch (insts[n].type) {
         case INST_CONST:
@@ -227,18 +224,18 @@ void load_insts(FILE *fp) {
             break;
         case INST_JUMP:
         case INST_JUMP_FALSE: {
-            int index = 0;
+            uint32_t index = 0;
             for (int i = 0; i < 4; i++)
                 index = index << 8 | getc(fp);
             insts[n].index = index + start;
             break;
         }
         case INST_LAMBDA: {
-            int params = 0;
+            uint32_t params = 0;
             for (int i = 0; i < 4; i++)
                 params = params << 8 | getc(fp);
             insts[n].lambda.params = params;
-            long long index = 0;
+            uint32_t index = 0;
             for (int i = 0; i < 4; i++)
                 index = index << 8 | getc(fp);
             insts[n].lambda.index = index + start;
@@ -246,7 +243,7 @@ void load_insts(FILE *fp) {
         }
         case INST_CALL:
         case INST_TAIL_CALL: {
-            int num = 0;
+            uint32_t num = 0;
             for (int i = 0; i < 4; i++)
                 num = num << 8 | getc(fp);
             insts[n].num = num;
@@ -258,8 +255,8 @@ void load_insts(FILE *fp) {
         case INST_EXPR:
             break;
         default:
-            fprintf(stderr, "Error: invalid instruction type (%d)\n", insts[n].type);
-            exit(3);
+            eprintf("Error: invalid instruction type (%d)\n", insts[n].type);
+            exit(1);
         }
     }
     insts[next_inst()] = (Inst){INST_EOF};

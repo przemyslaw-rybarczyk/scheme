@@ -2,9 +2,8 @@
 #include <string.h>
 
 #include "predicates.h"
-#include "../expr.h"
+#include "../types.h"
 #include "assert.h"
-#include "../exec.h"
 
 int eq(Val val1, Val val2) {
     if (val1.type != val2.type)
@@ -27,12 +26,13 @@ int eq(Val val1, Val val2) {
         return val1.pair_data == val2.pair_data;
     case TYPE_NIL:
     case TYPE_VOID:
+    case TYPE_UNDEF:
     case TYPE_BROKEN_HEART:
         return 1;
     }
 }
 
-Val eq_prim(Val *args, int num) {
+Val eq_prim(Val *args, uint32_t num) {
     args_assert(num == 2);
     return (Val){TYPE_BOOL, {.int_data = eq(args[0], args[1])}};
 }
@@ -50,42 +50,42 @@ int equal(Val val1, Val val2) {
     }
 }
 
-Val equal_prim(Val *args, int num) {
+Val equal_prim(Val *args, uint32_t num) {
     args_assert(num == 2);
     return (Val){TYPE_BOOL, {.int_data = equal(args[0], args[1])}};
 }
 
-Val pair_prim(Val *args, int num) {
+Val pair_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
     return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_PAIR}};
 }
 
-Val null_prim(Val *args, int num) {
+Val null_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
     return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_NIL}};
 }
 
-Val number_prim(Val *args, int num) {
+Val number_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
     return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_INT || args[0].type == TYPE_FLOAT}};
 }
 
-Val symbol_prim(Val *args, int num) {
+Val symbol_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
     return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_SYMBOL}};
 }
 
-Val string_prim(Val *args, int num) {
+Val string_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
     return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_STRING}};
 }
 
-Val procedure_prim(Val *args, int num) {
+Val procedure_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
     return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_PRIM || args[0].type == TYPE_LAMBDA || args[0].type == TYPE_HIGH_PRIM}};
 }
 
-Val not_prim(Val *args, int num) {
+Val not_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
     if (is_true(args[0]))
         return (Val){TYPE_BOOL, {.int_data = 0}};

@@ -1,9 +1,9 @@
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "symbol.h"
-#include "expr.h"
-#include "safemem.h"
+#include "types.h"
+#include "safestd.h"
 
 size_t obarray_size = 256;
 char **obarray;

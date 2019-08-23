@@ -1,6 +1,6 @@
-#include "expr.h"
+#include "types.h"
 
-extern struct prim_binding prims[];
-extern struct high_prim_binding high_prims[];
-size_t prims_size;
-size_t high_prims_size;
+extern Binding r5rs_bindings[];
+uint32_t r5rs_bindings_size;
+extern Binding compiler_bindings[];
+uint32_t compiler_bindings_size;

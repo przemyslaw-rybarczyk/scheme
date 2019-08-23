@@ -1,6 +1,3 @@
-#include "expr.h"
+#include "types.h"
 
-void stack_push(Val val);
-Val stack_pop(void);
-Val exec(int init_pc, Global_env *global_env);
-int is_true(Val val);
+Val exec(uint32_t init_pc, Global_env *global_env);
