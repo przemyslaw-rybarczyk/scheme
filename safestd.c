@@ -5,7 +5,7 @@
 #include "types.h"
 
 /* == safestd.c
- * This file contains versions of `malloc`, `realloc`, `ungetc`, `fopen` and `fgetc`
+ * This file contains versions of several standard library functions
  * that don't return error values and instead exit the program upon error.
  */
 
@@ -29,7 +29,7 @@ void *s_realloc(void *ptr, size_t size) {
 
 void s_ungetc(char c, FILE *f) {
     if (ungetc(c, f) == EOF) {
-        eprintf("Error: ungetc failed\n");
+        eprintf("Error: ungetc() failed\n");
         exit(1);
     }
 }
@@ -50,4 +50,25 @@ int s_fgetc(FILE *f) {
         exit(1);
     }
     return c;
+}
+
+void s_fputc(int c, FILE *f) {
+    if (putc(c, f) == EOF) {
+        eprintf("Error: putc() failed\n");
+        exit(1);
+    }
+}
+
+void s_fputs(const char *s, FILE *f) {
+    if (fputs(s, f) == EOF) {
+        eprintf("Error: fputs() failed\n");
+        exit(1);
+    }
+}
+
+void s_fgets(char *s, int size, FILE *f) {
+    if (fgets(s, size, f) == NULL) {
+        eprintf("Error: fgets() failed\n");
+        exit(1);
+    }
 }

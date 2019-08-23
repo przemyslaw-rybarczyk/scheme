@@ -57,30 +57,34 @@ uint32_t next_expr(uint32_t start) {
             return i;
 }
 
-void save_loc(FILE *fp, Env_loc loc) {
-    for (int i = 1; i >= 0; i--)
-        putc(loc.frame >> 8 * i, fp);
-    for (int i = 1; i >= 0; i--)
-        putc(loc.index >> 8 * i, fp);
+void save_uint32(FILE *fp, uint32_t n) {
+    for (int i = 3; i >= 0; i--)
+        s_fputc(n >> 8 * i, fp);
 }
 
 void save_val(FILE *fp, Val val) {
-    putc(val.type, fp);
+    s_fputc(val.type, fp);
     switch (val.type) {
     case TYPE_INT:
         for (int i = 7; i >= 0; i--)
-            putc(val.int_data >> 8 * i, fp);
+            s_fputc((uint64_t)val.int_data >> 8 * i, fp);
         break;
-    case TYPE_FLOAT:
-        // TODO
+    case TYPE_FLOAT: {
+        uint64_t n = (union {
+            uint64_t i;
+            double f;
+        }) {.f = val.float_data}.i;
+        for (int i = 7; i >= 0; i--)
+            s_fputc(n >> 8 * i, fp);
         break;
+    }
     case TYPE_BOOL:
-        putc(val.int_data, fp);
+        s_fputc(val.int_data, fp);
         break;
     case TYPE_STRING:
     case TYPE_SYMBOL:
-        fputs(val.string_data, fp);
-        putc('\0', fp);
+        s_fputs(val.string_data, fp);
+        s_fputc('\0', fp);
         break;
     case TYPE_NIL:
     case TYPE_VOID:
@@ -94,46 +98,37 @@ void save_val(FILE *fp, Val val) {
 
 const char *magic = "\xf0\x9f\x91\xad""v3.0";
 
-void save_magic(FILE *fp) {
-    fputs(magic, fp);
-}
-
 void save_insts(FILE *fp, uint32_t start, uint32_t end) {
+    s_fputs(magic, fp);
     for (uint32_t n = start; n != end; n++) {
-        putc(insts[n].type, fp);
+        s_fputc(insts[n].type, fp);
         switch (insts[n].type) {
         case INST_CONST:
             save_val(fp, insts[n].val);
             break;
         case INST_VAR:
         case INST_SET:
-            save_loc(fp, insts[n].var);
+            save_uint32(fp, insts[n].var.frame);
+            save_uint32(fp, insts[n].var.index);
             break;
         case INST_NAME:
         case INST_DEF:
         case INST_SET_NAME:
-            fputs(insts[n].name, fp);
-            putc('\0', fp);
+            s_fputs(insts[n].name, fp);
+            s_fputc('\0', fp);
             break;
         case INST_JUMP:
-        case INST_JUMP_FALSE: {
-            uint32_t index = insts[n].index - start;
-            for (int i = 3; i >= 0; i--)
-                putc(index >> 8 * i, fp);
+        case INST_JUMP_FALSE:
+            save_uint32(fp, insts[n].index - start);
             break;
-        }
         case INST_LAMBDA: {
-            for (int i = 3; i >= 0; i--)
-                putc(insts[n].lambda.params >> 8 * i, fp);
-            uint32_t index = insts[n].lambda.index - start;
-            for (int i = 3; i >= 0; i--)
-                putc(index >> 8 * i, fp);
+            save_uint32(fp, insts[n].lambda.params);
+            save_uint32(fp, insts[n].lambda.index - start);
             break;
         }
         case INST_CALL:
         case INST_TAIL_CALL:
-            for (int i = 3; i >= 0; i--)
-                putc(insts[n].num >> 8 * i, fp);
+            save_uint32(fp, insts[n].num);
             break;
         case INST_RETURN:
         case INST_DELETE:
@@ -143,20 +138,18 @@ void save_insts(FILE *fp, uint32_t start, uint32_t end) {
     }
 }
 
-Env_loc load_loc(FILE *fp) {
-    Env_loc loc = {0, 0};
-    for (int i = 0; i < 2; i++)
-        loc.frame = loc.frame << 8 | getc(fp);
-    for (int i = 0; i < 2; i++)
-        loc.index = loc.index << 8 | getc(fp);
-    return loc;
+uint32_t load_uint32(FILE *fp) {
+    uint32_t n = 0;
+    for (int i = 0; i < 4; i++)
+        n = n << 8 | s_fgetc(fp);
+    return n;
 }
 
 char *load_str(FILE *fp) {
     int size = 16;
     char *str = s_malloc(size * sizeof(char));
     char *s = str;
-    while ((*s++ = getc(fp)) != '\0') {
+    while ((*s++ = s_fgetc(fp)) != '\0') {
         if (s - str >= size) {
             size *= 2;
             int i = s - str;
@@ -168,19 +161,26 @@ char *load_str(FILE *fp) {
 }
 
 Val load_val(FILE *fp) {
-    char type = getc(fp);
+    char type = s_fgetc(fp);
     switch (type) {
     case TYPE_INT: {
         long long n = 0;
         for (int i = 0; i < 8; i++)
-            n = n << 8 | getc(fp);
+            n = n << 8 | s_fgetc(fp);
         return (Val){TYPE_INT, {.int_data = n}};
     }
-    case TYPE_FLOAT:
-        // TODO
-        break;
+    case TYPE_FLOAT: {
+        uint64_t n = 0;
+        for (int i = 0; i < 8; i++)
+            n = n << 8 | s_fgetc(fp);
+        float f = (union {
+            uint64_t i;
+            double f;
+        }) {.i = n}.f;
+        return (Val){TYPE_FLOAT, {.float_data = f}};
+    }
     case TYPE_BOOL:
-        return (Val){TYPE_BOOL, {.int_data = getc(fp)}};
+        return (Val){TYPE_BOOL, {.int_data = s_fgetc(fp)}};
     case TYPE_STRING:
         return (Val){TYPE_STRING, {.string_data = load_str(fp)}};
     case TYPE_SYMBOL:
@@ -200,13 +200,13 @@ Val load_val(FILE *fp) {
 void load_insts(FILE *fp) {
     uint32_t start = this_inst();
     char s[9];
-    fgets(s, 9, fp);
+    s_fgets(s, 9, fp);
     if (strcmp(s, magic) != 0) {
         eprintf("Error: not a valid bytecode file\n");
         exit(1);
     }
     char c;
-    while ((c = getc(fp)) != EOF) {
+    while ((c = s_fgetc(fp)) != EOF) {
         uint32_t n = next_inst();
         insts[n].type = c;
         switch (insts[n].type) {
@@ -215,7 +215,8 @@ void load_insts(FILE *fp) {
             break;
         case INST_VAR:
         case INST_SET:
-            insts[n].var = load_loc(fp);
+            insts[n].var.frame = load_uint32(fp);
+            insts[n].var.index = load_uint32(fp);
             break;
         case INST_NAME:
         case INST_DEF:
@@ -223,32 +224,17 @@ void load_insts(FILE *fp) {
             insts[n].name = load_str(fp);
             break;
         case INST_JUMP:
-        case INST_JUMP_FALSE: {
-            uint32_t index = 0;
-            for (int i = 0; i < 4; i++)
-                index = index << 8 | getc(fp);
-            insts[n].index = index + start;
+        case INST_JUMP_FALSE:
+            insts[n].index = load_uint32(fp) + start;
             break;
-        }
-        case INST_LAMBDA: {
-            uint32_t params = 0;
-            for (int i = 0; i < 4; i++)
-                params = params << 8 | getc(fp);
-            insts[n].lambda.params = params;
-            uint32_t index = 0;
-            for (int i = 0; i < 4; i++)
-                index = index << 8 | getc(fp);
-            insts[n].lambda.index = index + start;
+        case INST_LAMBDA:
+            insts[n].lambda.params = load_uint32(fp);
+            insts[n].lambda.index = load_uint32(fp) + start;
             break;
-        }
         case INST_CALL:
-        case INST_TAIL_CALL: {
-            uint32_t num = 0;
-            for (int i = 0; i < 4; i++)
-                num = num << 8 | getc(fp);
-            insts[n].num = num;
+        case INST_TAIL_CALL:
+            insts[n].num = load_uint32(fp);
             break;
-        }
         case INST_RETURN:
         case INST_DELETE:
         case INST_CONS:

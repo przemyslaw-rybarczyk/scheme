@@ -163,7 +163,6 @@ int main(int argc, char **argv) {
 
     if (output_mode == OUTPUT_BYTECODE) {
         FILE *output_file = s_fopen(output_file_name, "wb");
-        save_magic(output_file);
         uint32_t end = this_inst();
         if (input_mode == INPUT_BYTECODE)
             end--;
