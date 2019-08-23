@@ -1,11 +1,11 @@
-#include "../expr.h"
+#include "../types.h"
 
-Val eq_prim(Val *args, int num);
-Val equal_prim(Val *args, int num);
-Val pair_prim(Val *args, int num);
-Val null_prim(Val *args, int num);
-Val number_prim(Val *args, int num);
-Val symbol_prim(Val *args, int num);
-Val string_prim(Val *args, int num);
-Val procedure_prim(Val *args, int num);
-Val not_prim(Val *args, int num);
+Val eq_prim(Val *args, uint32_t num);
+Val equal_prim(Val *args, uint32_t num);
+Val pair_prim(Val *args, uint32_t num);
+Val null_prim(Val *args, uint32_t num);
+Val number_prim(Val *args, uint32_t num);
+Val symbol_prim(Val *args, uint32_t num);
+Val string_prim(Val *args, uint32_t num);
+Val procedure_prim(Val *args, uint32_t num);
+Val not_prim(Val *args, uint32_t num);

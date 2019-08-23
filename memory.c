@@ -2,23 +2,16 @@
 #include <stdlib.h>
 
 #include "memory.h"
-#include "safemem.h"
-#include "expr.h"
+#include "types.h"
 #include "env.h"
 #include "exec.h"
 #include "exec_gc.h"
+#include "safestd.h"
 
 void *mem_start;
 size_t mem_size = 32 * 65536;
 void *free_ptr;
 
-Env **env_stack[2];
-Env ***env_stack_ptr = env_stack;
-
-/* -- setup_memory
- * Sets up the heap.
- * Should be called at the start of `main`.
- */
 void setup_memory(void) {
     free_ptr = mem_start = s_malloc(mem_size);
 }
@@ -26,29 +19,26 @@ void setup_memory(void) {
 void garbage_collect();
 
 /* -- gc_alloc
- * TODO doc
- * Allocates a memory cell and returns its address.
- * If the memory is full, it performs garbage collection.
- * This function is called by the more specific functions
- * `alloc_pair`, `alloc_lambda`, `alloc_frame`, `alloc_env`.
- * which allocate memory for specific types of cells by performing
- * the appropriate pointer conversions.
+ * Allocates a given amount of memory and returns its address, possibly
+ * invoking the garbage collector.
  */
 void *gc_alloc(size_t size) {
 #ifndef GC_ALWAYS
-    if (free_ptr + size >= mem_start + mem_size)
+    if (free_ptr >= mem_start + mem_size - size)
 #endif
         garbage_collect();
-    if (free_ptr + size >= mem_start + mem_size) {
-        // TODO expand memory
+    if (free_ptr >= mem_start + mem_size - size) {
         printf("Internal error: out of memory\n");
-        exit(-1);
+        exit(1);
     }
     free_ptr += size;
     return free_ptr - size;
 }
 
 /* -- force_alloc
+ * Allocates a given amount of memory and returns its address without checking
+ * whether it can be allocated. It is used only inside the garbage collector,
+ * as it's impossible to run out of memory there.
  */
 void *force_alloc(size_t size) {
     free_ptr += size;
@@ -66,30 +56,28 @@ Lambda *move_lambda(Lambda *lambda);
  * is still taken up afterwards.
  *
  * The garbage collector is a simple stop-and-copy collector, which recursively
- * copies cells to the new memory, taking as a starting point the global
- * environment, evironments and values located on the VM stack, and `env_stack`,
- * a special stack containing pointers to up to two environment pointers, used
- * in some environment-related functions.
+ * copies objects to the new memory, taking as a starting point the global
+ * environment, evironments and values located on the stack, and `env_lock`.
  *
  * Unlike the garbage collector of SICP chapter 5.3.2, which uses a pointer that
  * sequentially scans all the copied cells, the copying here is performed
- * recursively, because cells can contain one of four data types, which can only
- * be known through the type of a pointer pointing to data allocated within
- * the cell.
+ * recursively, because memory constists of several data types, which can only
+ * be known through the type of a pointer pointing to allocated data.
  *
- * Each type of cell is turned into a 'broken heart' after being moved to the
- * new heap. For `env`s and `lambda`s this is indicated through setting a special
- * `new_ptr` member variable to point to the reallocated  The `frame`s and
- * `pair`s have their `binding.val` and `car`, respectively, member's `type` set
- * to a special value of TYPE_BROKEN_HEART, with the pointer respectively in
- * `next` and `car.pair_data` members.
+ * Each type of data is turned into a 'broken heart' after being moved to the
+ * new heap.
+ * +-----------+-------------------------------------+---------------------------+
+ * | data type | conditon for broken heart           | field holding new address |
+ * +-----------+-------------------------------------+---------------------------+
+ * | Env       | env->size == UINT32_MAX             | env->outer                |
+ * | Lambda    | lambda->body == UINT32_MAX          | lambda->new_ptr           |
+ * | Pair      | pair->car.type == TYPE_BROKEN_HEART | pair->car.pair_data       |
+ * +-----------+-------------------------------------+---------------------------+
  *
- * If a broken heart value is detected, the cell has already been moved and the
+ * If a broken heart value is detected, the data has already been moved and the
  * moving function simply returns the address contained within it. Otherwise it
  * sets up the broken heart and copies data to the new address, determined by
  * the `free_ptr` pointer.
- *
- * TODO redocument
  */
 void garbage_collect(void) {
     // TODO try allocating less memory in case of malloc failure
@@ -97,13 +85,14 @@ void garbage_collect(void) {
     free_ptr = new_mem;
     for (Binding *bind_ptr = global_env->bindings; bind_ptr < global_env->bindings + global_env->size; bind_ptr++)
         bind_ptr->val = move_val(bind_ptr->val);
+    for (Binding *bind_ptr = compiler_env->bindings; bind_ptr < compiler_env->bindings + global_env->size; bind_ptr++)
+        bind_ptr->val = move_val(bind_ptr->val);
     for (Val *val_ptr = stack; val_ptr < stack_ptr; val_ptr++)
         *val_ptr = move_val(*val_ptr);
     exec_env = move_env(exec_env);
-    for (Env ***env_ptr = env_stack; env_ptr < env_stack_ptr; env_ptr++)
-        **env_ptr = move_env(**env_ptr);
     free(mem_start);
     mem_start = new_mem;
+    // TODO leave extension for later
     if (free_ptr - mem_start >= mem_size / 2) {
         mem_size *= 2;
         garbage_collect();
@@ -113,11 +102,11 @@ void garbage_collect(void) {
 Env *move_env(Env *env) {
     if (env == NULL)
         return env;
-    if (env->size == -1)
+    if (env->size == UINT32_MAX)
         return env->outer;
     Env *new_env = force_alloc(sizeof(Env) + env->size * sizeof(Val));
     *new_env = *env;
-    env->size = -1;
+    env->size = UINT32_MAX;
     env->outer = new_env;
     new_env->outer = move_env(new_env->outer);
     for (size_t i = 0; i < new_env->size; i++)
@@ -154,19 +143,12 @@ Pair *move_pair(Pair *pair) {
 }
 
 Lambda *move_lambda(Lambda *lambda) {
-    if (lambda->new_ptr != NULL)
+    if (lambda->body == UINT32_MAX)
         return lambda->new_ptr;
     Lambda *new_lambda = force_alloc(sizeof(Lambda));
     *new_lambda = *lambda;
+    lambda->body = UINT32_MAX;
     lambda->new_ptr = new_lambda;
     new_lambda->env = move_env(new_lambda->env);
     return new_lambda;
-}
-
-void gc_push_env(Env **env) {
-    *env_stack_ptr++ = env;
-}
-
-void gc_pop_env() {
-    --env_stack_ptr;
 }

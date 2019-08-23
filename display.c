@@ -1,17 +1,17 @@
 #include <stdio.h>
 
 #include "display.h"
-#include "expr.h"
+#include "types.h"
 #include "insts.h"
 
-void display_val_list(Pair *list);
+void print_val_list(Pair *list);
 
-/* -- display_val
- * Displays a value as seen in the REPL.
+/* -- print_val
+ * Prints a value as seen in the REPL.
  * Void type values are prevented from displaying on their own in `main`.
- * but they can be displayed as part of compound data structures.
+ * but they can still be printed as part of a compound data structure.
  */
-void display_val(Val val) {
+void print_val(Val val) {
     switch(val.type) {
     case TYPE_INT:
         printf("%lld", val.int_data);
@@ -39,7 +39,7 @@ void display_val(Val val) {
         break;
     case TYPE_PAIR:
         putchar('(');
-        display_val_list(val.pair_data);
+        print_val_list(val.pair_data);
         putchar(')');
         break;
     case TYPE_NIL:
@@ -66,27 +66,27 @@ void display_val(Val val) {
     }
 }
 
-void display_val_list(Pair *list) {
-    display_val(list->car);
+void print_val_list(Pair *list) {
+    print_val(list->car);
     switch (list->cdr.type) {
     case TYPE_PAIR:
         putchar(' ');
-        display_val_list(list->cdr.pair_data);
+        print_val_list(list->cdr.pair_data);
         break;
     case TYPE_NIL:
         break;
     default:
         printf(" . ");
-        display_val(list->cdr);
+        print_val(list->cdr);
         break;
     }
 }
 
-/* -- sprint_type
+/* -- type_name
  * Returns a string containing a type name.
  * Used for error messages about invalid types.
  */
-const char *sprint_type(Type type) {
+const char *type_name(Type type) {
     switch (type) {
     case TYPE_INT:
         return "int";
@@ -122,50 +122,50 @@ const char *sprint_type(Type type) {
     }
 }
 
-void inner_display_val_list(Pair *list);
+void display_val_list(Pair *list);
 
 /* -- inner_display_val
  * Displays a value as seen as a result of the `display` primitive.
- * Differs from `display_val` in that is displays string without quotes.
+ * Differs from `print_val` in that is displays string without quotes.
  */
-void inner_display_val(Val val) {
+void display_val(Val val) {
     switch (val.type) {
     case TYPE_STRING:
         printf("%s", val.string_data);
         break;
     case TYPE_PAIR:
         putchar('(');
-        inner_display_val_list(val.pair_data);
+        display_val_list(val.pair_data);
         putchar(')');
         break;
     default:
-        display_val(val);
+        print_val(val);
         break;
     }
 }
 
-void inner_display_val_list(Pair *list) {
-    inner_display_val(list->car);
+void display_val_list(Pair *list) {
+    display_val(list->car);
     switch (list->cdr.type) {
     case TYPE_PAIR:
         putchar(' ');
-        inner_display_val_list(list->cdr.pair_data);
+        display_val_list(list->cdr.pair_data);
         break;
     case TYPE_NIL:
         break;
     default:
         printf(" . ");
-        inner_display_val(list->cdr);
+        display_val(list->cdr);
         break;
     }
 }
 
-void display_inst(int n) {
+void print_inst(int n) {
     printf("%d ", n);
     switch (insts[n].type) {
     case INST_CONST:
         printf("CONST ");
-        display_val(insts[n].val);
+        print_val(insts[n].val);
         printf("\n");
         break;
     case INST_VAR:

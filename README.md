@@ -7,7 +7,6 @@ To compile the interpreter, run `./compile.sh`.
 
 ### Flags
 - `GC_ALWAYS` makes the garbage collector activate on every allocation. Useful for debugging.
-- `SHOW_VM_CODE` shows the compiled VM code after inputting an expression.
 
 ## Usage
 `./scheme [FILE] [--run] [--compile FILE] [--bytecode] [--show-bytecode]`

@@ -1,34 +1,31 @@
-#include <stdio.h>
 #include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "parser.h"
-#include "safemem.h"
-#include "expr.h"
-#include "display.h"
-#include "memory.h"
-#include "symbol.h"
+#include "types.h"
 #include "env.h"
 #include "exec.h"
 #include "insts.h"
-#include "primitives/compiler.h"
+#include "memory.h"
 #include "primitives/number.h"
+#include "primitives/compiler.h"
+#include "safestd.h"
+#include "symbol.h"
 
 #define INIT_TOKEN_LENGTH 16
 
-// TODO getc error checking
-
-/* -- getchar_nospace
- * Gets the next character from stdin, skipping whitespace and comments.
+/* -- fgetc_nospace
+ * Gets the next character from a file, skipping whitespace and comments.
  */
-int getc_nospace(FILE *f) {
-    char c;
+int fgetc_nospace(FILE *f) {
+    int c;
     while (1) {
-        while (isspace(c = getc(f)))
+        while (isspace(c = s_fgetc(f)))
             ;
         if (c == ';') {
-            while ((c = getc(f)) != '\n' && c != EOF)
+            while ((c = s_fgetc(f)) != '\n' && c != EOF)
                 ;
             continue;
         }
@@ -38,12 +35,12 @@ int getc_nospace(FILE *f) {
 }
 
 Val get_token(FILE *f) {
-    int c = getc_nospace(f);
+    int c = fgetc_nospace(f);
 
     // simple cases
     if (c == '(' || c == ')' || c == '\'' || c == EOF) {
         Pair *pair = gc_alloc(sizeof(Pair));
-        pair->car = (Val){TYPE_SYMBOL, {.string_data = intern_symbol(strdup("token"))}};
+        pair->car = (Val){TYPE_SYMBOL, {.string_data = intern_symbol("token")}};
         pair->cdr = (Val){TYPE_INT, {.int_data = c}};
         return (Val){TYPE_PAIR, {.pair_data = pair}};
     }
@@ -54,9 +51,9 @@ Val get_token(FILE *f) {
     // string literal
     if (c == '"') {
         size_t i = 0;
-        while ((s[i] = getc(f)) != '"') {
+        while ((s[i] = s_fgetc(f)) != '"') {
             if (s[i] == EOF) {
-                fprintf(stderr, "Syntax error: premature end of file - '\"' expected\n");
+                eprintf("Syntax error: premature end of file - '\"' expected\n");
                 exit(1);
             }
             i++;
@@ -72,7 +69,7 @@ Val get_token(FILE *f) {
     // name
     size_t i = 1;
     s[0] = c;
-    while ((s[i] = getc(f)) != EOF && !isspace(s[i]) && s[i] != ';'
+    while ((s[i] = s_fgetc(f)) != EOF && !isspace(s[i]) && s[i] != ';'
             && s[i] != '(' && s[i] != ')' && s[i] != '\'' && s[i] != '"') {
         i++;
         if (i >= token_length) {
@@ -92,7 +89,7 @@ Val get_token(FILE *f) {
         double float_val = strtod(s, &endptr);
         if (*endptr == '\0')
             return (Val){TYPE_FLOAT, {.float_data = float_val}};
-        fprintf(stderr, "Syntax error: incorrect numeric literal %s\n", s);
+        eprintf("Syntax error: incorrect numeric literal %s\n", s);
         exit(1);
     }
 
@@ -106,19 +103,15 @@ Val get_token(FILE *f) {
             return (Val){TYPE_VOID};
         if (strcmp(s, "#!undef") == 0)
             return (Val){TYPE_PRIM, {.prim_data = add_prim}};
-        fprintf(stderr, "Syntax error: incorrect boolean or special literal %s\n", s);
+        eprintf("Syntax error: incorrect boolean or special literal %s\n", s);
         exit(1);
     }
 
     return (Val){TYPE_SYMBOL, {.string_data = intern_symbol(s)}};
 }
 
-/* -- read
- * Performs the entire parsing process.
- * Prevents syntax error on exit.
- */
 int read_expr(FILE *f) {
-    int c = getc_nospace(f);
+    int c = fgetc_nospace(f);
     if (c == EOF)
         return -1;
     s_ungetc(c, f);
