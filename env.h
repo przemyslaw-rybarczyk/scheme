@@ -1,5 +1,6 @@
 #include "types.h"
 
+Global_env *execution_env;
 Global_env *compiler_env;
 Global_env *make_global_env(int include_r5rs, int include_compiler);
 void setup_env(void);

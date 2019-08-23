@@ -3,11 +3,17 @@
 #include <string.h>
 
 #include "env.h"
+#include "exec.h"
 #include "types.h"
 #include "insts.h"
 #include "memory.h"
 #include "primitives.h"
 #include "safestd.h"
+
+/* -- execution_env
+ * The global environment in which programs are executed.
+ */
+Global_env *execution_env;
 
 /* -- compiler_env
  * The global environment in which the compiler is executed.
@@ -104,11 +110,11 @@ void define_var(char* var, Val val, Global_env *global) {
 /* -- extend_env
  * Extend an environment by a new frame containing bindings to the `vals_num`
  * values starting at `vals_start`.
- * Note: This function allocates garbage-collected data, so the environment
- * and values should be located on the stack when this function is called.
  */
 Env *extend_env(Val *vals_start, uint32_t vals_num, Env *env) {
+    gc_lock_env(&env);
     Env *ext_env = gc_alloc(sizeof(Env) + vals_num * sizeof(Val));
+    gc_unlock_env();
     ext_env->outer = env;
     ext_env->size = vals_num;
     memcpy(ext_env->vals, vals_start, vals_num * sizeof(Val));
