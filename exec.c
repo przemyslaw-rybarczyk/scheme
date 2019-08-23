@@ -17,7 +17,6 @@ Val stack[STACK_SIZE];
 Val *stack_ptr = stack;
 Env *exec_env;
 Global_env *global_env;
-uint32_t pc;
 
 void stack_push(Val val) {
     if (stack_ptr - stack >= STACK_SIZE) {

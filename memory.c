@@ -18,6 +18,20 @@ void setup_memory(void) {
 
 void garbage_collect();
 
+/* -- env_lock
+ * A pointer to an environment pointer which will be modified when
+ * the environment moves during garbage collection.
+ */
+Env **env_lock = NULL;
+
+void gc_lock_env(Env **env_ptr) {
+    env_lock = env_ptr;
+}
+
+void gc_unlock_env(void) {
+    env_lock = NULL;
+}
+
 /* -- gc_alloc
  * Allocates a given amount of memory and returns its address, possibly
  * invoking the garbage collector.
@@ -83,13 +97,15 @@ void garbage_collect(void) {
     // TODO try allocating less memory in case of malloc failure
     void *new_mem = s_malloc(mem_size);
     free_ptr = new_mem;
-    for (Binding *bind_ptr = global_env->bindings; bind_ptr < global_env->bindings + global_env->size; bind_ptr++)
+    for (Binding *bind_ptr = execution_env->bindings; bind_ptr < execution_env->bindings + execution_env->size; bind_ptr++)
         bind_ptr->val = move_val(bind_ptr->val);
-    for (Binding *bind_ptr = compiler_env->bindings; bind_ptr < compiler_env->bindings + global_env->size; bind_ptr++)
+    for (Binding *bind_ptr = compiler_env->bindings; bind_ptr < compiler_env->bindings + compiler_env->size; bind_ptr++)
         bind_ptr->val = move_val(bind_ptr->val);
     for (Val *val_ptr = stack; val_ptr < stack_ptr; val_ptr++)
         *val_ptr = move_val(*val_ptr);
     exec_env = move_env(exec_env);
+    if (env_lock != NULL)
+        *env_lock = move_env(*env_lock);
     free(mem_start);
     mem_start = new_mem;
     // TODO leave extension for later
