@@ -51,12 +51,12 @@ Val get_token(FILE *f) {
     // string literal
     if (c == '"') {
         size_t i = 0;
-        while ((s[i] = s_fgetc(f)) != '"') {
-            if (s[i] == EOF) {
+        while ((c = s_fgetc(f)) != '"') {
+            if (c == EOF) {
                 eprintf("Syntax error: premature end of file - '\"' expected\n");
                 exit(1);
             }
-            i++;
+            s[i++] = (char)c;
             if (i >= token_length) {
                 token_length *= 2;
                 s = s_realloc(s, token_length);
@@ -68,20 +68,20 @@ Val get_token(FILE *f) {
 
     // name
     size_t i = 1;
-    s[0] = c;
-    while ((s[i] = s_fgetc(f)) != EOF && !isspace(s[i]) && s[i] != ';'
-            && s[i] != '(' && s[i] != ')' && s[i] != '.' && s[i] != '\'' && s[i] != '"') {
-        i++;
+    s[0] = (char)c;
+    while ((c = s_fgetc(f)) != EOF && !isspace(c) && c != ';'
+            && c != '(' && c != ')' && c != '\'' && c != '"') {
+        s[i++] = (char)c;
         if (i >= token_length) {
             token_length *= 2;
             s = s_realloc(s, token_length);
         }
     }
-    s_ungetc(s[i], f);
+    s_ungetc(c, f);
     s[i] = '\0';
 
     // numeric literal
-    if ('0' <= s[0] && s[0] <= '9' || (s[0] == '+' || s[0] == '-') && s[1] != '\0') {
+    if (('0' <= s[0] && s[0] <= '9') || ((s[0] == '+' || s[0] == '-') && s[1] != '\0')) {
         char *endptr;
         long long int_val = strtoll(s, &endptr, 10);
         if (*endptr == '\0')
@@ -110,13 +110,13 @@ Val get_token(FILE *f) {
     return (Val){TYPE_SYMBOL, {.string_data = intern_symbol(s)}};
 }
 
-int read_expr(FILE *f) {
+uint32_t read_expr(FILE *f) {
     int c = fgetc_nospace(f);
     if (c == EOF)
-        return -1;
+        return UINT32_MAX;
     s_ungetc(c, f);
     compiler_input_file = f;
-    int program = next_inst();
+    uint32_t program = next_inst();
     insts[program] = (Inst){INST_EXPR};
     exec(compile_pc, compiler_env);
     return program;

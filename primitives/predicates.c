@@ -28,8 +28,12 @@ int eq(Val val1, Val val2) {
     case TYPE_VOID:
     case TYPE_UNDEF:
     case TYPE_BROKEN_HEART:
+    case TYPE_ENV:
+    case TYPE_INST:
+    case TYPE_GLOBAL_ENV:
         return 1;
     }
+    return 1;
 }
 
 Val eq_prim(Val *args, uint32_t num) {

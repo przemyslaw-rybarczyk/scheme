@@ -27,7 +27,7 @@ void *s_realloc(void *ptr, size_t size) {
     return p;
 }
 
-void s_ungetc(char c, FILE *f) {
+void s_ungetc(int c, FILE *f) {
     if (ungetc(c, f) == EOF) {
         eprintf("Error: ungetc() failed\n");
         exit(1);

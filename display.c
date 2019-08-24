@@ -122,6 +122,7 @@ const char *type_name(Type type) {
     case TYPE_GLOBAL_ENV:
         return "/global environment/";
     }
+    return "//INVALID TYPE//";
 }
 
 void display_val_list(Pair *list);
@@ -162,7 +163,7 @@ void display_val_list(Pair *list) {
     }
 }
 
-void print_inst(int n) {
+void print_inst(uint32_t n) {
     printf("%d ", n);
     switch (insts[n].type) {
     case INST_CONST:
