@@ -42,7 +42,7 @@ Val error_prim(Val *args, uint32_t num) {
 High_prim_return read_prim(uint32_t num) {
     args_assert(num == 0);
     stack_pop();
-    char c = fgetc_nospace(stdin);
+    int c = fgetc_nospace(stdin);
     if (c == EOF)
         exit(1);
     s_ungetc(c, stdin);

@@ -35,8 +35,8 @@ Val add_prim(Val *args, uint32_t num) {
 }
 
 Val sub_prim(Val *args, uint32_t num) {
-    long long int_diff;
-    double float_diff;
+    long long int_diff = 0;
+    double float_diff = 0;
     int float_val = 0;
     args_assert(num != 0);
     if (num == 1) {
@@ -115,7 +115,7 @@ Val mul_prim(Val *args, uint32_t num) {
 }
 
 Val div_prim(Val *args, uint32_t num) {
-    double quot;
+    double quot = 0;
     args_assert(num != 0);
     if (num == 1) {
         switch (args->type) {

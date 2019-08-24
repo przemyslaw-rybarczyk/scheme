@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -27,7 +28,7 @@ char *intern_symbol(char *symbol) {
     for (char **obarray_ptr = obarray; obarray_ptr < obarray_end; obarray_ptr++)
         if (strcmp(symbol, *obarray_ptr) == 0)
             return *obarray_ptr;
-    size_t index = obarray_end - obarray;
+    ptrdiff_t index = obarray_end - obarray;
     if (index >= obarray_size) {
         obarray_size *= 2;
         obarray = s_realloc(obarray, obarray_size);

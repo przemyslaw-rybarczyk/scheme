@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -59,7 +60,7 @@ uint32_t next_expr(uint32_t start) {
 
 void save_uint32(FILE *fp, uint32_t n) {
     for (int i = 3; i >= 0; i--)
-        s_fputc(n >> 8 * i, fp);
+        s_fputc((uint8_t)(n >> 8 * i), fp);
 }
 
 void save_val(FILE *fp, Val val) {
@@ -67,7 +68,7 @@ void save_val(FILE *fp, Val val) {
     switch (val.type) {
     case TYPE_INT:
         for (int i = 7; i >= 0; i--)
-            s_fputc((uint64_t)val.int_data >> 8 * i, fp);
+            s_fputc((uint8_t)((uint64_t)val.int_data >> 8 * i), fp);
         break;
     case TYPE_FLOAT: {
         uint64_t n = (union {
@@ -75,11 +76,11 @@ void save_val(FILE *fp, Val val) {
             double f;
         }) {.f = val.float_data}.i;
         for (int i = 7; i >= 0; i--)
-            s_fputc(n >> 8 * i, fp);
+            s_fputc((uint8_t)(n >> 8 * i), fp);
         break;
     }
     case TYPE_BOOL:
-        s_fputc(val.int_data, fp);
+        s_fputc((uint8_t)val.int_data, fp);
         break;
     case TYPE_STRING:
     case TYPE_SYMBOL:
@@ -133,26 +134,37 @@ void save_insts(FILE *fp, uint32_t start, uint32_t end) {
         case INST_RETURN:
         case INST_DELETE:
         case INST_CONS:
+        case INST_EXPR:
+        case INST_EOF:
             break;
         }
     }
 }
 
+unsigned char s_fgetc2(FILE *f) {
+    int c = s_fgetc(f);
+    if (c == EOF) {
+        eprintf("Error: unexpected end of file\n");
+        exit(1);
+    }
+    return (unsigned char)c;
+}
+
 uint32_t load_uint32(FILE *fp) {
     uint32_t n = 0;
     for (int i = 0; i < 4; i++)
-        n = n << 8 | s_fgetc(fp);
+        n = n << 8 | s_fgetc2(fp);
     return n;
 }
 
 char *load_str(FILE *fp) {
-    int size = 16;
+    unsigned int size = 16;
     char *str = s_malloc(size * sizeof(char));
     char *s = str;
-    while ((*s++ = s_fgetc(fp)) != '\0') {
+    while ((*s++ = (char)s_fgetc2(fp)) != '\0') {
         if (s - str >= size) {
             size *= 2;
-            int i = s - str;
+            ptrdiff_t i = s - str;
             str = s_realloc(str, size * sizeof(char));
             s = str + i;
         }
@@ -161,26 +173,26 @@ char *load_str(FILE *fp) {
 }
 
 Val load_val(FILE *fp) {
-    char type = s_fgetc(fp);
+    unsigned char type = s_fgetc2(fp);
     switch (type) {
     case TYPE_INT: {
         long long n = 0;
         for (int i = 0; i < 8; i++)
-            n = n << 8 | s_fgetc(fp);
+            n = n << 8 | s_fgetc2(fp);
         return (Val){TYPE_INT, {.int_data = n}};
     }
     case TYPE_FLOAT: {
         uint64_t n = 0;
         for (int i = 0; i < 8; i++)
-            n = n << 8 | s_fgetc(fp);
-        float f = (union {
+            n = n << 8 | s_fgetc2(fp);
+        double f = (union {
             uint64_t i;
             double f;
         }) {.i = n}.f;
         return (Val){TYPE_FLOAT, {.float_data = f}};
     }
     case TYPE_BOOL:
-        return (Val){TYPE_BOOL, {.int_data = s_fgetc(fp)}};
+        return (Val){TYPE_BOOL, {.int_data = s_fgetc2(fp)}};
     case TYPE_STRING:
         return (Val){TYPE_STRING, {.string_data = load_str(fp)}};
     case TYPE_SYMBOL:
@@ -205,7 +217,7 @@ void load_insts(FILE *fp) {
         eprintf("Error: not a valid bytecode file\n");
         exit(1);
     }
-    char c;
+    int c;
     while ((c = s_fgetc(fp)) != EOF) {
         uint32_t n = next_inst();
         insts[n].type = c;
