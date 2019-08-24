@@ -35,7 +35,9 @@ void print_val(Val val) {
         printf("<primitive procedure>");
         break;
     case TYPE_LAMBDA:
-        printf("<lambda with arity %d>", val.lambda_data->params);
+        printf("<lambda with arity %d%s>",
+                val.lambda_data->params & ~PARAMS_VARIADIC,
+                val.lambda_data->params & PARAMS_VARIADIC ? "+" : "");
         break;
     case TYPE_PAIR:
         putchar('(');
@@ -190,7 +192,10 @@ void print_inst(int n) {
         printf("JUMP_FALSE %d\n", insts[n].index);
         break;
     case INST_LAMBDA:
-        printf("LAMBDA %d %d\n", insts[n].lambda.params, insts[n].lambda.index);
+        printf("LAMBDA %d%s %d\n",
+                insts[n].lambda.params & ~PARAMS_VARIADIC,
+                insts[n].lambda.params & PARAMS_VARIADIC ? "+" : "",
+                insts[n].lambda.index);
         break;
     case INST_CALL:
         printf("CALL %d\n", insts[n].num);
