@@ -56,6 +56,7 @@
 (define quote-char 39)
 (define left-paren 40)
 (define right-paren 41)
+(define period 46)
 
 (define (parse-and-compile)
   (compile-top-level (parse) '() builtin-forms #t))
@@ -69,15 +70,26 @@
                 ((= id right-paren)
                  (error "Syntax error: unexpected ')'"))
                 ((= id quote-char)
-                 (list 'quote (parse)))))
+                 (list 'quote (parse)))
+                ((= id period)
+                 (error "Syntax error: unexpected '.'"))))
         token)))
 
 (define (parse-list)
-  (if (equal? (cons 'token right-paren) (peek-token))
-      (begin (read-token) '())
-      (let ((head (parse)))
-        (let ((tail (parse-list)))
-          (cons head tail)))))
+  (let ((token (peek-token)))
+    (cond ((equal? token (cons 'token right-paren))
+           (read-token)
+           '())
+          ((equal? token (cons 'token period))
+           (read-token)
+           (let ((cdr-expr (parse)))
+             (if (not (equal? (read-token) (cons 'token right-paren)))
+                 (error "Syntax error: expected ')'"))
+             cdr-expr))
+          (else
+           (let ((head (parse)))
+             (let ((tail (parse-list)))
+               (cons head tail)))))))
 
 (define undef +)
 
@@ -236,7 +248,7 @@
 
 (define (transform-cond expr)
   (cond ((null? (cdr expr))
-         #f)
+         #!void)
         ((eq? (caadr expr) 'else)
          (cons 'begin (cdadr expr)))
         (else
