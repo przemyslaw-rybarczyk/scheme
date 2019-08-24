@@ -107,14 +107,19 @@ Val set_jump_false_prim(Val *args, uint32_t num) {
 }
 
 Val set_lambda_prim(Val *args, uint32_t num) {
-    args_assert(num == 3);
+    args_assert(num == 4);
     if (args[0].type != TYPE_INT)
         type_error(args[0]);
-    if (args[1].type != TYPE_INT)
+    if (args[1].type != TYPE_BOOL)
         type_error(args[1]);
     if (args[2].type != TYPE_INT)
         type_error(args[2]);
-    insts[args[0].int_data] = (Inst){INST_LAMBDA, {.lambda = {args[1].int_data, args[2].int_data}}};
+    if (args[3].type != TYPE_INT)
+        type_error(args[3]);
+    uint32_t body = args[2].int_data;
+    if (args[1].int_data)
+        body |= PARAMS_VARIADIC;
+    insts[args[0].int_data] = (Inst){INST_LAMBDA, {.lambda = {body, args[3].int_data}}};
     return (Val){TYPE_VOID};
 }
 

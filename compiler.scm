@@ -210,7 +210,7 @@
         (lambda-address (this-inst)))
     (compile-body (cddr expr) (cons (cadr expr) env) forms #t)
     (let ((lambda-inst (next-inst)))
-      (set-lambda! lambda-inst (length (cadr expr)) lambda-address)
+      (set-lambda! lambda-inst #f (length (cadr expr)) lambda-address)
       (set-jump! jump-after lambda-inst)
       (put-tail! tail))))
 

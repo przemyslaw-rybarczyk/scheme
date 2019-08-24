@@ -100,11 +100,14 @@ struct Env;
 
 /* -- Lambda
  * Represents a lambda with the following elements:
- * - `params` is the number of parameters.
+ * - `params` is the number of parameters. If the highest bit is set, the function
+ *   is variadic, with the remaining bits indicating the minimal number of arguments.
  * - `body` contains the body of the lambda in the form of an instruction address.
  * - `env` contains the environment in which the lambda is to be executed.
  * `new_ptr` is used only for garbage collection and is normally unused.
  */
+
+#define PARAMS_VARIADIC 0x80000000
 
 typedef struct Lambda {
     uint32_t params;
