@@ -38,7 +38,7 @@ Val get_token(FILE *f) {
     int c = fgetc_nospace(f);
 
     // simple cases
-    if (c == '(' || c == ')' || c == '\'' || c == EOF) {
+    if (c == '(' || c == ')' || c == '.' || c == '\'' || c == EOF) {
         Pair *pair = gc_alloc(sizeof(Pair));
         pair->car = (Val){TYPE_SYMBOL, {.string_data = intern_symbol("token")}};
         pair->cdr = (Val){TYPE_INT, {.int_data = c}};
@@ -70,7 +70,7 @@ Val get_token(FILE *f) {
     size_t i = 1;
     s[0] = c;
     while ((s[i] = s_fgetc(f)) != EOF && !isspace(s[i]) && s[i] != ';'
-            && s[i] != '(' && s[i] != ')' && s[i] != '\'' && s[i] != '"') {
+            && s[i] != '(' && s[i] != ')' && s[i] != '.' && s[i] != '\'' && s[i] != '"') {
         i++;
         if (i >= token_length) {
             token_length *= 2;

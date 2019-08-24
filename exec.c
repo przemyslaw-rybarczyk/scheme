@@ -30,6 +30,27 @@ Val stack_pop(void) {
     return *--stack_ptr;
 }
 
+/* -- adjust_args
+ * For variadic functions, adjusts the number of arguments so that the last
+ * argument is a list containing the additional arguments.
+ * It also checks if the number of arguments is correct.
+ */
+void adjust_args(uint32_t stack_args, uint32_t req_args) {
+    if (req_args & PARAMS_VARIADIC) {
+        req_args &= !PARAMS_VARIADIC;
+        args_assert(stack_args >= req_args);
+        stack_push((Val){TYPE_NIL});
+        for (uint32_t i = 0; i < stack_args - req_args; i++) {
+            Pair *pair = gc_alloc(sizeof(Pair));
+            pair->cdr = stack_pop();
+            pair->car = stack_pop();
+            stack_push((Val){TYPE_PAIR, {.pair_data = pair}});
+        }
+    } else {
+        args_assert(stack_args == req_args);
+    }
+}
+
 /* -- exec
  * Executes the virtual machine instructions, starting at `inst`.
  */
@@ -107,7 +128,7 @@ Val exec(uint32_t pc, Global_env *init_global_env) {
             }
             case TYPE_LAMBDA: {
                 Lambda *lambda = op->lambda_data;
-                args_assert(insts[pc].num == lambda->params);
+                adjust_args(insts[pc].num, lambda->params);
                 uint32_t old_pc = pc;
                 pc = lambda->body;
                 Env *lambda_env = extend_env(op + 1, insts[old_pc].num, lambda->env);
@@ -156,7 +177,7 @@ Val exec(uint32_t pc, Global_env *init_global_env) {
             }
             case TYPE_LAMBDA: {
                 Lambda *lambda = op->lambda_data;
-                args_assert(insts[pc].num == lambda->params);
+                adjust_args(insts[pc].num, lambda->params);
                 exec_env = extend_env(op + 1, insts[pc].num, lambda->env);
                 stack_ptr = op;
                 pc = op->lambda_data->body;
