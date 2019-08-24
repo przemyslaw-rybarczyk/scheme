@@ -201,18 +201,34 @@
         (else
          (has-duplicates? (cdr list)))))
 
+(define (transform-variadic x)
+  (cond ((pair? x)
+         (cons (car x) (transform-variadic (cdr x))))
+        ((null? x)
+         '())
+        (else
+         (list x))))
+
 (define (compile-lambda expr env forms tail)
-  (if (memq #f (map symbol? (cadr expr)))
-      (error "lambda argument is not a variable"))
-  (if (has-duplicates? (cadr expr))
-      (error "duplicate lambda argument name"))
-  (let ((jump-after (next-inst))
-        (lambda-address (this-inst)))
-    (compile-body (cddr expr) (cons (cadr expr) env) forms #t)
-    (let ((lambda-inst (next-inst)))
-      (set-lambda! lambda-inst #f (length (cadr expr)) lambda-address)
-      (set-jump! jump-after lambda-inst)
-      (put-tail! tail))))
+  (let ((args (transform-variadic (cadr expr))))
+    (if (memq #f (map symbol? args))
+        (error "lambda parameter is not a variable name"))
+    (if (has-duplicates? args)
+        (error "duplicate lambda parameter name"))
+    (let ((jump-after (next-inst))
+          (lambda-address (this-inst)))
+      (compile-body (cddr expr) (cons args env) forms #t)
+      (let ((lambda-inst (next-inst))
+            (variadic (not (equal? args (cadr expr)))))
+        (set-lambda!
+          lambda-inst
+          variadic
+          (if variadic
+              (- (length args) 1)
+              (length args))
+          lambda-address)
+        (set-jump! jump-after lambda-inst)
+        (put-tail! tail)))))
 
 (define (compile-begin expr env forms tail)
   (compile-seq (cdr expr) env forms tail))

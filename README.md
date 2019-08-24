@@ -22,7 +22,7 @@ To compile the interpreter, run `./compile.sh`.
 The completion status of the interpreter, grouped by chapters of R5RS which it complies with.
 
 - 4. Expressions
-    - █████░ 4.1. Primitive expression types
+    - ██████ 4.1. Primitive expression types
     - 4.2. Derived expression types
         - ████░░ 4.2.1. Conditionals
         - ██░░░░ 4.2.2. Binding constructs
@@ -33,7 +33,7 @@ The completion status of the interpreter, grouped by chapters of R5RS which it c
     - ░░░░░░ 4.3. Macros
 - 5. Program structure
     - ██████ 5.1. Programs
-    - █████░ 5.2. Definitions
+    - ██████ 5.2. Definitions
     - ░░░░░░ 5.3. Syntax definitions
 - 6. Standard procedures
     - ████░░ 6.1. Equivalence predicates

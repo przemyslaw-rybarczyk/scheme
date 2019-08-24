@@ -116,10 +116,10 @@ Val set_lambda_prim(Val *args, uint32_t num) {
         type_error(args[2]);
     if (args[3].type != TYPE_INT)
         type_error(args[3]);
-    uint32_t body = args[2].int_data;
+    uint32_t params = args[2].int_data;
     if (args[1].int_data)
-        body |= PARAMS_VARIADIC;
-    insts[args[0].int_data] = (Inst){INST_LAMBDA, {.lambda = {body, args[3].int_data}}};
+        params |= PARAMS_VARIADIC;
+    insts[args[0].int_data] = (Inst){INST_LAMBDA, {.lambda = {params, args[3].int_data}}};
     return (Val){TYPE_VOID};
 }
 
