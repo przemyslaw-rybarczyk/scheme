@@ -37,7 +37,7 @@ Val stack_pop(void) {
  */
 void adjust_args(uint32_t stack_args, uint32_t req_args) {
     if (req_args & PARAMS_VARIADIC) {
-        req_args &= !PARAMS_VARIADIC;
+        req_args &= ~PARAMS_VARIADIC;
         args_assert(stack_args >= req_args);
         stack_push((Val){TYPE_NIL});
         for (uint32_t i = 0; i < stack_args - req_args; i++) {
