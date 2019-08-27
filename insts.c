@@ -2,6 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(__linux__) && !LOAD_FROM_CURRENT_DIR
+#include <limits.h>
+#elif defined(_WIN32) && !LOAD_FROM_CURRENT_DIR
+#endif
+
 #include "insts.h"
 #include "types.h"
 #include "display.h"
@@ -12,6 +17,31 @@ Inst *insts;
 uint32_t insts_size = 4096;
 uint32_t inst_index = 0;
 
+char *get_path(void) {
+#if defined(__linux__) && !LOAD_FROM_CURRENT_DIR
+    char *path = realpath("/proc/self/exe", NULL);
+    if (path == NULL)
+        return "";
+    char *last_separator = strrchr(path, '/');
+    if (last_separator == NULL)
+        return "";
+    last_separator[1] = '\0';
+    return path;
+#elif defined(_WIN32) && !LOAD_FROM_CURRENT_DIR
+    return "";
+#else
+    return "";
+#endif
+}
+
+FILE *fopen_relative(const char *dir, const char *name, const char *mode) {
+    char *path = s_malloc(strlen(dir) + strlen(name) + 1);
+    sprintf(path, "%s%s", dir, name);
+    FILE *f = s_fopen(path, mode);
+    free(path);
+    return f;
+}
+
 void setup_insts(void) {
     insts = s_malloc(insts_size * sizeof(Inst));
     return_inst = next_inst();
@@ -19,7 +49,8 @@ void setup_insts(void) {
     tail_call_inst = next_inst();
     insts[tail_call_inst] = (Inst){INST_TAIL_CALL};
     compiler_pc = this_inst();
-    load_insts(s_fopen("compiler.sss", "rb"));
+    char *path = get_path();
+    load_insts(fopen_relative(path, "compiler.sss", "rb"));
     compile_pc = this_inst();
     insts[next_inst()] = (Inst){INST_NAME, {.name = "parse-and-compile"}};
     insts[next_inst()] = (Inst){INST_TAIL_CALL, {.num = 0}};

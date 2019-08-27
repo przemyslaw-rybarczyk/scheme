@@ -7,6 +7,7 @@ To compile the interpreter, run `./compile.sh`.
 
 ### Flags
 - `GC_ALWAYS` makes the garbage collector activate on every allocation. Useful for debugging.
+- `LOAD_FROM_CURRENT_DIR` disables the code that attempts to locate the executable and always loads the required bytecode files from the working directory.
 
 ## Usage
 `./scheme [FILE] [--run] [--compile FILE] [--bytecode] [--show-bytecode]`
