@@ -4,7 +4,6 @@
 
 #if defined(__linux__) && !LOAD_FROM_CURRENT_DIR
 #include <limits.h>
-#elif defined(_WIN32) && !LOAD_FROM_CURRENT_DIR
 #endif
 
 #include "insts.h"
@@ -27,8 +26,6 @@ char *get_path(void) {
         return "";
     last_separator[1] = '\0';
     return path;
-#elif defined(_WIN32) && !LOAD_FROM_CURRENT_DIR
-    return "";
 #else
     return "";
 #endif
