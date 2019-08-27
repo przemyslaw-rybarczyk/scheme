@@ -127,15 +127,14 @@ Val exec(uint32_t pc, Global_env *init_global_env) {
                 break;
             }
             case TYPE_LAMBDA: {
-                Lambda *lambda = op->lambda_data;
-                adjust_args(insts[pc].num, lambda->params);
-                uint32_t old_pc = pc;
-                pc = lambda->body;
-                Env *lambda_env = extend_env(op + 1, insts[old_pc].num, lambda->env);
+                adjust_args(insts[pc].num, op->lambda_data->params);
+                uint32_t new_pc = op->lambda_data->body;
+                Env *lambda_env = extend_env(op + 1, insts[pc].num, op->lambda_data->env);
                 stack_ptr = op;
                 stack_push((Val){TYPE_ENV, {.env_data = exec_env}});
-                stack_push((Val){TYPE_INST, {.inst_data = old_pc + 1}});
+                stack_push((Val){TYPE_INST, {.inst_data = pc + 1}});
                 exec_env = lambda_env;
+                pc = new_pc;
                 break;
             }
             case TYPE_HIGH_PRIM: {
@@ -175,14 +174,12 @@ Val exec(uint32_t pc, Global_env *init_global_env) {
                 pc = return_inst;
                 break;
             }
-            case TYPE_LAMBDA: {
-                Lambda *lambda = op->lambda_data;
-                adjust_args(insts[pc].num, lambda->params);
-                exec_env = extend_env(op + 1, insts[pc].num, lambda->env);
+            case TYPE_LAMBDA:
+                adjust_args(insts[pc].num, op->lambda_data->params);
+                exec_env = extend_env(op + 1, insts[pc].num, op->lambda_data->env);
                 stack_ptr = op;
                 pc = op->lambda_data->body;
                 break;
-            }
             case TYPE_HIGH_PRIM: {
                 High_prim_return r = op->high_prim_data(insts[pc].num);
                 if (r.global_env != NULL && r.global_env != global_env) {
