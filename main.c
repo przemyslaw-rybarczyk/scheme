@@ -37,12 +37,6 @@ enum output_mode {
 const char *input_prompt = ">>> ";
 
 int main(int argc, char **argv) {
-    setup_memory();
-    setup_obarray();
-    execution_env = make_global_env(1, 0);
-    setup_insts();
-    setup_env();
-
     enum input_mode input_mode = INPUT_FILE;
     enum output_mode output_mode = OUTPUT_INTERACTIVE;
     char *input_file_name = NULL;
@@ -92,6 +86,12 @@ int main(int argc, char **argv) {
             input_file_name = arg;
         }
     }
+
+    setup_memory();
+    setup_obarray();
+    execution_env = make_global_env(1, 0);
+    setup_insts();
+    setup_env();
 
     FILE *input_file = stdin;
     switch (input_mode) {
