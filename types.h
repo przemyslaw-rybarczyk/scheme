@@ -211,7 +211,3 @@ typedef struct Inst {
         } lambda;
     };
 } Inst;
-
-inline int is_true(Val val) {
-    return !(val.type == TYPE_BOOL && val.int_data == 0);
-}

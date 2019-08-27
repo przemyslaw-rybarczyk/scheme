@@ -91,8 +91,5 @@ Val procedure_prim(Val *args, uint32_t num) {
 
 Val not_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
-    if (is_true(args[0]))
-        return (Val){TYPE_BOOL, {.int_data = 0}};
-    else
-        return (Val){TYPE_BOOL, {.int_data = 1}};
+    return (Val){TYPE_BOOL, {.int_data = (args[0].type == TYPE_BOOL && args[0].int_data == 0)}};
 }
