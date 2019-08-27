@@ -4,6 +4,7 @@ A basic implementation of Scheme in C that I initially made as exercise 5.51 fro
 
 ## Compilation
 To compile the interpreter, run `./compile.sh`.
+The `$CC` environment variable can be used to change used C compiler used. `gcc` is used by default.
 
 ### Flags
 - `GC_ALWAYS` makes the garbage collector activate on every allocation. Useful for debugging.
