@@ -99,12 +99,14 @@ Val exec(uint32_t pc, Global_env *init_global_env) {
             pc = insts[pc].index;
             break;
 
-        case INST_JUMP_FALSE:
-            if (!is_true(stack_pop()))
+        case INST_JUMP_FALSE: {
+            Val v = stack_pop();
+            if (v.type == TYPE_BOOL && v.int_data == 0)
                 pc = insts[pc].index;
             else
                 pc++;
             break;
+        }
 
         case INST_LAMBDA: {
             Lambda *lambda = gc_alloc(sizeof(Lambda));
