@@ -27,18 +27,18 @@ int eq(Val val1, Val val2) {
     case TYPE_NIL:
     case TYPE_VOID:
     case TYPE_UNDEF:
+        return 1;
     case TYPE_BROKEN_HEART:
     case TYPE_ENV:
     case TYPE_INST:
     case TYPE_GLOBAL_ENV:
-        return 1;
+        return 0;
     }
-    return 1;
+    return 0;
 }
 
-Val eq_prim(Val *args, uint32_t num) {
-    args_assert(num == 2);
-    return (Val){TYPE_BOOL, {.int_data = eq(args[0], args[1])}};
+int eqv(Val val1, Val val2) {
+    return eq(val1, val2);
 }
 
 int equal(Val val1, Val val2) {
@@ -50,8 +50,18 @@ int equal(Val val1, Val val2) {
             && equal(val1.pair_data->car, val2.pair_data->car)
             && equal(val1.pair_data->cdr, val2.pair_data->cdr);
     default:
-        return eq(val1, val2);
+        return eqv(val1, val2);
     }
+}
+
+Val eq_prim(Val *args, uint32_t num) {
+    args_assert(num == 2);
+    return (Val){TYPE_BOOL, {.int_data = eq(args[0], args[1])}};
+}
+
+Val eqv_prim(Val *args, uint32_t num) {
+    args_assert(num == 2);
+    return (Val){TYPE_BOOL, {.int_data = eqv(args[0], args[1])}};
 }
 
 Val equal_prim(Val *args, uint32_t num) {
@@ -87,6 +97,11 @@ Val string_prim(Val *args, uint32_t num) {
 Val procedure_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
     return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_PRIM || args[0].type == TYPE_LAMBDA || args[0].type == TYPE_HIGH_PRIM}};
+}
+
+Val boolean_prim(Val *args, uint32_t num) {
+    args_assert(num == 1);
+    return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_BOOL}};
 }
 
 Val not_prim(Val *args, uint32_t num) {
