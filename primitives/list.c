@@ -7,6 +7,29 @@
 #include "../insts.h"
 #include "../memory.h"
 #include "assert.h"
+#include "predicates.h"
+
+Val list_q_prim(Val *args, uint32_t num) {
+    args_assert(num == 1);
+    Val list = args[0];
+    uint32_t length = 0;
+    // Visited pairs are marked by setting their cdr's type to TYPE_BROKEN_HEART;
+    // This is done to detect cyclical lists.
+    while (list.type == TYPE_PAIR && list.pair_data->cdr.type != TYPE_BROKEN_HEART) {
+        Val list_ = list.pair_data->cdr;
+        list.pair_data->cdr.type = TYPE_BROKEN_HEART;
+        stack_push(list);
+        list = list_;
+        length++;
+    }
+    int result = (list.type == TYPE_NIL);
+    for (; length > 0; length--) {
+        Val list_ = stack_pop();
+        list_.pair_data->cdr.type = list.type;
+        list = list_;
+    }
+    return (Val){TYPE_BOOL, {.int_data = result}};
+}
 
 Val list_prim(Val *args, uint32_t num) {
     stack_push((Val){TYPE_NIL});
@@ -29,6 +52,130 @@ Val length_prim(Val *args, uint32_t num) {
         type_error(val);
     return (Val){TYPE_INT, {.int_data = length}};
 }
+
+Val append_prim(Val *args, uint32_t num) {
+    if (num == 0)
+        return (Val){TYPE_NIL};
+    Val val = args[num - 1];
+    for (int32_t i = (int32_t)num - 2; i >= 0; i--) {
+        Val arg = args[i];
+        uint32_t length = 0;
+        while (arg.type == TYPE_PAIR) {
+            stack_push(arg.pair_data->car);
+            arg = arg.pair_data->cdr;
+            length++;
+        }
+        if (arg.type != TYPE_NIL)
+            type_error(arg);
+        stack_push(val);
+        for (uint32_t j = 0; j < length; j++) {
+            Pair *pair = gc_alloc(sizeof(Pair));
+            pair->cdr = stack_pop();
+            pair->car = stack_pop();
+            stack_push((Val){TYPE_PAIR, {.pair_data = pair}});
+        }
+        val = stack_pop();
+    }
+    return val;
+}
+
+Val reverse_prim(Val *args, uint32_t num) {
+    args_assert(num == 1);
+    Val tail = args[0];
+    stack_push((Val){TYPE_NIL});
+    stack_push(tail);
+    while (tail.type == TYPE_PAIR) {
+        Pair *pair = gc_alloc(sizeof(Pair));
+        tail = stack_pop();
+        pair->car = tail.pair_data->car;
+        pair->cdr = stack_pop();
+        tail = tail.pair_data->cdr;
+        stack_push((Val){TYPE_PAIR, {.pair_data = pair}});
+        stack_push(tail);
+    }
+    if (tail.type != TYPE_NIL)
+        type_error(tail);
+    stack_pop();
+    return stack_pop();
+}
+
+Val list_tail_prim(Val *args, uint32_t num) {
+    args_assert(num == 2);
+    if (args[1].type != TYPE_INT)
+        type_error(args[1]);
+    long long k = args[1].int_data;
+    if (k < 0) {
+        eprintf("Error: number less than zero\n");
+        exit(1);
+    }
+    Val list = args[0];
+    for (; k > 0; k--) {
+        if (list.type != TYPE_PAIR)
+            type_error(list);
+        list = list.pair_data->cdr;
+    }
+    return list;
+}
+
+Val list_ref_prim(Val *args, uint32_t num) {
+    args_assert(num == 2);
+    if (args[1].type != TYPE_INT)
+        type_error(args[1]);
+    long long k = args[1].int_data;
+    if (k < 0) {
+        eprintf("Error: number less than zero\n");
+        exit(1);
+    }
+    Val list = args[0];
+    for (; k > 0; k--) {
+        if (list.type != TYPE_PAIR)
+            type_error(list);
+        list = list.pair_data->cdr;
+    }
+    if (list.type != TYPE_PAIR)
+        type_error(list);
+    return list.pair_data->car;
+}
+
+#define def_member_prim(name, f) \
+Val name(Val *args, uint32_t num) { \
+    args_assert(num == 2); \
+    Val obj = args[0]; \
+    Val list = args[1]; \
+    while (list.type == TYPE_PAIR) { \
+        if (f(list.pair_data->car, obj)) \
+            return list; \
+        list = list.pair_data->cdr; \
+    } \
+    if (list.type != TYPE_NIL) \
+        type_error(list); \
+    return (Val){TYPE_BOOL, {.int_data = 0}}; \
+}
+
+def_member_prim(memq_prim, eq);
+def_member_prim(memv_prim, eqv);
+def_member_prim(member_prim, equal);
+
+#define def_assoc_prim(name, f) \
+Val name(Val *args, uint32_t num) { \
+    args_assert(num == 2); \
+    Val obj = args[0]; \
+    Val list = args[1]; \
+    while (list.type == TYPE_PAIR) { \
+        if (list.pair_data->car.type != TYPE_PAIR) \
+            type_error(list.pair_data->car); \
+        if (f(list.pair_data->car.pair_data->car, obj)) \
+            return list.pair_data->car; \
+        list = list.pair_data->cdr; \
+    } \
+    if (list.type != TYPE_NIL) \
+        type_error(list); \
+    return (Val){TYPE_BOOL, {.int_data = 0}}; \
+}
+
+def_assoc_prim(assq_prim, eq);
+def_assoc_prim(assv_prim, eqv);
+def_assoc_prim(assoc_prim, equal);
 
 High_prim_return apply_prim(uint32_t num) {
     args_assert(num == 2);
