@@ -17,7 +17,8 @@
 #define PRIM(name) PRIM2(#name, name)
 #define PRIM_E(name) PRIM2(#name"!", name)
 #define PRIM_Q(name) PRIM2(#name"?", name)
-#define H_PRIM(name) {{TYPE_HIGH_PRIM, {.high_prim_data = name##_prim}}, #name}
+#define H_PRIM2(name, internal_name) {{TYPE_HIGH_PRIM, {.high_prim_data = internal_name##_prim}}, name}
+#define H_PRIM(name) H_PRIM2(#name, name)
 
 Binding r5rs_bindings[] = {
     PRIM(cons),
@@ -85,6 +86,7 @@ Binding r5rs_bindings[] = {
     PRIM(assv),
     PRIM(assoc),
     H_PRIM(map),
+    H_PRIM2("for-each", for_each),
     H_PRIM(apply),
     PRIM(display),
     PRIM(newline),
