@@ -84,6 +84,7 @@ Binding r5rs_bindings[] = {
     PRIM(assq),
     PRIM(assv),
     PRIM(assoc),
+    H_PRIM(map),
     H_PRIM(apply),
     PRIM(display),
     PRIM(newline),

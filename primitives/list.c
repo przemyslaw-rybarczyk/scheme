@@ -177,20 +177,72 @@ def_assoc_prim(assq_prim, eq);
 def_assoc_prim(assv_prim, eqv);
 def_assoc_prim(assoc_prim, equal);
 
-High_prim_return apply_prim(uint32_t num) {
+High_prim_return map_prim_continuation(Val *args, uint32_t num);
+
+High_prim_return map_prim(Val *args, uint32_t num) {
+    args_assert(num > 1);
+    stack_push((Val){TYPE_INT, {.int_data = num - 1}});
+    stack_push((Val){TYPE_INT, {.int_data = 1}});
+    stack_push(args[0]);
+    for (uint32_t i = 1; i < num; i++) {
+        if (args[i].type != TYPE_PAIR) {
+            stack_ptr = args - 1;
+            stack_push((Val){TYPE_NIL});
+            return (High_prim_return){return_inst, NULL};
+        }
+        stack_push(args[i].pair_data->car);
+        args[i] = args[i].pair_data->cdr;
+    }
+    insts[map_continue_inst].num = num - 1;
+    return (High_prim_return){map_continue_inst, NULL};
+}
+
+High_prim_return map_prim_continuation(Val *args, uint32_t num) {
+    stack_pop();
+    Val last_val = stack_pop();
+    uint32_t k = (uint32_t)stack_pop().int_data;
+    stack_push(last_val);
+    stack_push((Val){TYPE_INT, {.int_data = k + 1}});
+    args -= k + 3;
+    uint32_t n = (uint32_t)args[0].int_data;
+    args -= n + 1;
+    stack_push(args[0]);
+    for (uint32_t i = 1; i <= n; i++) {
+        if (args[i].type != TYPE_PAIR) {
+            stack_ptr = args + n + k + 2;
+            stack_push((Val){TYPE_NIL});
+            for (uint32_t j = k; j > 0; j--) {
+                Pair *pair = gc_alloc(sizeof(Pair));
+                pair->cdr = stack_pop();
+                pair->car = stack_pop();
+                stack_push((Val){TYPE_PAIR, {.pair_data = pair}});
+            }
+            Val val = stack_pop();
+            stack_ptr = args - 1;
+            stack_push(val);
+            return (High_prim_return){return_inst, NULL};
+        }
+        stack_push(args[i].pair_data->car);
+        args[i] = args[i].pair_data->cdr;
+    }
+    insts[map_continue_inst].num = n;
+    return (High_prim_return){map_continue_inst, NULL};
+}
+
+High_prim_return apply_prim(Val *args, uint32_t num) {
     args_assert(num == 2);
-    Val args = stack_pop();
+    Val arg_list0 = stack_pop();
     Val proc = stack_pop();
     stack_pop();
     stack_push(proc);
-    Val arg_list = args;
+    Val arg_list = arg_list0;
     uint32_t arg_num = 0;
     for (; arg_list.type == TYPE_PAIR; arg_list = arg_list.pair_data->cdr) {
         stack_push(arg_list.pair_data->car);
         arg_num++;
     }
     if (arg_list.type != TYPE_NIL)
-        type_error(args);
+        type_error(arg_list0);
     insts[tail_call_inst].num = arg_num;
-    return (High_prim_return){ tail_call_inst, NULL };
+    return (High_prim_return){tail_call_inst, NULL};
 }

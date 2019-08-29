@@ -7,6 +7,7 @@
 struct Pair;
 struct Lambda;
 struct Global_env;
+struct Val;
 
 /* -- High_prim
  * Unlike a regular primitive function, a high primitive function takes
@@ -21,7 +22,7 @@ typedef struct High_prim_return {
     struct Global_env *global_env;
 } High_prim_return;
 
-typedef High_prim_return (*High_prim)(uint32_t);
+typedef High_prim_return High_prim(struct Val *, uint32_t);
 
 /* -- Val
  * Contains a Scheme value with `type` representing its type and data
@@ -78,7 +79,7 @@ typedef struct Val {
         double float_data;
         char *string_data;
         struct Val (*prim_data)(struct Val *, uint32_t);
-        High_prim high_prim_data;
+        High_prim *high_prim_data;
         struct Lambda *lambda_data;
         struct Pair *pair_data;
         struct Env *env_data;
