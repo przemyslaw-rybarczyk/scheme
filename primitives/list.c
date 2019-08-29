@@ -229,6 +229,30 @@ High_prim_return map_prim_continuation(Val *args, uint32_t num) {
     return (High_prim_return){map_continue_inst, NULL};
 }
 
+High_prim_return for_each_prim(Val *args, uint32_t num) {
+    args_assert(num > 1);
+    stack_push((Val){TYPE_INT, {.int_data = num}});
+    stack_push(args[0]);
+    for (uint32_t i = 1; i < num; i++) {
+        if (args[i].type != TYPE_PAIR) {
+            stack_ptr = args - 1;
+            stack_push((Val){TYPE_VOID});
+            return (High_prim_return){return_inst, NULL};
+        }
+        stack_push(args[i].pair_data->car);
+        args[i] = args[i].pair_data->cdr;
+    }
+    insts[for_each_continue_inst].num = num - 1;
+    return (High_prim_return){for_each_continue_inst, NULL};
+}
+
+High_prim_return for_each_prim_continuation(Val *args, uint32_t num) {
+    stack_pop();
+    stack_pop();
+    uint32_t n = (uint32_t)stack_pop().int_data;
+    return for_each_prim(args - n - 3, n);
+}
+
 High_prim_return apply_prim(Val *args, uint32_t num) {
     args_assert(num == 2);
     Val arg_list0 = stack_pop();

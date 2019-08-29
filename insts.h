@@ -5,6 +5,7 @@ Inst *insts;
 uint32_t return_inst;
 uint32_t tail_call_inst;
 uint32_t map_continue_inst;
+uint32_t for_each_continue_inst;
 uint32_t compiler_pc;
 uint32_t compile_pc;
 uint32_t parse_pc;
