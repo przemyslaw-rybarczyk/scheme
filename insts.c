@@ -39,12 +39,18 @@ FILE *fopen_relative(const char *dir, const char *name, const char *mode) {
     return f;
 }
 
+High_prim map_prim_continuation;
+
 void setup_insts(void) {
     insts = s_malloc(insts_size * sizeof(Inst));
     return_inst = next_inst();
     insts[return_inst] = (Inst){INST_RETURN};
     tail_call_inst = next_inst();
     insts[tail_call_inst] = (Inst){INST_TAIL_CALL};
+    map_continue_inst = next_inst();
+    insts[map_continue_inst] = (Inst){INST_CALL};
+    insts[next_inst()] = (Inst){INST_CONST, {.val = (Val){TYPE_HIGH_PRIM, {.high_prim_data = map_prim_continuation}}}};
+    insts[next_inst()] = (Inst){INST_TAIL_CALL, {.num = 0}};
     compiler_pc = this_inst();
     char *path = get_path();
     load_insts(fopen_relative(path, "compiler.sss", "rb"));

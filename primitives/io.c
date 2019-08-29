@@ -39,7 +39,7 @@ Val error_prim(Val *args, uint32_t num) {
     exit(1);
 }
 
-High_prim_return read_prim(uint32_t num) {
+High_prim_return read_prim(Val *args, uint32_t num) {
     args_assert(num == 0);
     stack_pop();
     int c = fgetc_nospace(stdin);
@@ -47,5 +47,5 @@ High_prim_return read_prim(uint32_t num) {
         exit(1);
     s_ungetc(c, stdin);
     compiler_input_file = stdin;
-    return (High_prim_return){ parse_pc, compiler_env };
+    return (High_prim_return){parse_pc, compiler_env};
 }

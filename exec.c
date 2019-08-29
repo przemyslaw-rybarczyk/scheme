@@ -147,11 +147,11 @@ Val exec(uint32_t pc, Global_env *init_global_env) {
                 for (Val *arg_ptr = stack_ptr - 1; arg_ptr > op; arg_ptr--)
                     *(arg_ptr + 2) = *arg_ptr;
                 stack_ptr += 2;
-                High_prim high_prim = op->high_prim_data;
+                High_prim *high_prim = op->high_prim_data;
                 *(op + 2) = *op;
                 *op = (Val){TYPE_ENV, {.env_data = exec_env}};
                 *(op + 1) = (Val){TYPE_INST, {.inst_data = pc + 1}};
-                High_prim_return r = high_prim(insts[pc].num);
+                High_prim_return r = high_prim(op + 3, insts[pc].num);
                 if (r.global_env != NULL && r.global_env != global_env) {
                     stack_push((Val){TYPE_GLOBAL_ENV, {.global_env_data = global_env}});
                     global_env = r.global_env;
@@ -183,7 +183,7 @@ Val exec(uint32_t pc, Global_env *init_global_env) {
                 pc = op->lambda_data->body;
                 break;
             case TYPE_HIGH_PRIM: {
-                High_prim_return r = op->high_prim_data(insts[pc].num);
+                High_prim_return r = op->high_prim_data(op + 1, insts[pc].num);
                 if (r.global_env != NULL && r.global_env != global_env) {
                     stack_push((Val){TYPE_GLOBAL_ENV, {.global_env_data = global_env}});
                     global_env = r.global_env;

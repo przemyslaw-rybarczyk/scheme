@@ -13,4 +13,5 @@ Val member_prim(Val *args, uint32_t num);
 Val assq_prim(Val *args, uint32_t num);
 Val assv_prim(Val *args, uint32_t num);
 Val assoc_prim(Val *args, uint32_t num);
-High_prim_return apply_prim(uint32_t num);
+High_prim_return map_prim(Val *args, uint32_t num);
+High_prim_return apply_prim(Val *args, uint32_t num);
