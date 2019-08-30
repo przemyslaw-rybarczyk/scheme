@@ -8,9 +8,9 @@
 #include "exec_gc.h"
 #include "safestd.h"
 
-static void *mem_start;
-static size_t mem_size = 32 * 65536;
-static void *free_ptr;
+void *mem_start;
+size_t mem_size = 32 * 65536;
+void *free_ptr;
 
 void setup_memory(void) {
     free_ptr = mem_start = s_malloc(mem_size);
@@ -22,7 +22,7 @@ void garbage_collect();
  * A pointer to an environment pointer which will be modified when
  * the environment moves during garbage collection.
  */
-static Env **env_lock = NULL;
+Env **env_lock = NULL;
 
 void gc_lock_env(Env **env_ptr) {
     env_lock = env_ptr;
@@ -65,6 +65,8 @@ Val move_val(Val val);
 Pair *move_pair(Pair *pair);
 Lambda *move_lambda(Lambda *lambda);
 
+uint32_t call_count;
+
 /* -- garbage_collect
  * Performs garbage collection and extends the heap size if more than half of it
  * is still taken up afterwards.
@@ -94,7 +96,7 @@ Lambda *move_lambda(Lambda *lambda);
  * the `free_ptr` pointer.
  */
 void garbage_collect(void) {
-    // TODO try allocating less memory in case of malloc failure
+    call_count = 0;
     void *new_mem = s_malloc(mem_size);
     free_ptr = new_mem;
     for (Binding *bind_ptr = execution_env->bindings; bind_ptr < execution_env->bindings + execution_env->size; bind_ptr++)
@@ -108,18 +110,36 @@ void garbage_collect(void) {
         *env_lock = move_env(*env_lock);
     free(mem_start);
     mem_start = new_mem;
-    // TODO leave extension for later
     if (free_ptr - mem_start >= mem_size / 2) {
         mem_size *= 2;
         garbage_collect();
     }
 }
 
+#define MAX_CALL_COUNT 262144
+
+void increment_call_count(void) {
+    if (call_count > MAX_CALL_COUNT) {
+        eprintf("Error: recursion limit reached in garbage collector\n");
+        exit(1);
+    }
+    call_count++;
+}
+
+void decrement_call_count(void) {
+    call_count--;
+}
+
 Env *move_env(Env *env) {
-    if (env == NULL)
+    increment_call_count();
+    if (env == NULL) {
+        decrement_call_count();
         return env;
-    if (env->size == UINT32_MAX)
+    }
+    if (env->size == UINT32_MAX) {
+        decrement_call_count();
         return env->outer;
+    }
     Env *new_env = force_alloc(sizeof(Env) + env->size * sizeof(Val));
     *new_env = *env;
     env->size = UINT32_MAX;
@@ -127,44 +147,58 @@ Env *move_env(Env *env) {
     new_env->outer = move_env(new_env->outer);
     for (size_t i = 0; i < new_env->size; i++)
         new_env->vals[i] = move_val(env->vals[i]);
+    decrement_call_count();
     return new_env;
 }
 
 Val move_val(Val val) {
+    increment_call_count();
     switch (val.type) {
     case TYPE_PAIR:
         val.pair_data = move_pair(val.pair_data);
+        decrement_call_count();
         return val;
     case TYPE_LAMBDA:
         val.lambda_data = move_lambda(val.lambda_data);
+        decrement_call_count();
         return val;
     case TYPE_ENV:
         val.env_data = move_env(val.env_data);
+        decrement_call_count();
         return val;
     default:
+        decrement_call_count();
         return val;
     }
 }
 
 Pair *move_pair(Pair *pair) {
-    if (pair->car.type == TYPE_BROKEN_HEART)
+    increment_call_count();
+    if (pair->car.type == TYPE_BROKEN_HEART) {
+        decrement_call_count();
         return pair->car.pair_data;
+    }
     Pair *new_pair = force_alloc(sizeof(Pair));
     *new_pair = *pair;
     pair->car.type = TYPE_BROKEN_HEART;
     pair->car.pair_data = new_pair;
     new_pair->cdr = move_val(new_pair->cdr);
     new_pair->car = move_val(new_pair->car);
+    decrement_call_count();
     return new_pair;
 }
 
 Lambda *move_lambda(Lambda *lambda) {
-    if (lambda->body == UINT32_MAX)
+    increment_call_count();
+    if (lambda->body == UINT32_MAX) {
+        decrement_call_count();
         return lambda->new_ptr;
+    }
     Lambda *new_lambda = force_alloc(sizeof(Lambda));
     *new_lambda = *lambda;
     lambda->body = UINT32_MAX;
     lambda->new_ptr = new_lambda;
     new_lambda->env = move_env(new_lambda->env);
+    decrement_call_count();
     return new_lambda;
 }
