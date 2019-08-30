@@ -6,9 +6,9 @@
 #include "types.h"
 #include "safestd.h"
 
-size_t obarray_size = 256;
-char **obarray;
-char **obarray_end;
+static size_t obarray_size = 256;
+static char **obarray;
+static char **obarray_end;
 
 /* -- setup_obarray
  * Sets up the variables providing the obarray.

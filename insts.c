@@ -13,8 +13,8 @@
 #include "symbol.h"
 
 Inst *insts;
-uint32_t insts_size = 4096;
-uint32_t inst_index = 0;
+static uint32_t insts_size = 4096;
+static uint32_t inst_index = 0;
 
 char *get_path(void) {
 #if defined(__linux__) && !LOAD_FROM_CURRENT_DIR
