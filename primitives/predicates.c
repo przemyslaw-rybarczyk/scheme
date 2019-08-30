@@ -32,6 +32,7 @@ int eq(Val val1, Val val2) {
     case TYPE_ENV:
     case TYPE_INST:
     case TYPE_GLOBAL_ENV:
+    case TYPE_PRINT_CONTROL:
         return 0;
     }
     return 0;

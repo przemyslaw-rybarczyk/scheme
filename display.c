@@ -2,9 +2,101 @@
 
 #include "display.h"
 #include "types.h"
+#include "exec_stack.h"
 #include "insts.h"
 
 void print_val_list(Pair *list);
+
+void print_val_(Val val0, int display_style) {
+    stack_push((Val){TYPE_PRINT_CONTROL, {.print_control_data = PRINT_CONTROL_END}});
+    stack_push(val0);
+    Val val;
+    while (1) {
+        val = stack_pop();
+        switch(val.type) {
+        case TYPE_INT:
+            printf("%lld", val.int_data);
+            break;
+        case TYPE_FLOAT:
+            printf("%.16g", val.float_data);
+            if ((float)(int)val.float_data == val.float_data)
+                putchar('.');
+            break;
+        case TYPE_BOOL:
+            printf(val.int_data ? "#t" : "#f");
+            break;
+        case TYPE_STRING:
+            printf(display_style ? "%s" : "\"%s\"", val.string_data);
+            break;
+        case TYPE_SYMBOL:
+            printf("%s", val.string_data);
+            break;
+        case TYPE_PRIM:
+        case TYPE_HIGH_PRIM:
+            printf("<primitive procedure>");
+            break;
+        case TYPE_LAMBDA:
+            printf("<lambda with arity %d%s>",
+                    val.lambda_data->params & ~PARAMS_VARIADIC,
+                    val.lambda_data->params & PARAMS_VARIADIC ? "+" : "");
+            break;
+        case TYPE_PAIR:
+            printf("(");
+            stack_push((Val){TYPE_PRINT_CONTROL, {.print_control_data = PRINT_CONTROL_END_LIST}});
+            stack_push(val.pair_data->cdr);
+            stack_push((Val){TYPE_PRINT_CONTROL, {.print_control_data = PRINT_CONTROL_CDR}});
+            stack_push(val.pair_data->car);
+            break;
+        case TYPE_NIL:
+            printf("()");
+            break;
+        case TYPE_VOID:
+            printf("#!void");
+            break;
+        case TYPE_UNDEF:
+            printf("#!undef");
+            break;
+        case TYPE_BROKEN_HEART:
+            printf("</broken heart/>");
+            break;
+        case TYPE_ENV:
+            printf("</environment at %p/>", val.env_data);
+            break;
+        case TYPE_INST:
+            printf("</instruction pointer to %d/>", val.inst_data);
+            break;
+        case TYPE_GLOBAL_ENV:
+            printf("</global environment at %p/>", val.global_env_data);
+            break;
+        case TYPE_PRINT_CONTROL:
+            switch (val.print_control_data) {
+            case PRINT_CONTROL_END:
+                return;
+            case PRINT_CONTROL_CDR:
+                val = stack_pop();
+                switch (val.type) {
+                case TYPE_PAIR:
+                    printf(" ");
+                    stack_push(val.pair_data->cdr);
+                    stack_push((Val){TYPE_PRINT_CONTROL, {.print_control_data = PRINT_CONTROL_CDR}});
+                    stack_push(val.pair_data->car);
+                    break;
+                case TYPE_NIL:
+                    break;
+                default:
+                    printf(" . ");
+                    stack_push(val);
+                    break;
+                }
+                break;
+            case PRINT_CONTROL_END_LIST:
+                printf(")");
+                break;
+            }
+            break;
+        }
+    }
+}
 
 /* -- print_val
  * Prints a value as seen in the REPL.
@@ -12,76 +104,15 @@ void print_val_list(Pair *list);
  * but they can still be printed as part of a compound data structure.
  */
 void print_val(Val val) {
-    switch(val.type) {
-    case TYPE_INT:
-        printf("%lld", val.int_data);
-        break;
-    case TYPE_FLOAT:
-        printf("%.16g", val.float_data);
-        if ((float)(int)val.float_data == val.float_data)
-            putchar('.');
-        break;
-    case TYPE_BOOL:
-        printf(val.int_data ? "#t" : "#f");
-        break;
-    case TYPE_STRING:
-        printf("\"%s\"", val.string_data);
-        break;
-    case TYPE_SYMBOL:
-        printf("%s", val.string_data);
-        break;
-    case TYPE_PRIM:
-    case TYPE_HIGH_PRIM:
-        printf("<primitive procedure>");
-        break;
-    case TYPE_LAMBDA:
-        printf("<lambda with arity %d%s>",
-                val.lambda_data->params & ~PARAMS_VARIADIC,
-                val.lambda_data->params & PARAMS_VARIADIC ? "+" : "");
-        break;
-    case TYPE_PAIR:
-        putchar('(');
-        print_val_list(val.pair_data);
-        putchar(')');
-        break;
-    case TYPE_NIL:
-        printf("()");
-        break;
-    case TYPE_VOID:
-        printf("#!void");
-        break;
-    case TYPE_UNDEF:
-        printf("#!undef");
-        break;
-    case TYPE_BROKEN_HEART:
-        printf("</broken heart/>");
-        break;
-    case TYPE_ENV:
-        printf("</environment at %p/>", val.env_data);
-        break;
-    case TYPE_INST:
-        printf("</instruction pointer to %d/>", val.inst_data);
-        break;
-    case TYPE_GLOBAL_ENV:
-        printf("</global environment at %p/>", val.global_env_data);
-        break;
-    }
+    print_val_(val, 0);
 }
 
-void print_val_list(Pair *list) {
-    print_val(list->car);
-    switch (list->cdr.type) {
-    case TYPE_PAIR:
-        putchar(' ');
-        print_val_list(list->cdr.pair_data);
-        break;
-    case TYPE_NIL:
-        break;
-    default:
-        printf(" . ");
-        print_val(list->cdr);
-        break;
-    }
+/* -- inner_display_val
+ * Displays a value as seen as a result of the `display` primitive.
+ * Differs from `print_val` in that is displays strings without quotes.
+ */
+void display_val(Val val) {
+    print_val_(val, 1);
 }
 
 /* -- type_name
@@ -121,46 +152,10 @@ const char *type_name(Type type) {
         return "/instruction pointer/";
     case TYPE_GLOBAL_ENV:
         return "/global environment/";
+    case TYPE_PRINT_CONTROL:
+        return "/print control/";
     }
     return "//INVALID TYPE//";
-}
-
-void display_val_list(Pair *list);
-
-/* -- inner_display_val
- * Displays a value as seen as a result of the `display` primitive.
- * Differs from `print_val` in that is displays string without quotes.
- */
-void display_val(Val val) {
-    switch (val.type) {
-    case TYPE_STRING:
-        printf("%s", val.string_data);
-        break;
-    case TYPE_PAIR:
-        putchar('(');
-        display_val_list(val.pair_data);
-        putchar(')');
-        break;
-    default:
-        print_val(val);
-        break;
-    }
-}
-
-void display_val_list(Pair *list) {
-    display_val(list->car);
-    switch (list->cdr.type) {
-    case TYPE_PAIR:
-        putchar(' ');
-        display_val_list(list->cdr.pair_data);
-        break;
-    case TYPE_NIL:
-        break;
-    default:
-        printf(" . ");
-        display_val(list->cdr);
-        break;
-    }
 }
 
 void print_inst(uint32_t n) {

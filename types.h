@@ -9,6 +9,20 @@ struct Lambda;
 struct Global_env;
 struct Val;
 
+/* -- Print_control
+ * These values are put on the stack to control the process of priting a value.
+ * - PRINT_CONTROL_END ends the printing function.
+ * - PRINT_CONTROL_CDR interprets the next value on the stack as some suffix
+ *   of a list and prints it accordingly depending on whether it is a pair, nil,
+ *   or another value.
+ * - PRINT_CONTROL_END_LIST prints a closed parenthesis.
+ */
+typedef enum Print_control {
+    PRINT_CONTROL_END,
+    PRINT_CONTROL_CDR,
+    PRINT_CONTROL_END_LIST,
+} Print_control;
+
 /* -- High_prim
  * Unlike a regular primitive function, a high primitive function takes
  * is called with the arguments still on top of the stack and returns
@@ -51,6 +65,7 @@ typedef High_prim_return High_prim(struct Val *, uint32_t);
  * - Environment - TYPE_ENV / env_data
  * - Instruction pointer - TYPE_INST / inst_data
  * - Global environment - TYPE_GLOBAL_ENV / global_env_data
+ * TYPE_PRINT_CONTROL is used only within functions used to print variables.
  */
 
 typedef enum Type {
@@ -66,10 +81,12 @@ typedef enum Type {
     TYPE_NIL,
     TYPE_VOID,
     TYPE_UNDEF,
+    // ↓ internal use only
     TYPE_BROKEN_HEART,
     TYPE_ENV,
     TYPE_INST,
     TYPE_GLOBAL_ENV,
+    TYPE_PRINT_CONTROL,
 } Type;
 
 typedef struct Val {
@@ -85,6 +102,7 @@ typedef struct Val {
         struct Env *env_data;
         struct Global_env *global_env_data;
         uint32_t inst_data;
+        enum Print_control print_control_data;
     };
 } Val;
 
