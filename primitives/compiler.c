@@ -10,7 +10,7 @@
 #include "../symbol.h"
 #include "assert.h"
 
-uint32_t u32_int_data(Val val) {
+static uint32_t u32_int_data(Val val) {
     if (val.int_data < 0 || val.int_data > UINT32_MAX) {
         eprintf("Internal compiler error: value %lld out of range\n", val.int_data);
         exit(1);
@@ -176,7 +176,7 @@ Val set_cons_prim(Val *args, uint32_t num) {
     return (Val){TYPE_VOID};
 }
 
-uint32_t new_symbol_counter = 0;
+static uint32_t new_symbol_counter = 0;
 
 // awful workaround for until macros are implemented
 Val new_symbol_prim(Val *args, uint32_t num) {
