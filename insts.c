@@ -16,7 +16,7 @@ Inst *insts;
 static uint32_t insts_size = 4096;
 static uint32_t inst_index = 0;
 
-char *get_path(void) {
+static char *get_path(void) {
 #if defined(__linux__) && !LOAD_FROM_CURRENT_DIR
     char *path = realpath("/proc/self/exe", NULL);
     if (path == NULL)
@@ -31,7 +31,7 @@ char *get_path(void) {
 #endif
 }
 
-FILE *fopen_relative(const char *dir, const char *name, const char *mode) {
+static FILE *fopen_relative(const char *dir, const char *name, const char *mode) {
     char *path = s_malloc(strlen(dir) + strlen(name) + 1);
     sprintf(path, "%s%s", dir, name);
     FILE *f = s_fopen(path, mode);
@@ -97,12 +97,12 @@ uint32_t next_expr(uint32_t start) {
             return i;
 }
 
-void save_uint32(FILE *fp, uint32_t n) {
+static void save_uint32(FILE *fp, uint32_t n) {
     for (int i = 3; i >= 0; i--)
         s_fputc((uint8_t)(n >> 8 * i), fp);
 }
 
-void save_val(FILE *fp, Val val) {
+static void save_val(FILE *fp, Val val) {
     s_fputc(val.type, fp);
     switch (val.type) {
     case TYPE_INT:
@@ -136,7 +136,7 @@ void save_val(FILE *fp, Val val) {
     }
 }
 
-const char *magic = "\xf0\x9f\x91\xad""v3.0";
+static const char *magic = "\xf0\x9f\x91\xad""v3.0";
 
 void save_insts(FILE *fp, uint32_t start, uint32_t end) {
     s_fputs(magic, fp);
@@ -180,7 +180,7 @@ void save_insts(FILE *fp, uint32_t start, uint32_t end) {
     }
 }
 
-unsigned char s_fgetc2(FILE *f) {
+static unsigned char s_fgetc2(FILE *f) {
     int c = s_fgetc(f);
     if (c == EOF) {
         eprintf("Error: unexpected end of file\n");
@@ -189,14 +189,14 @@ unsigned char s_fgetc2(FILE *f) {
     return (unsigned char)c;
 }
 
-uint32_t load_uint32(FILE *fp) {
+static uint32_t load_uint32(FILE *fp) {
     uint32_t n = 0;
     for (int i = 0; i < 4; i++)
         n = n << 8 | s_fgetc2(fp);
     return n;
 }
 
-char *load_str(FILE *fp) {
+static char *load_str(FILE *fp) {
     unsigned int size = 16;
     char *str = s_malloc(size * sizeof(char));
     char *s = str;
@@ -211,7 +211,7 @@ char *load_str(FILE *fp) {
     return str;
 }
 
-Val load_val(FILE *fp) {
+static Val load_val(FILE *fp) {
     unsigned char type = s_fgetc2(fp);
     switch (type) {
     case TYPE_INT: {

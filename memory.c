@@ -33,7 +33,7 @@ static GC_object *gc_stack;
 static size_t gc_stack_size = 4096;
 static GC_object *gc_stack_ptr;
 
-void gc_stack_push(GC_object obj) {
+static void gc_stack_push(GC_object obj) {
     if (gc_stack_ptr == gc_stack + gc_stack_size) {
         ptrdiff_t index = gc_stack_ptr - gc_stack;
         gc_stack_size *= 2;
@@ -43,7 +43,7 @@ void gc_stack_push(GC_object obj) {
     *gc_stack_ptr++ = obj;
 }
 
-GC_object gc_stack_pop(void) {
+static GC_object gc_stack_pop(void) {
     return *--gc_stack_ptr;
 }
 
@@ -80,7 +80,7 @@ void setup_memory(void) {
  * sets up the broken heart and copies data to the new address, determined by
  * the `free_ptr` pointer.
  */
-void garbage_collect();
+static void garbage_collect();
 
 /* -- env_lock
  * A pointer to an environment pointer which will be modified when
@@ -118,17 +118,17 @@ void *gc_alloc(size_t size) {
  * whether it can be allocated. It is used only inside the garbage collector,
  * as it's impossible to run out of memory there.
  */
-void *force_alloc(size_t size) {
+static void *force_alloc(size_t size) {
     free_ptr += size;
     return free_ptr - size;
 }
 
-Val move_val(Val val);
-Env *move_env(Env *env);
-Pair *move_pair(Pair *pair);
-Lambda *move_lambda(Lambda *lambda);
+static Val move_val(Val val);
+static Env *move_env(Env *env);
+static Pair *move_pair(Pair *pair);
+static Lambda *move_lambda(Lambda *lambda);
 
-void garbage_collect(void) {
+static void garbage_collect(void) {
     void *new_mem = s_malloc(mem_size);
     free_ptr = new_mem;
     for (Binding *bind_ptr = execution_env->bindings; bind_ptr < execution_env->bindings + execution_env->size; bind_ptr++)
@@ -166,7 +166,7 @@ void garbage_collect(void) {
     }
 }
 
-Val move_val(Val val) {
+static Val move_val(Val val) {
     switch (val.type) {
     case TYPE_PAIR:
         val.pair_data = move_pair(val.pair_data);
@@ -182,7 +182,7 @@ Val move_val(Val val) {
     }
 }
 
-Env *move_env(Env *env) {
+static Env *move_env(Env *env) {
     if (env == NULL)
         return env;
     if (env->size == UINT32_MAX)
@@ -198,7 +198,7 @@ Env *move_env(Env *env) {
     return new_env;
 }
 
-Pair *move_pair(Pair *pair) {
+static Pair *move_pair(Pair *pair) {
     if (pair->car.type == TYPE_BROKEN_HEART)
         return pair->car.pair_data;
     Pair *new_pair = force_alloc(sizeof(Pair));
@@ -210,7 +210,7 @@ Pair *move_pair(Pair *pair) {
     return new_pair;
 }
 
-Lambda *move_lambda(Lambda *lambda) {
+static Lambda *move_lambda(Lambda *lambda) {
     if (lambda->body == UINT32_MAX)
         return lambda->new_ptr;
     Lambda *new_lambda = force_alloc(sizeof(Lambda));

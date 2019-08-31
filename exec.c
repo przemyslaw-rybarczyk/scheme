@@ -37,7 +37,7 @@ Val stack_pop(void) {
  * argument is a list containing the additional arguments.
  * It also checks if the number of arguments is correct.
  */
-void adjust_args(uint32_t stack_args, uint32_t req_args) {
+static void adjust_args(uint32_t stack_args, uint32_t req_args) {
     if (req_args & PARAMS_VARIADIC) {
         req_args &= ~PARAMS_VARIADIC;
         args_assert(stack_args >= req_args);

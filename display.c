@@ -5,9 +5,7 @@
 #include "exec_stack.h"
 #include "insts.h"
 
-void print_val_list(Pair *list);
-
-void print_val_(Val val0, int display_style) {
+static void print_val_(Val val0, int display_style) {
     stack_push((Val){TYPE_PRINT_CONTROL, {.print_control_data = PRINT_CONTROL_END}});
     stack_push(val0);
     Val val;
