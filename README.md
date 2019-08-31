@@ -9,6 +9,7 @@ The `$CC` environment variable can be used to change used C compiler used. `gcc`
 ### Flags
 - `GC_ALWAYS` makes the garbage collector activate on every allocation. Useful for debugging.
 - `LOAD_FROM_CURRENT_DIR` disables the code that attempts to locate the executable and always loads the required bytecode files from the working directory.
+- `STACK_SIZE` sets the number of values that can fit on the stack. It is set to 65536 by default. Note that each non-tail recursion pushes two values to the stack.
 
 ## Usage
 `./scheme [FILE] [--run] [--compile FILE] [--bytecode] [--show-bytecode]`

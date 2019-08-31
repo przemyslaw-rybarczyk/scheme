@@ -11,7 +11,9 @@
 #include "memory.h"
 #include "primitives/assert.h"
 
+#ifndef STACK_SIZE
 #define STACK_SIZE 65536
+#endif
 
 Val stack[STACK_SIZE];
 Val *stack_ptr = stack;

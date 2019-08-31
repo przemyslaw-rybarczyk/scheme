@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "memory.h"
 #include "types.h"
@@ -38,7 +39,6 @@ void gc_stack_push(GC_object obj) {
         gc_stack_size *= 2;
         gc_stack = s_realloc(gc_stack, gc_stack_size * sizeof(GC_object));
         gc_stack_ptr = gc_stack + index;
-        printf("GC STACK REALLOCED\n");
     }
     *gc_stack_ptr++ = obj;
 }
@@ -106,7 +106,7 @@ void *gc_alloc(size_t size) {
 #endif
         garbage_collect();
     if (free_ptr >= mem_start + mem_size - size) {
-        printf("Internal error: out of memory\n");
+        eprintf("Internal error: out of memory\n");
         exit(1);
     }
     free_ptr += size;
