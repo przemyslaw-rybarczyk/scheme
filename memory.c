@@ -14,6 +14,9 @@ static void *mem_start;
 static size_t mem_size = 2097152;
 static void *free_ptr;
 
+/* -- GC_object
+ * Contains a pointer to a pointer which is to be updated.
+ */
 typedef struct GC_object {
     enum {
         GC_VAL,
@@ -64,6 +67,9 @@ void setup_memory(void) {
  * sequentially scans all the copied cells, the copying here is performed
  * recursively, because memory constists of several data types, which can only
  * be known through the type of a pointer pointing to allocated data.
+ *
+ * In order to avoid a limit on recursion, the garbage collector is written
+ * iteratively and uses a heap-allocated stack.
  *
  * Each type of data is turned into a 'broken heart' after being moved to the
  * new heap.
