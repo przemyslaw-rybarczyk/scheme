@@ -3,6 +3,7 @@
 
 #include "predicates.h"
 #include "../types.h"
+#include "../exec_stack.h"
 #include "assert.h"
 
 int eq(Val val1, Val val2) {
@@ -43,16 +44,34 @@ int eqv(Val val1, Val val2) {
 }
 
 int equal(Val val1, Val val2) {
-    switch (val1.type) {
-    case TYPE_STRING:
-        return val2.type == TYPE_STRING && strcmp(val1.string_data, val2.string_data) == 0;
-    case TYPE_PAIR:
-        return val2.type == TYPE_PAIR
-            && equal(val1.pair_data->car, val2.pair_data->car)
-            && equal(val1.pair_data->cdr, val2.pair_data->cdr);
-    default:
-        return eqv(val1, val2);
+    Val *stack_ptr_before = stack_ptr;
+    stack_push(val2);
+    stack_push(val1);
+    while (stack_ptr > stack_ptr_before) {
+        val1 = stack_pop();
+        val2 = stack_pop();
+        switch (val1.type) {
+        case TYPE_STRING:
+            if (val2.type != TYPE_STRING || strcmp(val1.string_data, val2.string_data) != 0) {
+                stack_ptr = stack_ptr_before;
+                return 0;
+            }
+            break;
+        case TYPE_PAIR:
+            stack_push(val2.pair_data->cdr);
+            stack_push(val1.pair_data->cdr);
+            stack_push(val2.pair_data->car);
+            stack_push(val1.pair_data->car);
+            break;
+        default:
+            if (!eqv(val1, val2)) {
+                stack_ptr = stack_ptr_before;
+                return 0;
+            }
+            break;
+        }
     }
+    return 1;
 }
 
 Val eq_prim(Val *args, uint32_t num) {
