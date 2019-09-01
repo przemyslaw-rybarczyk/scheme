@@ -1,44 +1,3 @@
-;;; replacements for stdlib
-
-(define (append x y)
-  (if (null? x)
-      y
-      (cons (car x) (append (cdr x) y))))
-
-(define (map f x)
-  (if (null? x)
-      '()
-      (cons (f (car x)) (map f (cdr x)))))
-
-(define (map2 f x y)
-  (if (or (null? x) (null? y))
-      '()
-      (cons (f (car x) (car y)) (map2 f (cdr x) (cdr y)))))
-
-(define (for-each f x)
-  (if (null? x)
-      #!void
-      (begin (f (car x))
-             (for-each f (cdr x)))))
-
-(define (memq obj list)
-  (cond ((null? list)
-         #f)
-        ((eq? obj (car list))
-         list)
-        (else
-         (memq obj (cdr list)))))
-
-(define (assoc obj alist)
-  (cond ((null? alist)
-         #f)
-        ((equal? obj (caar alist))
-         (car alist))
-        (else
-         (assoc obj (cdr alist)))))
-
-;;; proper compiler
-
 (define token-buffer '())
 
 (define (read-token)
@@ -258,8 +217,8 @@
   (list 'let
         (map (lambda (x) (list (car x) undef)) (cadr expr))
         (let ((new-symbols (map (lambda (x) (new-symbol)) (cadr expr))))
-          (append (list 'let (map2 (lambda (x y) (list x (cadr y))) new-symbols (cadr expr)))
-                  (append (map2 (lambda (x y) (list 'set! (car x) y)) (cadr expr) new-symbols)
+          (append (list 'let (map (lambda (x y) (list x (cadr y))) new-symbols (cadr expr)))
+                  (append (map (lambda (x y) (list 'set! (car x) y)) (cadr expr) new-symbols)
                           (cddr expr))))))
 
 (define (transform-cond expr)
