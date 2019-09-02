@@ -37,7 +37,7 @@ Val stack_pop(void) {
  * argument is a list containing the additional arguments.
  * It also checks if the number of arguments is correct.
  */
-static void adjust_args(uint32_t stack_args, uint32_t req_args) {
+static uint32_t adjust_args(uint32_t stack_args, uint32_t req_args) {
     if (req_args & PARAMS_VARIADIC) {
         req_args &= ~PARAMS_VARIADIC;
         args_assert(stack_args >= req_args);
@@ -48,8 +48,10 @@ static void adjust_args(uint32_t stack_args, uint32_t req_args) {
             pair->car = stack_pop();
             stack_push((Val){TYPE_PAIR, {.pair_data = pair}});
         }
+        return req_args + 1;
     } else {
         args_assert(stack_args == req_args);
+        return stack_args;
     }
 }
 
@@ -131,9 +133,9 @@ Val exec(uint32_t pc, Global_env *init_global_env) {
                 break;
             }
             case TYPE_LAMBDA: {
-                adjust_args(insts[pc].num, op->lambda_data->params);
+                uint32_t vals_num = adjust_args(insts[pc].num, op->lambda_data->params);
                 uint32_t new_pc = op->lambda_data->body;
-                Env *lambda_env = extend_env(op + 1, insts[pc].num, op->lambda_data->env);
+                Env *lambda_env = extend_env(op + 1, vals_num, op->lambda_data->env);
                 stack_ptr = op;
                 stack_push((Val){TYPE_ENV, {.env_data = exec_env}});
                 stack_push((Val){TYPE_INST, {.inst_data = pc + 1}});
@@ -178,12 +180,13 @@ Val exec(uint32_t pc, Global_env *init_global_env) {
                 pc = return_inst;
                 break;
             }
-            case TYPE_LAMBDA:
-                adjust_args(insts[pc].num, op->lambda_data->params);
-                exec_env = extend_env(op + 1, insts[pc].num, op->lambda_data->env);
+            case TYPE_LAMBDA: {
+                uint32_t vals_num = adjust_args(insts[pc].num, op->lambda_data->params);
+                exec_env = extend_env(op + 1, vals_num, op->lambda_data->env);
                 stack_ptr = op;
                 pc = op->lambda_data->body;
                 break;
+            }
             case TYPE_HIGH_PRIM: {
                 High_prim_return r = op->high_prim_data(op + 1, insts[pc].num);
                 if (r.global_env != NULL && r.global_env != global_env) {
