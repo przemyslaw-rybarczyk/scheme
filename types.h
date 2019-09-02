@@ -10,7 +10,7 @@ struct Global_env;
 struct Val;
 
 /* -- Print_control
- * These values are put on the stack to control the process of priting a value.
+ * These values are put on the stack to control the process of printing a value.
  * - PRINT_CONTROL_END ends the printing function.
  * - PRINT_CONTROL_CDR interprets the next value on the stack as some suffix
  *   of a list and prints it accordingly depending on whether it is a pair, nil,
