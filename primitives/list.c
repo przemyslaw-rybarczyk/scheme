@@ -254,13 +254,13 @@ High_prim_return for_each_prim_continuation(Val *args, uint32_t num) {
 }
 
 High_prim_return apply_prim(Val *args, uint32_t num) {
-    args_assert(num == 2);
+    args_assert(num >= 2);
     Val arg_list0 = stack_pop();
-    Val proc = stack_pop();
+    for (Val *arg_ptr = args; arg_ptr < args + num - 1; arg_ptr++)
+        *(arg_ptr - 1) = *arg_ptr;
     stack_pop();
-    stack_push(proc);
     Val arg_list = arg_list0;
-    uint32_t arg_num = 0;
+    uint32_t arg_num = num - 2;
     for (; arg_list.type == TYPE_PAIR; arg_list = arg_list.pair_data->cdr) {
         stack_push(arg_list.pair_data->car);
         arg_num++;
