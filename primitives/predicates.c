@@ -50,6 +50,8 @@ int equal(Val val1, Val val2) {
     while (stack_ptr > stack_ptr_before) {
         val1 = stack_pop();
         val2 = stack_pop();
+        if (val1.type != val2.type)
+            return 0;
         switch (val1.type) {
         case TYPE_STRING:
             if (val2.type != TYPE_STRING || strcmp(val1.string_data, val2.string_data) != 0) {
