@@ -167,7 +167,7 @@ int main(int argc, char **argv) {
         if (input_mode == INPUT_BYTECODE)
             end--;
         save_insts(output_file, program, end);
-    } else {
+    } else if (input_file_name == NULL) {
         putchar('\n');
     }
 
