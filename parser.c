@@ -37,6 +37,19 @@ int fgetc_nospace(FILE *f) {
 Val get_token(FILE *f) {
     int c = fgetc_nospace(f);
 
+    // ellipsis
+    if (c == '.') {
+        if ((c = s_fgetc(f)) != '.') {
+            s_ungetc(c, f);
+            c = '.';
+        } else if ((c = s_fgetc(f)) != '.') {
+            eprintf("Error: Syntax error: unexpected '.'\n");
+            exit(1);
+        } else {
+            return (Val){TYPE_SYMBOL, {.string_data = intern_symbol("...")}};
+        }
+    }
+
     // simple cases
     if (c == '(' || c == ')' || c == '.' || c == '\'' || c == EOF) {
         Pair *pair = gc_alloc(sizeof(Pair));
