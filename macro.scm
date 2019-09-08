@@ -30,7 +30,7 @@
         (else
          (assq-ident obj (cdr list)))))
 
-;;; Each valid binding is of the form (name number-of-ellpises bindings).
+;;; Each binding is of the form (name number-of-ellpises bindings).
 ;;; An identifier is a symbol or a nullary function returning (name . macro-id).
 
 (define (get-pattern-bindings expr pattern literals)
@@ -59,9 +59,6 @@
          '())
         (else
          #f)))
-
-; TEMPORARY
-(define macro-id 0)
 
 (define (filter f x)
   (if (null? x)
@@ -92,12 +89,14 @@
           (else
            (apply map (lambda sub-vals (map list vars (map (lambda (x) (- x 1)) levels) sub-vals)) vals)))))
 
-(define (apply-pattern-bindings bindings template)
+(define (apply-pattern-bindings bindings template macro-id)
   (cond ((pair? template)
          (if (and (pair? (cdr template)) (eq? '... (cadr template)))
              (let ((repeated-bindings (used-bindings template bindings)))
-               (map (lambda (sub-bindings) (apply-pattern-bindings sub-bindings (car template))) (split-bindings repeated-bindings)))
-             (cons (apply-pattern-bindings bindings (car template)) (apply-pattern-bindings bindings (cdr template)))))
+               (map (lambda (sub-bindings) (apply-pattern-bindings sub-bindings (car template) macro-id))
+                    (split-bindings repeated-bindings)))
+             (cons (apply-pattern-bindings bindings (car template) macro-id)
+                   (apply-pattern-bindings bindings (cdr template) macro-id))))
         ((eq? template '...)
          (error "Invalid ellipsis in pattern"))
         ((ident? template)
@@ -109,3 +108,17 @@
                (lambda () (cons template macro-id)))))
         (else
          template)))
+
+(define macro-id-gen 0)
+
+(define (new-macro-id)
+  (set! macro-id-gen (+ macro-id-gen 1))
+  macro-id-gen)
+
+(define (apply-macro expr rules literals)
+  (if (null? rules)
+      (error "Invalid macro expression - no patterns match")
+      (let ((bindings (get-pattern-bindings expr (caar rules) literals)))
+        (if bindings
+            (apply-pattern-bindings bindings (cadar rules) (new-macro-id))
+            (apply-macro expr (cdr rules) literals)))))
