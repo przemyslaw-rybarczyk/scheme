@@ -77,7 +77,7 @@
 
 (define (compile expr env tail)
   (cond ((pair? expr)
-         (let ((compile-form (assq (car expr) forms)))
+         (let ((compile-form (assq-ident (car expr) forms)))
            (if compile-form
                (let ((type (cadr compile-form))
                      (f (caddr compile-form)))
@@ -90,9 +90,9 @@
                        (else
                         (error "Internal compiler error: unknown primitive type"))))
                (compile-appl expr env tail))))
-        ((symbol? expr)
+        ((ident? expr)
          (compile-name expr env tail))
-        ((procedure? expr)
+        ((eq? expr undef)
          (set-const! (next-inst) #!undef)
          (put-tail! tail))
         ((null? expr)
@@ -105,7 +105,7 @@
   (let ((loc (locate-name name env)))
     (if loc
         (set-var! (next-inst) (car loc) (cdr loc))
-        (set-name! (next-inst) name))
+        (set-name! (next-inst) (if (symbol? name) name (car (name)))))
     (put-tail! tail)))
 
 (define (locate-name name env)
@@ -113,7 +113,7 @@
     (define (loop-frame frame y)
       (cond ((null? frame)
              (loop-env (cdr env) (+ x 1)))
-            ((equal? (car frame) name)
+            ((eq-ident? (car frame) name)
              (cons x y))
             (else
              (loop-frame (cdr frame) (+ y 1)))))
@@ -157,7 +157,7 @@
 (define (has-duplicates? list)
   (cond ((null? list)
          #f)
-        ((memq (car list) (cdr list))
+        ((memq-ident (car list) (cdr list))
          #t)
         (else
          (has-duplicates? (cdr list)))))
@@ -172,7 +172,7 @@
 
 (define (compile-lambda expr env tail)
   (let ((args (transform-variadic (cadr expr))))
-    (if (memq #f (map symbol? args))
+    (if (memq #f (map ident? args))
         (error "lambda parameter is not a variable name"))
     (if (has-duplicates? args)
         (error "duplicate lambda parameter name"))
@@ -180,7 +180,7 @@
           (lambda-address (this-inst)))
       (compile-body (cddr expr) (cons args env) #t)
       (let ((lambda-inst (next-inst))
-            (variadic (not (equal? args (cadr expr)))))
+            (variadic (not (equal-ident? args (cadr expr)))))
         (set-lambda!
           lambda-inst
           variadic
