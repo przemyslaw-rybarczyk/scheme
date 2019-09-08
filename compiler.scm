@@ -18,7 +18,7 @@
 (define period 46)
 
 (define (parse-and-compile)
-  (compile-top-level (parse) '() builtin-forms #t))
+  (compile-top-level (parse) '() #t))
 
 (define (parse)
   (let ((token (read-token)))
@@ -52,42 +52,44 @@
 
 (define undef +)
 
-(define (compile-top-level expr env forms tail)
+(define (compile-top-level expr env tail)
   (cond ((and (pair? expr) (eq? 'define (car expr)))
-         (compile-define expr env forms tail))
+         (compile-define expr env tail))
         ((and (pair? expr) (eq? 'begin (car expr)))
          (cond ((null? (cdr expr))
                 (set-const! (next-inst) #!void)
                 (put-tail! tail))
                ((null? (cddr expr))
-                (compile-top-level (cadr expr) env forms tail)
+                (compile-top-level (cadr expr) env tail)
                 (put-tail! tail))
                (else
-                (compile-top-level (cadr expr) env forms #f)
+                (compile-top-level (cadr expr) env #f)
                 (set-delete! (next-inst))
-                (compile-top-level (cons 'begin (cddr expr)) env forms tail))))
+                (compile-top-level (cons 'begin (cddr expr)) env tail))))
         (else
-         (compile expr env forms tail))))
+         (compile expr env tail))))
 
-(define (compile-define expr env forms tail)
+(define (compile-define expr env tail)
   (let ((expr (transform-define expr)))
-    (compile (caddr expr) env forms #f)
+    (compile (caddr expr) env #f)
     (set-def! (next-inst) (cadr expr))
     (put-tail! tail)))
 
-(define (compile expr env forms tail)
+(define (compile expr env tail)
   (cond ((pair? expr)
-         (let ((compile-form (assoc (car expr) forms)))
+         (let ((compile-form (assq (car expr) forms)))
            (if compile-form
                (let ((type (cadr compile-form))
                      (f (caddr compile-form)))
                  (cond ((eq? type 'prim)
-                        (f expr env forms tail))
+                        (f expr env tail))
                        ((eq? type 'deriv)
-                        (compile (f expr) env forms tail))
+                        (compile (f expr) env tail))
+                       ((eq? type 'macro)
+                        (compile (apply-macro expr (car f) (cadr f)) env tail))
                        (else
-                        (error "Compiler error: unknown primitive type"))))
-               (compile-appl expr env forms tail))))
+                        (error "Internal compiler error: unknown primitive type"))))
+               (compile-appl expr env tail))))
         ((symbol? expr)
          (compile-name expr env tail))
         ((procedure? expr)
@@ -120,36 +122,36 @@
         (loop-frame (car env) 0)))
   (loop-env env 0))
 
-(define (compile-appl expr env forms tail)
+(define (compile-appl expr env tail)
   (for-each
-    (lambda (expr) (compile expr env forms #f))
+    (lambda (expr) (compile expr env #f))
     expr)
   ((if tail set-tail-call! set-call!)
    (next-inst) (- (length expr) 1)))
 
-(define (compile-set expr env forms tail)
+(define (compile-set expr env tail)
   (if (not (null? (cdddr expr)))
       (error "set! expression too long"))
-  (compile (caddr expr) env forms #f)
+  (compile (caddr expr) env #f)
   (let ((loc (locate-name (cadr expr) env)))
     (if loc
         (set-set! (next-inst) (car loc) (cdr loc))
         (set-set-name! (next-inst) (cadr expr)))
     (put-tail! tail)))
 
-(define (compile-if expr env forms tail)
+(define (compile-if expr env tail)
   (if (and (not (null? (cdddr expr))) (not (null? (cddddr expr))))
       (error "if expression too long"))
-  (compile (cadr expr) env forms #f)
+  (compile (cadr expr) env #f)
   (let ((jump-false (next-inst)))
-    (compile (caddr expr) env forms tail)
+    (compile (caddr expr) env tail)
     (let ((jump-true (next-inst)))
       (set-jump-false! jump-false (this-inst))
       (if (null? (cdddr expr))
           (begin
             (set-const! (next-inst) #!void)
             (put-tail! tail))
-          (compile (cadddr expr) env forms tail))
+          (compile (cadddr expr) env tail))
       (set-jump! jump-true (this-inst)))))
 
 (define (has-duplicates? list)
@@ -168,7 +170,7 @@
         (else
          (list x))))
 
-(define (compile-lambda expr env forms tail)
+(define (compile-lambda expr env tail)
   (let ((args (transform-variadic (cadr expr))))
     (if (memq #f (map symbol? args))
         (error "lambda parameter is not a variable name"))
@@ -176,7 +178,7 @@
         (error "duplicate lambda parameter name"))
     (let ((jump-after (next-inst))
           (lambda-address (this-inst)))
-      (compile-body (cddr expr) (cons args env) forms #t)
+      (compile-body (cddr expr) (cons args env) #t)
       (let ((lambda-inst (next-inst))
             (variadic (not (equal? args (cadr expr)))))
         (set-lambda!
@@ -189,10 +191,10 @@
         (set-jump! jump-after lambda-inst)
         (put-tail! tail)))))
 
-(define (compile-begin expr env forms tail)
-  (compile-seq (cdr expr) env forms tail))
+(define (compile-begin expr env tail)
+  (compile-seq (cdr expr) env tail))
 
-(define (compile-quote expr env forms tail)
+(define (compile-quote expr env tail)
   (if (not (null? (cddr expr)))
       (error "quote expression too long"))
   (compile-quoted (cadr expr))
@@ -246,16 +248,20 @@
           (let ((v (new-symbol)))
             (list 'let (list (list v (cadr expr))) (list 'if v v (cons 'or (cddr expr))))))))
 
-(define (compile-seq exprs env forms tail)
+(define (transform-define-syntax expr)
+  (set! forms (cons (list (cadr expr) 'macro (list (cddr (caddr expr)) (cadr (caddr expr)))) forms))
+  #!void)
+
+(define (compile-seq exprs env tail)
   (cond ((null? exprs)
          (set-const! (next-inst) #!void)
          (put-tail! tail))
         ((null? (cdr exprs))
-         (compile (car exprs) env forms tail))
+         (compile (car exprs) env tail))
         (else
-         (compile (car exprs) env forms #f)
+         (compile (car exprs) env #f)
          (set-delete! (next-inst))
-         (compile-seq (cdr exprs) env forms tail))))
+         (compile-seq (cdr exprs) env tail))))
 
 (define (transform-define expr)
   (if (pair? (cadr expr))
@@ -278,19 +284,19 @@
         (else
          (cons '() exprs))))
 
-(define (compile-body exprs env forms tail)
+(define (compile-body exprs env tail)
   (let ((x (split-defines exprs)))
     (let ((defines (car x))
           (seq (cdr x)))
       (if (null? defines)
-          (compile-seq seq env forms tail) ; prevent infinite loop
-          (compile (cons 'letrec (cons (map cdr (map transform-define defines)) seq)) env forms tail)))))
+          (compile-seq seq env tail) ; prevent infinite loop
+          (compile (cons 'letrec (cons (map cdr (map transform-define defines)) seq)) env tail)))))
 
 (define (put-tail! tail)
   (if tail
       (set-return! (next-inst))))
 
-(define builtin-forms
+(define forms
   (list
     (list 'set! 'prim compile-set)
     (list 'if 'prim compile-if)
@@ -301,4 +307,5 @@
     (list 'letrec 'deriv transform-letrec)
     (list 'cond 'deriv transform-cond)
     (list 'and 'deriv transform-and)
-    (list 'or 'deriv transform-or)))
+    (list 'or 'deriv transform-or)
+    (list 'define-syntax 'deriv transform-define-syntax)))
