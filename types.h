@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <uchar.h>
 
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 
@@ -72,6 +73,7 @@ typedef enum Type {
     TYPE_INT,
     TYPE_FLOAT,
     TYPE_BOOL,
+    TYPE_CHAR,
     TYPE_STRING,
     TYPE_SYMBOL,
     TYPE_PRIM,
@@ -94,6 +96,7 @@ typedef struct Val {
     union {
         long long int_data;
         double float_data;
+        char32_t char_data;
         char *string_data;
         struct Val (*prim_data)(struct Val *, uint32_t);
         High_prim *high_prim_data;
