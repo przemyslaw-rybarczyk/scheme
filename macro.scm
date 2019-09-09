@@ -8,7 +8,7 @@
 
 (define (equal-ident? x y)
   (cond ((pair? x)
-         (and (pair? y) (equal-ident? (car x) (car y)) (eq-ident? (cdr x) (cdr y))))
+         (and (pair? y) (equal-ident? (car x) (car y)) (equal-ident? (cdr x) (cdr y))))
         ((ident? x)
          (eq-ident? x y))
         (else
