@@ -66,6 +66,10 @@
                 (compile-top-level (cadr expr) env #f)
                 (set-delete! (next-inst))
                 (compile-top-level (cons 'begin (cddr expr)) env tail))))
+        ((and (pair? expr) (eq? 'define-syntax (car expr)))
+         (set! forms (cons (list (cadr expr) 'macro (list (cddr (caddr expr)) (cadr (caddr expr)))) forms))
+         (set-const! (next-inst) #!void)
+         (put-tail! tail))
         (else
          (compile expr env tail))))
 
@@ -248,10 +252,6 @@
           (let ((v (new-symbol)))
             (list 'let (list (list v (cadr expr))) (list 'if v v (cons 'or (cddr expr))))))))
 
-(define (transform-define-syntax expr)
-  (set! forms (cons (list (cadr expr) 'macro (list (cddr (caddr expr)) (cadr (caddr expr)))) forms))
-  #!void)
-
 (define (compile-seq exprs env tail)
   (cond ((null? exprs)
          (set-const! (next-inst) #!void)
@@ -307,5 +307,4 @@
     (list 'letrec 'deriv transform-letrec)
     (list 'cond 'deriv transform-cond)
     (list 'and 'deriv transform-and)
-    (list 'or 'deriv transform-or)
-    (list 'define-syntax 'deriv transform-define-syntax)))
+    (list 'or 'deriv transform-or)))
