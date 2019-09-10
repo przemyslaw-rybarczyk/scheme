@@ -34,6 +34,11 @@ int fgetc_nospace(FILE *f) {
     return c;
 }
 
+void utf8_error() {
+    eprintf("Error: invalid UTF-8 input\n");
+    exit(1);
+}
+
 Val get_token(FILE *f) {
     int c = fgetc_nospace(f);
 
@@ -93,8 +98,51 @@ Val get_token(FILE *f) {
         exit(1);
     }
 
-    // bool or special
+    // bool, char, or special
     if (s[0] == '#') {
+        // char
+        if (s[1] == '\\') {
+            if (s[2] == '\0')
+                return (Val){TYPE_CHAR, {.char_data = (unsigned char)s_fgetc(f)}};
+            char *ch = &s[2];
+            int bytes;
+            char32_t c = (unsigned char)ch[0];
+            if ((ch[0] & 0x80) == 0x00) {
+                bytes = 1;
+            } else {
+                if ((ch[1] & 0xC0) != 0x80)
+                    utf8_error();
+                c = (c << 6) | (ch[1] & 0x3F);
+                if ((ch[0] & 0xE0) == 0xC0) {
+                    c &= 0x7FF;
+                    bytes = 2;
+                } else {
+                    if ((ch[2] & 0xC0) != 0x80)
+                        utf8_error();
+                    c = (c << 6) | (ch[2] & 0x3F);
+                    if ((ch[0] & 0xF0) == 0xE0) {
+                        c &= 0xFFFF;
+                        bytes = 3;
+                    } else {
+                        if ((ch[3] & 0xC0) != 0x80)
+                            utf8_error();
+                        c = (c << 6) | (ch[3] & 0x3F);
+                        if ((ch[0] & 0xF8) == 0xF0) {
+                            c &= 0x1FFFFF;
+                            bytes = 4;
+                        } else {
+                            utf8_error();
+                        }
+                    }
+                }
+            }
+            if (ch[bytes] == '\0')
+                return (Val){TYPE_CHAR, {.char_data = c}};
+            if (strcmp(s, "#\\space") == 0)
+                return (Val){TYPE_CHAR, {.char_data = ' '}};
+            if (strcmp(s, "#\\newline") == 0)
+                return (Val){TYPE_CHAR, {.char_data = '\n'}};
+        }
         if (strcmp(s, "#f") == 0)
             return (Val){TYPE_BOOL, {.int_data = 0}};
         if (strcmp(s, "#t") == 0)
@@ -103,7 +151,7 @@ Val get_token(FILE *f) {
             return (Val){TYPE_VOID};
         if (strcmp(s, "#!undef") == 0)
             return (Val){TYPE_PRIM, {.prim_data = add_prim}};
-        eprintf("Syntax error: incorrect boolean or special literal %s\n", s);
+        eprintf("Syntax error: incorrect literal %s\n", s);
         exit(1);
     }
 

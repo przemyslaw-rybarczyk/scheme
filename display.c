@@ -23,6 +23,26 @@ static void print_val_(Val val0, int display_style) {
         case TYPE_BOOL:
             printf(val.int_data ? "#t" : "#f");
             break;
+        case TYPE_CHAR: {
+            printf("#\\");
+            char32_t c = val.char_data;
+            if (c < 0x80) {
+                putchar((char)c);
+            } else if (c < 0x800) {
+                putchar((char)(0xC0 | (c >> 6)));
+                putchar((char)(0x80 | (c & 0x3F)));
+            } else if (c < 0x10000) {
+                putchar((char)(0xE0 | (c >> 12)));
+                putchar((char)(0x80 | ((c >> 6) & 0x3F)));
+                putchar((char)(0x80 | (c & 0x3F)));
+            } else {
+                putchar((char)(0xF0 | (c >> 18)));
+                putchar((char)(0x80 | ((c >> 12) & 0x3F)));
+                putchar((char)(0x80 | ((c >> 6) & 0x3F)));
+                putchar((char)(0x80 | (c & 0x3F)));
+            }
+            break;
+        }
         case TYPE_STRING:
             printf(display_style ? "%s" : "\"%s\"", val.string_data);
             break;
@@ -125,6 +145,8 @@ const char *type_name(Type type) {
         return "float";
     case TYPE_BOOL:
         return "bool";
+    case TYPE_CHAR:
+        return "char";
     case TYPE_STRING:
         return "string";
     case TYPE_SYMBOL:
