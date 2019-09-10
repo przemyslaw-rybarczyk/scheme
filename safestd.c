@@ -43,6 +43,11 @@ FILE *s_fopen(const char *pathname, const char *mode) {
     return f;
 }
 
+static void utf8_error() {
+    eprintf("Error: invalid UTF-8 input\n");
+    exit(1);
+}
+
 int s_fgetc(FILE *f) {
     int c = getc(f);
     if (c == EOF && ferror(f)) {
@@ -50,6 +55,49 @@ int s_fgetc(FILE *f) {
         exit(1);
     }
     return c;
+}
+
+int32_t s_fgetc32(FILE *f) {
+    int b0 = getc(f);
+    printf("%02X\n", b0);
+    if (b0 == EOF) {
+        if (ferror(f)) {
+            eprintf("Error: could not read file\n");
+            exit(1);
+        }
+        return EOF32;
+    }
+    int32_t c = b0;
+    if ((b0 & 0x80) == 0x00)
+        return c;
+    int b1 = getc(f);
+    if ((b1 & 0xC0) != 0x80)
+        utf8_error();
+    c = (c << 6) | (b1 & 0x3F);
+    if ((b0 & 0xE0) == 0xC0) {
+        if (c < 0x80)
+            utf8_error();
+        return c & 0x7FF;
+    }
+    int b2 = getc(f);
+    if ((b2 & 0xC0) != 0x80)
+        utf8_error();
+    c = (c << 6) | (b2 & 0x3F);
+    if ((b0 & 0xF0) == 0xE0) {
+        if (c < 0x800)
+            utf8_error();
+        return c & 0xFFFF;
+    }
+    int b3 = getc(f);
+    if ((b3 & 0xC0) != 0x80)
+        utf8_error();
+    c = (c << 6) | (b3 & 0x3F);
+    if ((b0 & 0xF8) == 0xF0) {
+        if (c < 0x10000)
+            utf8_error();
+        return c & 0x1FFFFF;
+    }
+    utf8_error();
 }
 
 void s_fputc(int c, FILE *f) {
