@@ -90,7 +90,7 @@
                        ((eq? type 'deriv)
                         (compile (f expr) env tail))
                        ((eq? type 'macro)
-                        (compile (apply-macro expr (car f) (cadr f)) env tail))
+                        (compile (apply-macro expr (car f) (cadr f) '()) env tail))
                        (else
                         (error "Internal compiler error: unknown primitive type"))))
                (compile-appl expr env tail))))
@@ -296,12 +296,6 @@
   (if tail
       (set-return! (next-inst))))
 
-(define (trap-define expr env tail)
-  (error "Invalid use of define"))
-
-(define (trap-define-syntax expr env tail)
-  (error "Invalid use of define-syntax"))
-
 (define forms
   (list
     (list 'set! 'prim compile-set)
@@ -309,8 +303,6 @@
     (list 'lambda 'prim compile-lambda)
     (list 'begin 'prim compile-begin)
     (list 'quote 'prim compile-quote)
-    (list 'define 'prim trap-define)
-    (list 'define-syntax trap-define-syntax)
     (list 'let 'deriv transform-let)
     (list 'letrec 'deriv transform-letrec)
     (list 'cond 'deriv transform-cond)

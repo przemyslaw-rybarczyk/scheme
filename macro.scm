@@ -31,7 +31,7 @@
          (assq-ident obj (cdr list)))))
 
 ;;; Each binding is of the form (name number-of-ellpises bindings).
-;;; An identifier is a symbol or a nullary function returning (name . macro-id).
+;;; An identifier is a symbol or a nullary function returning (name macro-id env).
 
 (define (get-pattern-bindings expr pattern literals)
   (cond ((and (pair? pattern) (pair? expr))
@@ -89,14 +89,14 @@
           (else
            (apply map (lambda sub-vals (map list vars (map (lambda (x) (- x 1)) levels) sub-vals)) vals)))))
 
-(define (apply-pattern-bindings bindings template macro-id)
+(define (apply-pattern-bindings bindings template macro-id env)
   (cond ((pair? template)
          (if (and (pair? (cdr template)) (eq? '... (cadr template)))
              (let ((repeated-bindings (used-bindings template bindings)))
-               (map (lambda (sub-bindings) (apply-pattern-bindings sub-bindings (car template) macro-id))
+               (map (lambda (sub-bindings) (apply-pattern-bindings sub-bindings (car template) macro-id env))
                     (split-bindings repeated-bindings)))
-             (cons (apply-pattern-bindings bindings (car template) macro-id)
-                   (apply-pattern-bindings bindings (cdr template) macro-id))))
+             (cons (apply-pattern-bindings bindings (car template) macro-id env)
+                   (apply-pattern-bindings bindings (cdr template) macro-id env))))
         ((eq? template '...)
          (error "Invalid ellipsis in pattern"))
         ((ident? template)
@@ -105,7 +105,7 @@
                (if (= (cadr binding) 0)
                    (caddr binding)
                    (error "Not enough ellipses in template"))
-               (lambda () (cons template macro-id)))))
+               (lambda () (list template macro-id env)))))
         (else
          template)))
 
@@ -115,10 +115,10 @@
   (set! macro-id-gen (+ macro-id-gen 1))
   macro-id-gen)
 
-(define (apply-macro expr rules literals)
+(define (apply-macro expr rules literals env)
   (if (null? rules)
       (error "Invalid macro expression - no patterns match")
       (let ((bindings (get-pattern-bindings expr (caar rules) literals)))
         (if bindings
-            (apply-pattern-bindings bindings (cadar rules) (new-macro-id))
-            (apply-macro expr (cdr rules) literals)))))
+            (apply-pattern-bindings bindings (cadar rules) (new-macro-id) env)
+            (apply-macro expr (cdr rules) literals env)))))
