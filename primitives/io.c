@@ -43,7 +43,7 @@ High_prim_return read_prim(Val *args, uint32_t num) {
     args_assert(num == 0);
     stack_pop();
     int c = fgetc_nospace(stdin);
-    if (c == EOF)
+    if (c == EOF32)
         exit(1);
     s_ungetc(c, stdin);
     compiler_input_file = stdin;

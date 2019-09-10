@@ -5,6 +5,8 @@
 
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 
+#define EOF32 (-1)
+
 struct Pair;
 struct Lambda;
 struct Global_env;
