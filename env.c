@@ -9,6 +9,7 @@
 #include "memory.h"
 #include "primitives.h"
 #include "safestd.h"
+#include "string.h"
 
 /* -- execution_env
  * The global environment in which programs are executed.
@@ -67,11 +68,13 @@ Val locate_var(Env_loc var, Env *env, Global_env *global) {
  * Finds a value with a given name in the global environment and returns its index.
  * Exits with an error if the name is unbound.
  */
-uint32_t locate_global_var(char *var, Global_env *global) {
+uint32_t locate_global_var(String *var, Global_env *global) {
     for (uint32_t i = 0; i < global->size; i++)
-        if (strcmp(global->bindings[i].var, var) == 0)
+        if (string_eq(global->bindings[i].var, var))
             return i;
-    eprintf("Error: unbound variable %s\n", var);
+    eprintf("Error: unbound variable ");
+    eputs32(var);
+    eprintf("\n");
     exit(1);
 }
 
@@ -93,9 +96,9 @@ void assign_var(Env_loc var, Val val, Env *env, Global_env *global) {
  * Binds a value to a variable name in the given global environment.
  * Changes the binding if one already exists.
  */
-void define_var(char* var, Val val, Global_env *global) {
+void define_var(String *var, Val val, Global_env *global) {
     for (uint32_t i = 0; i < global->size; i++) {
-        if (strcmp(global->bindings[i].var, var) == 0) {
+        if (string_eq(global->bindings[i].var, var)) {
             global->bindings[i].val = val;
             return;
         }

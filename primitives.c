@@ -1,5 +1,6 @@
 #include <stdlib.h>
 
+#include "primitives.h"
 #include "types.h"
 #include "primitives/compiler.h"
 #include "primitives/io.h"
@@ -7,11 +8,19 @@
 #include "primitives/number.h"
 #include "primitives/pair.h"
 #include "primitives/predicates.h"
+#include "safestd.h"
+#include "symbol.h"
+#include "string.h"
 
 /* == primitives.c
  * This file specifies all primitives included in this Scheme implementation.
  * The actual definitions of the primitives are located in the `primitives` directory.
  */
+
+struct CString_binding {
+    Val val;
+    char *var;
+};
 
 #define PRIM2(name, internal_name) {{TYPE_PRIM, {.prim_data = internal_name##_prim}}, name}
 #define PRIM(name) PRIM2(#name, name)
@@ -20,7 +29,7 @@
 #define H_PRIM2(name, internal_name) {{TYPE_HIGH_PRIM, {.high_prim_data = internal_name##_prim}}, name}
 #define H_PRIM(name) H_PRIM2(#name, name)
 
-Binding r5rs_bindings[] = {
+static struct CString_binding cstring_r5rs_bindings[] = {
     PRIM(cons),
     PRIM(car),
     PRIM(caar),
@@ -94,9 +103,9 @@ Binding r5rs_bindings[] = {
     H_PRIM(read),
 };
 
-uint32_t r5rs_bindings_size = sizeof(r5rs_bindings) / sizeof(Binding);
+uint32_t r5rs_bindings_size = sizeof(cstring_r5rs_bindings) / sizeof(struct CString_binding);
 
-Binding compiler_bindings[] = {
+static struct CString_binding cstring_compiler_bindings[] = {
     PRIM2("next-token", next_token),
     PRIM2("this-inst", this_inst),
     PRIM2("next-inst", next_inst),
@@ -117,4 +126,15 @@ Binding compiler_bindings[] = {
     PRIM2("new-symbol", new_symbol),
 };
 
-uint32_t compiler_bindings_size = sizeof(compiler_bindings) / sizeof(Binding);
+uint32_t compiler_bindings_size = sizeof(cstring_compiler_bindings) / sizeof(struct CString_binding);
+
+void setup_primitives(void) {
+    r5rs_bindings = s_malloc(r5rs_bindings_size * sizeof(Binding));
+    for (uint32_t i = 0; i < r5rs_bindings_size; i++)
+        r5rs_bindings[i] = (Binding){cstring_r5rs_bindings[i].val,
+            intern_symbol(new_string_from_cstring(cstring_r5rs_bindings[i].var))};
+    compiler_bindings = s_malloc(compiler_bindings_size * sizeof(Binding));
+    for (uint32_t i = 0; i < compiler_bindings_size; i++)
+        compiler_bindings[i] = (Binding){cstring_compiler_bindings[i].val,
+            intern_symbol(new_string_from_cstring(cstring_compiler_bindings[i].var))};
+}

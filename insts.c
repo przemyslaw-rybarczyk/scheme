@@ -10,6 +10,7 @@
 #include "types.h"
 #include "display.h"
 #include "safestd.h"
+#include "string.h"
 #include "symbol.h"
 
 Inst *insts;
@@ -60,10 +61,10 @@ void setup_insts(void) {
     char *path = get_path();
     load_insts(fopen_relative(path, "compiler.sss", "rb"));
     compile_pc = this_inst();
-    insts[next_inst()] = (Inst){INST_NAME, {.name = "parse-and-compile"}};
+    insts[next_inst()] = (Inst){INST_NAME, {.name = new_string_from_cstring("parse-and-compile")}};
     insts[next_inst()] = (Inst){INST_TAIL_CALL, {.num = 0}};
     parse_pc = this_inst();
-    insts[next_inst()] = (Inst){INST_NAME, {.name = "parse"}};
+    insts[next_inst()] = (Inst){INST_NAME, {.name = new_string_from_cstring("parse")}};
     insts[next_inst()] = (Inst){INST_TAIL_CALL, {.num = 0}};
 }
 
@@ -102,6 +103,12 @@ static void save_uint32(FILE *fp, uint32_t n) {
         s_fputc((uint8_t)(n >> 8 * i), fp);
 }
 
+static void save_string(FILE *fp, String *str) {
+    for (int i = 7; i >= 0; i--)
+        s_fputc((uint8_t)(str->len >> 8 * i), fp);
+    fputs32(str, fp);
+}
+
 static void save_val(FILE *fp, Val val) {
     s_fputc(val.type, fp);
     switch (val.type) {
@@ -123,8 +130,7 @@ static void save_val(FILE *fp, Val val) {
         break;
     case TYPE_STRING:
     case TYPE_SYMBOL:
-        s_fputs(val.string_data, fp);
-        s_fputc('\0', fp);
+        save_string(fp, val.string_data);
         break;
     case TYPE_NIL:
     case TYPE_VOID:
@@ -154,8 +160,7 @@ void save_insts(FILE *fp, uint32_t start, uint32_t end) {
         case INST_NAME:
         case INST_DEF:
         case INST_SET_NAME:
-            s_fputs(insts[n].name, fp);
-            s_fputc('\0', fp);
+            save_string(fp, insts[n].name);
             break;
         case INST_JUMP:
         case INST_JUMP_FALSE:
@@ -189,6 +194,15 @@ static unsigned char s_fgetc2(FILE *f) {
     return (unsigned char)c;
 }
 
+static char32_t s_fgetc32_2(FILE *f) {
+    int32_t c = s_fgetc32(f);
+    if (c == EOF32) {
+        eprintf("Error: unexpected end of file\n");
+        exit(1);
+    }
+    return (char32_t)c;
+}
+
 static uint32_t load_uint32(FILE *fp) {
     uint32_t n = 0;
     for (int i = 0; i < 4; i++)
@@ -196,18 +210,14 @@ static uint32_t load_uint32(FILE *fp) {
     return n;
 }
 
-static char *load_str(FILE *fp) {
-    unsigned int size = 16;
-    char *str = s_malloc(size * sizeof(char));
-    char *s = str;
-    while ((*s++ = (char)s_fgetc2(fp)) != '\0') {
-        if (s - str >= size) {
-            size *= 2;
-            ptrdiff_t i = s - str;
-            str = s_realloc(str, size * sizeof(char));
-            s = str + i;
-        }
-    }
+static String *load_str(FILE *fp) {
+    size_t len = 0;
+    for (int i = 0; i < 8; i++)
+        len = len << 8 | s_fgetc2(fp);
+    String *str = s_malloc(sizeof(String) + len * sizeof(char32_t));
+    str->len = len;
+    for (size_t i = 0; i < len; i++)
+        str->chars[i] = s_fgetc32_2(fp);
     return str;
 }
 
@@ -233,6 +243,7 @@ static Val load_val(FILE *fp) {
     case TYPE_BOOL:
         return (Val){TYPE_BOOL, {.int_data = s_fgetc2(fp)}};
     case TYPE_STRING:
+        // TODO move string into GC memory
         return (Val){TYPE_STRING, {.string_data = load_str(fp)}};
     case TYPE_SYMBOL:
         return (Val){TYPE_SYMBOL, {.string_data = intern_symbol(load_str(fp))}};

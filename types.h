@@ -5,7 +5,13 @@
 
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 
-#define EOF32 (-1)
+/* -- String
+ * TODO document
+ */
+typedef struct String {
+    size_t len;
+    char32_t chars[];
+} String;
 
 struct Pair;
 struct Lambda;
@@ -99,7 +105,7 @@ typedef struct Val {
         long long int_data;
         double float_data;
         char32_t char_data;
-        char *string_data;
+        String *string_data;
         struct Val (*prim_data)(struct Val *, uint32_t);
         High_prim *high_prim_data;
         struct Lambda *lambda_data;
@@ -144,7 +150,7 @@ typedef struct Lambda {
 
 typedef struct Binding {
     struct Val val;
-    char *var;
+    String *var;
 } Binding;
 
 typedef struct Global_env {
@@ -226,7 +232,7 @@ typedef struct Inst {
     union {
         struct Val val;
         struct Env_loc var;
-        char *name;
+        String *name;
         uint32_t index;
         uint32_t num;
         struct {
