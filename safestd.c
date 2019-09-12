@@ -98,7 +98,7 @@ int32_t s_fgetc32(FILE *f) {
     c = (c << 6) | (b2 & 0x3F);
     if ((b0 & 0xF0) == 0xE0) {
         c &= 0xFFFF;
-        if (c < 0x800)
+        if (c < 0x800 || (0xD800 <= c && c <= 0xDFFF))
             goto utf8_error;
         return c;
     }
@@ -108,7 +108,7 @@ int32_t s_fgetc32(FILE *f) {
     c = (c << 6) | (b3 & 0x3F);
     if ((b0 & 0xF8) == 0xF0) {
         c &= 0x1FFFFF;
-        if (c < 0x10000)
+        if (c < 0x10000 || c > 0x10FFFF)
             goto utf8_error;
         return c;
     }
