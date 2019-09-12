@@ -4,6 +4,7 @@
 #include "predicates.h"
 #include "../types.h"
 #include "../exec_stack.h"
+#include "../string.h"
 #include "assert.h"
 
 int eq(Val val1, Val val2) {
@@ -56,7 +57,7 @@ int equal(Val val1, Val val2) {
             return 0;
         switch (val1.type) {
         case TYPE_STRING:
-            if (val2.type != TYPE_STRING || strcmp(val1.string_data, val2.string_data) != 0) {
+            if (val2.type != TYPE_STRING || !string_eq(val1.string_data, val2.string_data)) {
                 stack_ptr = stack_ptr_before;
                 return 0;
             }

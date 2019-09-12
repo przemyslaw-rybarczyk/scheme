@@ -4,6 +4,7 @@
 #include "types.h"
 #include "exec_stack.h"
 #include "insts.h"
+#include "safestd.h"
 
 static void print_val_(Val val0, int display_style) {
     stack_push((Val){TYPE_PRINT_CONTROL, {.print_control_data = PRINT_CONTROL_END}});
@@ -23,31 +24,19 @@ static void print_val_(Val val0, int display_style) {
         case TYPE_BOOL:
             printf(val.int_data ? "#t" : "#f");
             break;
-        case TYPE_CHAR: {
+        case TYPE_CHAR:
             printf("#\\");
-            char32_t c = val.char_data;
-            if (c < 0x80) {
-                putchar((char)c);
-            } else if (c < 0x800) {
-                putchar((char)(0xC0 | (c >> 6)));
-                putchar((char)(0x80 | (c & 0x3F)));
-            } else if (c < 0x10000) {
-                putchar((char)(0xE0 | (c >> 12)));
-                putchar((char)(0x80 | ((c >> 6) & 0x3F)));
-                putchar((char)(0x80 | (c & 0x3F)));
-            } else {
-                putchar((char)(0xF0 | (c >> 18)));
-                putchar((char)(0x80 | ((c >> 12) & 0x3F)));
-                putchar((char)(0x80 | ((c >> 6) & 0x3F)));
-                putchar((char)(0x80 | (c & 0x3F)));
-            }
+            putchar32(val.char_data);
             break;
-        }
         case TYPE_STRING:
-            printf(display_style ? "%s" : "\"%s\"", val.string_data);
+            if (display_style == 0)
+                printf("\"");
+            puts32(val.string_data);
+            if (display_style == 0)
+                printf("\"");
             break;
         case TYPE_SYMBOL:
-            printf("%s", val.string_data);
+            puts32(val.string_data);
             break;
         case TYPE_PRIM:
         case TYPE_HIGH_PRIM:
@@ -190,16 +179,22 @@ void print_inst(uint32_t n) {
         printf("VAR %d %d\n", insts[n].var.frame, insts[n].var.index);
         break;
     case INST_NAME:
-        printf("NAME %s\n", insts[n].name);
+        printf("NAME");
+        puts32(insts[n].name);
+        printf("\n");
         break;
     case INST_DEF:
-        printf("DEF %s\n", insts[n].name);
+        printf("DEF");
+        puts32(insts[n].name);
+        printf("\n");
         break;
     case INST_SET:
         printf("SET %d %d\n", insts[n].var.frame, insts[n].var.index);
         break;
     case INST_SET_NAME:
-        printf("SET_NAME %s\n", insts[n].name);
+        printf("SET_NAME");
+        puts32(insts[n].name);
+        printf("\n");
         break;
     case INST_JUMP:
         printf("JUMP %d\n", insts[n].index);

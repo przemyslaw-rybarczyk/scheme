@@ -7,6 +7,7 @@
 #include "../insts.h"
 #include "../parser.h"
 #include "../safestd.h"
+#include "../string.h"
 #include "../symbol.h"
 #include "assert.h"
 
@@ -183,5 +184,5 @@ Val new_symbol_prim(Val *args, uint32_t num) {
     args_assert(num == 0);
     char *s = s_malloc(32);
     sprintf(s, "%d", new_symbol_counter++);
-    return (Val){TYPE_SYMBOL, {.string_data = intern_symbol(s)}};
+    return (Val){TYPE_SYMBOL, {.string_data = intern_symbol(new_string_from_cstring(s))}};
 }

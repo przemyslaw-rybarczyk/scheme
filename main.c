@@ -9,6 +9,7 @@
 #include "insts.h"
 #include "memory.h"
 #include "parser.h"
+#include "primitives.h"
 #include "safestd.h"
 #include "symbol.h"
 
@@ -89,6 +90,7 @@ int main(int argc, char **argv) {
 
     setup_memory();
     setup_obarray();
+    setup_primitives();
     execution_env = make_global_env(1, 0);
     setup_insts();
     setup_env();
