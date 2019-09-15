@@ -84,7 +84,7 @@ static char32_t get_long_property(char32_t c, int prop) {
     uint8_t row_num = row_index[c >> 5];
     if (row_num >= 0xF0 || row_num < table_switch_point)
         return c;
-    return row_table_index[c >> 15].long_row_table_ptr[row_num - table_switch_point].long_data[c & 0x1F][prop];
+    return (c & 0xFF0000) | row_table_index[c >> 15].long_row_table_ptr[row_num - table_switch_point].long_data[c & 0x1F][prop];
 }
 
 char32_t to_uppercase(char32_t c) {
