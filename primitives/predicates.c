@@ -129,6 +129,11 @@ Val boolean_prim(Val *args, uint32_t num) {
     return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_BOOL}};
 }
 
+Val char_prim(Val *args, uint32_t num) {
+    args_assert(num == 1);
+    return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_CHAR}};
+}
+
 Val not_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
     return (Val){TYPE_BOOL, {.int_data = (args[0].type == TYPE_BOOL && args[0].int_data == 0)}};
