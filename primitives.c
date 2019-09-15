@@ -2,6 +2,7 @@
 
 #include "primitives.h"
 #include "types.h"
+#include "primitives/char.h"
 #include "primitives/compiler.h"
 #include "primitives/io.h"
 #include "primitives/list.h"
@@ -73,6 +74,7 @@ static struct CString_binding cstring_r5rs_bindings[] = {
     PRIM_Q(string),
     PRIM_Q(procedure),
     PRIM_Q(boolean),
+    PRIM_Q(char),
     PRIM(not),
     PRIM2("+", add),
     PRIM2("-", sub),
@@ -97,6 +99,25 @@ static struct CString_binding cstring_r5rs_bindings[] = {
     H_PRIM(map),
     H_PRIM2("for-each", for_each),
     H_PRIM(apply),
+    PRIM2("char=?", char_eq),
+    PRIM2("char<?", char_lt),
+    PRIM2("char>?", char_gt),
+    PRIM2("char<=?", char_le),
+    PRIM2("char>=?", char_ge),
+    PRIM2("char-ci=?", char_ci_eq),
+    PRIM2("char-ci<?", char_ci_lt),
+    PRIM2("char-ci>?", char_ci_gt),
+    PRIM2("char-ci<=?", char_ci_le),
+    PRIM2("char-ci>=?", char_ci_ge),
+    PRIM2("char-alphabetic?", char_alphabetic),
+    PRIM2("char-numeric?", char_numeric),
+    PRIM2("char-whitespace?", char_whitespace),
+    PRIM2("char-upper-case?", char_upper_case),
+    PRIM2("char-lower-case?", char_lower_case),
+    PRIM2("char->integer", char_to_integer),
+    PRIM2("integer->char", integer_to_char),
+    PRIM2("char-upcase", char_upcase),
+    PRIM2("char-downcase", char_downcase),
     PRIM(display),
     PRIM(newline),
     PRIM(error),

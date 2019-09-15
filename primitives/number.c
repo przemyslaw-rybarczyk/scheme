@@ -152,9 +152,6 @@ Val div_prim(Val *args, uint32_t num) {
     return (Val){TYPE_FLOAT, {.float_data = quot}};
 }
 
-Val false_val = (Val){TYPE_BOOL, {.int_data = 0}};
-Val true_val = (Val){TYPE_BOOL, {.int_data = 1}};
-
 Val equ_prim(Val *args, uint32_t num) {
     if (num == 0)
         return true_val;

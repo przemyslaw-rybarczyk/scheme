@@ -1,5 +1,3 @@
-// TODO remove ctype
-#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -14,6 +12,7 @@
 #include "safestd.h"
 #include "string.h"
 #include "symbol.h"
+#include "unicode/unicode.h"
 
 #define INIT_TOKEN_LENGTH 16
 
@@ -23,8 +22,7 @@
 int32_t fgetc32_nospace(FILE *f) {
     int32_t c;
     while (1) {
-        // TODO replace with unicode check for space or control
-        while (isspace(c = s_fgetc32(f)))
+        while ((c = s_fgetc32(f)) != EOF32 && is_whitespace((char32_t)c))
             ;
         if (c == ';') {
             while ((c = s_fgetc32(f)) != '\n' && c != EOF32)
@@ -77,8 +75,7 @@ Val get_token(FILE *f) {
     // name
     size_t i = 1;
     s[0] = (char32_t)c;
-    // TODO replace isspace
-    while ((c = s_fgetc32(f)) != EOF32 && !isspace(c) && c != ';'
+    while ((c = s_fgetc32(f)) != EOF32 && !is_whitespace((char32_t)c) && c != ';'
             && c != '(' && c != ')' && c != '\'' && c != '"') {
         s[i++] = (char32_t)c;
         if (i >= capacity) {
