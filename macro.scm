@@ -33,26 +33,43 @@
 ;;; Each binding is of the form (name number-of-ellpises bindings).
 ;;; An identifier is a symbol or a nullary function returning (name macro-id env).
 
+(define (get-empty-bindings pattern literals)
+  (cond ((pair? pattern)
+         (cond ((and (pair? (cdr pattern)) (eq? '... (cadr pattern)))
+                (if (not (null? (cddr pattern)))
+                    (error "Ellipsis not at the end of a list"))
+                (map (lambda (binding) (list (car binding) (+ 1 (cadr binding)) (caddr binding)))
+                     (get-empty-bindings (car pattern) literals)))
+               (else
+                (append (get-empty-bindings (car pattern) literals)
+                        (get-empty-bindings (cdr pattern) literals)))))
+        ((and (ident? pattern) (not (memq-ident pattern literals)))
+         (list (list pattern 0 '())))
+        (else
+         '())))
+
 (define (get-pattern-bindings expr pattern literals)
-  (cond ((and (pair? pattern) (pair? expr))
+  (cond ((pair? pattern)
          (cond ((and (pair? (cdr pattern)) (eq? '... (cadr pattern)))
                 (if (not (null? (cddr pattern)))
                     (error "Ellipsis not at the end of a list"))
                 (let ((bindings-lists (map (lambda (subexpr) (get-pattern-bindings subexpr (car pattern) literals)) expr)))
                   (if (memq #f bindings-lists)
                       #f
-                      (apply
-                        map
-                        (lambda bindings (list (caar bindings) (+ 1 (cadar bindings)) (map caddr bindings)))
-                        bindings-lists))))
-               (else
+                      (if (null? bindings-lists)
+                          (get-empty-bindings pattern literals)
+                          (apply
+                            map
+                            (lambda bindings (list (caar bindings) (+ 1 (cadar bindings)) (map caddr bindings)))
+                            bindings-lists)))))
+               ((pair? expr)
                 (let ((car-bindings (get-pattern-bindings (car expr) (car pattern) literals))
                       (cdr-bindings (get-pattern-bindings (cdr expr) (cdr pattern) literals)))
                   (if (and car-bindings cdr-bindings)
                       (append car-bindings cdr-bindings)
-                      #f)))))
-        ((pair? pattern)
-         #f)
+                      #f)))
+               (else
+                #f)))
         ((and (ident? pattern) (not (memq-ident pattern literals)))
          (list (list pattern 0 expr)))
         ((equal-ident? expr pattern)
