@@ -81,19 +81,22 @@
 
 (define (compile expr env tail)
   (cond ((pair? expr)
-         (let ((compile-form (assq-ident (car expr) forms)))
-           (if compile-form
-               (let ((type (cadr compile-form))
-                     (f (caddr compile-form)))
-                 (cond ((eq? type 'prim)
-                        (f expr env tail))
-                       ((eq? type 'deriv)
-                        (compile (f expr) env tail))
-                       ((eq? type 'macro)
-                        (compile (apply-macro expr (car f) (cadr f) '()) env tail))
-                       (else
-                        (error "Internal compiler error: unknown primitive type"))))
-               (compile-appl expr env tail))))
+         (let ((loc (locate-name (car expr) env)))
+           (if (and (pair? loc) (eq? (car loc) 'macro))
+               (compile (apply-macro expr (cadr loc) (caddr loc) (cadddr loc)) env tail)
+               (let ((compile-form (assq-ident (car expr) forms)))
+                 (if compile-form
+                     (let ((type (cadr compile-form))
+                           (f (caddr compile-form)))
+                       (cond ((eq? type 'prim)
+                              (f expr env tail))
+                             ((eq? type 'deriv)
+                              (compile (f expr) env tail))
+                             ((eq? type 'macro)
+                              (compile (apply-macro expr (car f) (cadr f) '()) env tail))
+                             (else
+                              (error "Internal compiler error: unknown primitive type"))))
+                     (compile-appl expr env tail))))))
         ((ident? expr)
          (compile-name expr env tail))
         ((eq? expr undef)
@@ -108,22 +111,38 @@
 (define (compile-name name env tail)
   (let ((loc (locate-name name env)))
     (if loc
-        (set-var! (next-inst) (car loc) (cdr loc))
+        (if (eq? 'macro (car loc))
+            (error "Use of macro as variable")
+            (set-var! (next-inst) (car loc) (cdr loc)))
         (set-name! (next-inst) (if (symbol? name) name (car (name)))))
     (put-tail! tail)))
 
+;;; Returns (frame . index) if a local variable is found,
+;;; ('macro . macro) if a local macro is found, and #f otherwise.
 (define (locate-name name env)
   (define (loop-env env x)
-    (define (loop-frame frame y)
+    (define (loop-var-frame frame y)
       (cond ((null? frame)
              (loop-env (cdr env) (+ x 1)))
             ((eq-ident? (car frame) name)
              (cons x y))
             (else
-             (loop-frame (cdr frame) (+ y 1)))))
-    (if (null? env)
-        #f
-        (loop-frame (car env) 0)))
+             (loop-var-frame (cdr frame) (+ y 1)))))
+    (define (loop-macro-frame frame)
+      (cond ((null? frame)
+             (loop-env (cdr env) x))
+            ((eq-ident? (caar frame) name)
+             (cons 'macro (cdar frame)))
+            (else
+             (loop-macro-frame (cdr frame)))))
+    (cond ((null? env)
+           #f)
+          ((eq? (caar env) 'var)
+           (loop-var-frame (cdar env) 0))
+          ((eq? (caar env) 'macro)
+           (loop-macro-frame (cdar env)))
+          (else
+           (error "Invalid environment structure"))))
   (loop-env env 0))
 
 (define (compile-appl expr env tail)
@@ -139,7 +158,9 @@
   (compile (caddr expr) env #f)
   (let ((loc (locate-name (cadr expr) env)))
     (if loc
-        (set-set! (next-inst) (car loc) (cdr loc))
+        (if (eq? 'macro (car loc))
+            (error "Use of macro as variable")
+            (set-set! (next-inst) (car loc) (cdr loc)))
         (set-set-name! (next-inst) (cadr expr)))
     (put-tail! tail)))
 
@@ -182,7 +203,7 @@
         (error "duplicate lambda parameter name"))
     (let ((jump-after (next-inst))
           (lambda-address (this-inst)))
-      (compile-body (cddr expr) (cons args env) #t)
+      (compile-body (cddr expr) (cons (cons 'var args) env) #t)
       (let ((lambda-inst (next-inst))
             (variadic (not (equal-ident? args (cadr expr)))))
         (set-lambda!
@@ -211,6 +232,12 @@
         (compile-quoted (cdr expr))
         (set-cons! (next-inst)))
       (set-const! (next-inst) expr)))
+
+(define (compile-let-syntax expr env tail)
+  (compile-body
+    (cddr expr)
+    (cons (cons 'macro (map (lambda (binding) (list (car binding) (cddadr binding) (cadadr binding) env)) (cadr expr))) env)
+    tail))
 
 (define (transform-let expr)
   (if (memq #f (map null? (map cddr (cadr expr))))
@@ -303,6 +330,7 @@
     (list 'lambda 'prim compile-lambda)
     (list 'begin 'prim compile-begin)
     (list 'quote 'prim compile-quote)
+    (list 'let-syntax 'prim compile-let-syntax)
     (list 'let 'deriv transform-let)
     (list 'letrec 'deriv transform-letrec)
     (list 'cond 'deriv transform-cond)
