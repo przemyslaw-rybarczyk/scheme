@@ -82,9 +82,11 @@
 (define (compile expr env tail)
   (cond ((pair? expr)
          (let ((loc (locate-name (car expr) env)))
-           (if (and (pair? loc) (eq? (car loc) 'macro))
-               (compile (apply-macro expr (cadr loc) (caddr loc) (cadddr loc)) env tail)
-               (let ((compile-form (assq-ident (car expr) forms)))
+           (if (pair? loc)
+               (if (eq? (car loc) 'macro)
+                   (compile (apply-macro expr (cadr loc) (caddr loc) (cadddr loc)) env tail)
+                   (compile-appl expr env tail))
+               (let ((compile-form (assq-ident loc forms)))
                  (if compile-form
                      (let ((type (cadr compile-form))
                            (f (caddr compile-form)))
@@ -110,40 +112,55 @@
 
 (define (compile-name name env tail)
   (let ((loc (locate-name name env)))
-    (if loc
+    (if (pair? loc)
         (if (eq? 'macro (car loc))
             (error "Use of macro as variable")
             (set-var! (next-inst) (car loc) (cdr loc)))
-        (set-name! (next-inst) (if (symbol? name) name (car (name)))))
+        (set-name! (next-inst) loc))
     (put-tail! tail)))
 
+(define (env-distance env1 env2)
+  (define (loop env1 d)
+    (if (and (pair? env1) (eq? (caar env1) 'macro))
+        (loop (cdr env1) d)
+        (if (eq? env1 env2)
+            d
+            (loop (cdr env1) (+ d 1)))))
+  (if (and (pair? env2) (eq? (caar env2) 'macro))
+      (env-distance env1 (cdr env2))
+      (loop env1 0)))
+
 ;;; Returns (frame . index) if a local variable is found,
-;;; ('macro . macro) if a local macro is found, and #f otherwise.
+;;; ('macro . macro) if a local macro is found, and name as a symbol otherwise.
 (define (locate-name name env)
-  (define (loop-env env x)
+  (define (loop-env name env x)
     (define (loop-var-frame frame y)
       (cond ((null? frame)
-             (loop-env (cdr env) (+ x 1)))
+             (loop-env name (cdr env) (+ x 1)))
             ((eq-ident? (car frame) name)
              (cons x y))
             (else
              (loop-var-frame (cdr frame) (+ y 1)))))
     (define (loop-macro-frame frame)
       (cond ((null? frame)
-             (loop-env (cdr env) x))
+             (loop-env name (cdr env) x))
             ((eq-ident? (caar frame) name)
              (cons 'macro (cdar frame)))
             (else
              (loop-macro-frame (cdr frame)))))
     (cond ((null? env)
-           #f)
+           (if (procedure? name)
+               (let ((new-name (car (name)))
+                     (new-env (caddr (name))))
+                 (loop-env new-name new-env (env-distance env new-env)))
+               name))
           ((eq? (caar env) 'var)
            (loop-var-frame (cdar env) 0))
           ((eq? (caar env) 'macro)
            (loop-macro-frame (cdar env)))
           (else
            (error "Invalid environment structure"))))
-  (loop-env env 0))
+  (loop-env name env 0))
 
 (define (compile-appl expr env tail)
   (for-each
@@ -157,11 +174,11 @@
       (error "set! expression too long"))
   (compile (caddr expr) env #f)
   (let ((loc (locate-name (cadr expr) env)))
-    (if loc
+    (if (pair? loc)
         (if (eq? 'macro (car loc))
             (error "Use of macro as variable")
             (set-set! (next-inst) (car loc) (cdr loc)))
-        (set-set-name! (next-inst) (cadr expr)))
+        (set-set-name! (next-inst) loc))
     (put-tail! tail)))
 
 (define (compile-if expr env tail)
