@@ -78,6 +78,10 @@ int is_whitespace(char32_t c) {
     return (get_short_properties(c) >> 3) & 1;
 }
 
+int is_control(char32_t c) {
+    return c <= 0x1F || (c >= 0x7F && c <= 0x9F);
+}
+
 static char32_t get_long_property(char32_t c, int prop) {
     if (c >= 0x30000)
         return c;

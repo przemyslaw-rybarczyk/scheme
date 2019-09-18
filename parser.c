@@ -22,7 +22,7 @@
 int32_t fgetc32_nospace(FILE *f) {
     int32_t c;
     while (1) {
-        while ((c = s_fgetc32(f)) != EOF32 && is_whitespace((char32_t)c))
+        while ((c = s_fgetc32(f)) != EOF32 && (is_whitespace((char32_t)c) || is_control((char32_t)c)))
             ;
         if (c == ';') {
             while ((c = s_fgetc32(f)) != '\n' && c != EOF32)
@@ -75,8 +75,8 @@ Val get_token(FILE *f) {
     // name
     size_t i = 1;
     s[0] = (char32_t)c;
-    while ((c = s_fgetc32(f)) != EOF32 && !is_whitespace((char32_t)c) && c != ';'
-            && c != '(' && c != ')' && c != '\'' && c != '"') {
+    while ((c = s_fgetc32(f)) != EOF32 && !(is_whitespace((char32_t)c) || is_control((char32_t)c))
+            && c != ';' && c != '(' && c != ')' && c != '\'' && c != '"') {
         s[i++] = (char32_t)c;
         if (i >= capacity) {
             capacity *= 2;
