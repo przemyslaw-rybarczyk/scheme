@@ -132,7 +132,7 @@
 
 ;;; Returns (frame . index) if a local variable is found,
 ;;; ('macro . macro) if a local macro is found, and name as a symbol otherwise.
-(define (locate-name name env)
+(define (locate-name name env0)
   (define (loop-env name env x)
     (define (loop-var-frame frame y)
       (cond ((null? frame)
@@ -152,7 +152,7 @@
            (if (procedure? name)
                (let ((new-name (car (name)))
                      (new-env (caddr (name))))
-                 (loop-env new-name new-env (env-distance env new-env)))
+                 (loop-env new-name new-env (env-distance env0 new-env)))
                name))
           ((eq? (caar env) 'var)
            (loop-var-frame (cdar env) 0))
@@ -160,7 +160,7 @@
            (loop-macro-frame (cdar env)))
           (else
            (error "Invalid environment structure"))))
-  (loop-env name env 0))
+  (loop-env name env0 0))
 
 (define (compile-appl expr env tail)
   (for-each
