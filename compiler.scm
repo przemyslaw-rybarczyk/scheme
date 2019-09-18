@@ -256,6 +256,13 @@
     (cons (cons 'macro (map (lambda (binding) (list (car binding) (cddadr binding) (cadadr binding) env)) (cadr expr))) env)
     tail))
 
+(define (compile-letrec-syntax expr env tail)
+  (let ((new-env (cons '() env)))
+    (set-car!
+      new-env
+      (cons 'macro (map (lambda (binding) (list (car binding) (cddadr binding) (cadadr binding) new-env)) (cadr expr))))
+    (compile-body (cddr expr) new-env tail)))
+
 (define (transform-let expr)
   (if (memq #f (map null? (map cddr (cadr expr))))
       (error "invalid let expression binding"))
@@ -348,6 +355,7 @@
     (list 'begin 'prim compile-begin)
     (list 'quote 'prim compile-quote)
     (list 'let-syntax 'prim compile-let-syntax)
+    (list 'letrec-syntax 'prim compile-letrec-syntax)
     (list 'let 'deriv transform-let)
     (list 'letrec 'deriv transform-letrec)
     (list 'cond 'deriv transform-cond)

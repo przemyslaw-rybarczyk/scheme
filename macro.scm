@@ -3,7 +3,9 @@
 
 (define (eq-ident? x y)
   (if (procedure? x)
-      (and (procedure? y) (equal? (x) (y)))
+      (and (procedure? y)
+           (let ((xr (x)) (yr (y)))
+             (and (eq? (car xr) (car yr)) (= (cadr xr) (cadr yr)) (eq? (caddr xr) (caddr yr)))))
       (eq? x y)))
 
 (define (equal-ident? x y)
