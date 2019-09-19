@@ -7,9 +7,14 @@
 
 /* -- String
  * TODO document
+ * Every GC-allocated string must have at least one character, even if it's empty.
+ * The character is used for purposes of garbage collection.
  */
 typedef struct String {
-    size_t len;
+    union {
+        size_t len;
+        struct String *new_ptr;
+    };
     char32_t chars[];
 } String;
 
