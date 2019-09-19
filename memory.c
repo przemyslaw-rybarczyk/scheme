@@ -130,6 +130,7 @@ static void *force_alloc(size_t size) {
 }
 
 static Val move_val(Val val);
+static String *move_string(String *str);
 static Env *move_env(Env *env);
 static Pair *move_pair(Pair *pair);
 static Lambda *move_lambda(Lambda *lambda);
@@ -174,6 +175,9 @@ static void garbage_collect(void) {
 
 static Val move_val(Val val) {
     switch (val.type) {
+    case TYPE_STRING:
+        val.string_data = move_string(val.string_data);
+        return val;
     case TYPE_PAIR:
         val.pair_data = move_pair(val.pair_data);
         return val;
@@ -188,14 +192,24 @@ static Val move_val(Val val) {
     }
 }
 
+static String *move_string(String *str) {
+    if (str->chars[0] == UINT32_MAX)
+        return str->new_ptr;
+    size_t str_size = sizeof(String) + (str->len ? str->len : 1) * sizeof(char32_t);
+    String *new_str = force_alloc(str_size);
+    memcpy(new_str, str, str_size);
+    str->chars[0] = UINT32_MAX;
+    str->new_ptr = new_str;
+    return new_str;
+}
+
 static Env *move_env(Env *env) {
     if (env == NULL)
         return env;
     if (env->size == UINT32_MAX)
         return env->outer;
     Env *new_env = force_alloc(sizeof(Env) + env->size * sizeof(Val));
-    *new_env = *env;
-    memcpy(new_env->vals, env->vals, env->size * sizeof(Val));
+    memcpy(new_env, env, sizeof(Env) + env->size * sizeof(Val));
     env->size = UINT32_MAX;
     env->outer = new_env;
     gc_stack_push((GC_object){GC_ENV, {.env = &new_env->outer}});
