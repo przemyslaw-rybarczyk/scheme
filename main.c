@@ -92,6 +92,7 @@ int main(int argc, char **argv) {
     setup_obarray();
     setup_primitives();
     execution_env = make_global_env(1, 0);
+    compiler_env = make_global_env(1, 1);
     setup_insts();
     setup_env();
 
