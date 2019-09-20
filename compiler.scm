@@ -269,7 +269,11 @@
     (if (memq #f (map (lambda (rule) (null? (cddr rule))) (cddr transformer)))
         (error "Syntax rule too long"))
     (if (memq #f (map (lambda (rule) (eq-ident? (caar rule) (car expr))) (cddr transformer)))
-        (error "Syntax rule pattern doesn't start with bound symbol"))))
+        (error "Syntax rule pattern doesn't start with bound symbol"))
+    (if (memq #t (map (lambda (rule)
+                        (has-duplicates? (filter (lambda (symbol) (and (ident? symbol) (not (memq symbol (cadr transformer)))))
+                                                   (flatten (cdar rule))))) (cddr transformer)))
+        (error "Syntax rule pattern contains duplicates"))))
 
 ;;; Each macro is of the form (name rules literals env).
 
