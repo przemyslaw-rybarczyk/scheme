@@ -67,7 +67,10 @@
                 (set-delete! (next-inst))
                 (compile-top-level (cons 'begin (cddr expr)) env tail))))
         ((and (pair? expr) (eq? 'define-syntax (car expr)))
-         (set! forms (cons (list (cadr expr) 'macro (list (cddr (caddr expr)) (cadr (caddr expr)))) forms))
+         (validate-syntax-binding (cdr expr))
+         (set! forms (cons (list (cadr expr) 'macro (list (map (lambda (rule) (list (cdar rule) (cadr rule))) (cddr (caddr expr)))
+                                                          (cadr (caddr expr))))
+                           forms))
          (set-const! (next-inst) #!void)
          (put-tail! tail))
         (else
@@ -84,7 +87,7 @@
          (let ((loc (locate-name (car expr) env)))
            (if (pair? loc)
                (if (eq? (car loc) 'macro)
-                   (compile (apply-macro expr (cadr loc) (caddr loc) (cadddr loc)) env tail)
+                   (compile (apply-macro (cdr expr) (cadr loc) (caddr loc) (cadddr loc)) env tail)
                    (compile-appl expr env tail))
                (let ((compile-form (assq-ident loc forms)))
                  (if compile-form
@@ -95,7 +98,7 @@
                              ((eq? type 'deriv)
                               (compile (f expr) env tail))
                              ((eq? type 'macro)
-                              (compile (apply-macro expr (car f) (cadr f) '()) env tail))
+                              (compile (apply-macro (cdr expr) (car f) (cadr f) '()) env tail))
                              (else
                               (error "Internal compiler error: unknown primitive type"))))
                      (compile-appl expr env tail))))))
@@ -250,17 +253,51 @@
         (set-cons! (next-inst)))
       (set-const! (next-inst) expr)))
 
+(define (validate-syntax-binding expr)
+  (if (not (null? (cddr expr)))
+      (error "Syntax binding too long"))
+  (if (not (ident? (car expr)))
+      (error "Syntax binding keyword is not an identifier"))
+  (let ((transformer (cadr expr)))
+    (if (not (eq? 'syntax-rules (car transformer)))
+        (error "Transformer is not syntax-rules"))
+    (if (or (not (list (cadr transformer)))
+            (memq #f (map ident? (cadr transformer))))
+        (error "Transformer literals are not a list of identifiers"))
+    (if (not (list? (cddr transformer)))
+        (error "Transformer syntax rules are not a list"))
+    (if (memq #f (map (lambda (rule) (null? (cddr rule))) (cddr transformer)))
+        (error "Syntax rule too long"))
+    (if (memq #f (map (lambda (rule) (eq-ident? (caar rule) (car expr))) (cddr transformer)))
+        (error "Syntax rule pattern doesn't start with bound symbol"))))
+
+;;; Each macro is of the form (name rules literals env).
+
 (define (compile-let-syntax expr env tail)
+  (if (not (list? (cadr expr)))
+      (error "Syntax bindings are not a list"))
+  (for-each validate-syntax-binding (cadr expr))
   (compile-body
     (cddr expr)
-    (cons (cons 'macro (map (lambda (binding) (list (car binding) (cddadr binding) (cadadr binding) env)) (cadr expr))) env)
+    (cons (cons 'macro (map (lambda (binding) (list (car binding)
+                                                    (map (lambda (rule) (list (cdar rule) (cadr rule))) (cddadr binding))
+                                                    (cadadr binding)
+                                                    env))
+                            (cadr expr)))
+          env)
     tail))
 
 (define (compile-letrec-syntax expr env tail)
+  (if (not (list? (cadr expr)))
+      (error "Syntax bindings are not a list"))
+  (for-each validate-syntax-binding (cadr expr))
   (let ((new-env (cons '() env)))
-    (set-car!
-      new-env
-      (cons 'macro (map (lambda (binding) (list (car binding) (cddadr binding) (cadadr binding) new-env)) (cadr expr))))
+    (set-car! new-env
+              (cons 'macro (map (lambda (binding) (list (car binding)
+                                                        (map (lambda (rule) (list (cdar rule) (cadr rule))) (cddadr binding))
+                                                        (cadadr binding)
+                                                        new-env))
+                                (cadr expr))))
     (compile-body (cddr expr) new-env tail)))
 
 (define (transform-let expr)
