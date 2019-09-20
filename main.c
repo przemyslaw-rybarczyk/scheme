@@ -11,7 +11,7 @@
 #include "parser.h"
 #include "primitives.h"
 #include "safestd.h"
-#include "symbol.h"
+#include "string.h"
 
 /* -- input_mode
  * Possible values and corresponding command-line options:

@@ -10,7 +10,6 @@
 #include "primitives/pair.h"
 #include "primitives/predicates.h"
 #include "safestd.h"
-#include "symbol.h"
 #include "string.h"
 
 /* == primitives.c
@@ -153,9 +152,9 @@ void setup_primitives(void) {
     r5rs_bindings = s_malloc(r5rs_bindings_size * sizeof(Binding));
     for (uint32_t i = 0; i < r5rs_bindings_size; i++)
         r5rs_bindings[i] = (Binding){cstring_r5rs_bindings[i].val,
-            intern_symbol(new_string_from_cstring(cstring_r5rs_bindings[i].var))};
+            new_interned_string_from_cstring(cstring_r5rs_bindings[i].var)};
     compiler_bindings = s_malloc(compiler_bindings_size * sizeof(Binding));
     for (uint32_t i = 0; i < compiler_bindings_size; i++)
         compiler_bindings[i] = (Binding){cstring_compiler_bindings[i].val,
-            intern_symbol(new_string_from_cstring(cstring_compiler_bindings[i].var))};
+            new_interned_string_from_cstring(cstring_compiler_bindings[i].var)};
 }

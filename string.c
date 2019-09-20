@@ -1,3 +1,5 @@
+#include <stddef.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "string.h"
@@ -5,27 +7,64 @@
 #include "memory.h"
 #include "safestd.h"
 
-String *new_string(size_t len, char32_t *chars) {
+static size_t obarray_size = 256;
+static String **obarray;
+static String **obarray_end;
+
+/* -- setup_obarray
+ * Sets up the variables providing the obarray.
+ * Should be called at the beginning of `main`.
+ */
+void setup_obarray(void) {
+    obarray = s_malloc(obarray_size * sizeof(String *));
+    obarray_end = obarray;
+}
+
+/* -- intern_symbol
+ * Given a symbol string, it attempts to find it in the obarray.
+ * If it is already there, the found string is returned and the argument freed.
+ * Otherwise, the symbol string is added to the obarray and returned back.
+ */
+static String *intern_symbol(String *symbol) {
+    for (String **obarray_ptr = obarray; obarray_ptr < obarray_end; obarray_ptr++) {
+        if (string_eq(symbol, *obarray_ptr)) {
+            free(symbol);
+            return *obarray_ptr;
+        }
+    }
+    ptrdiff_t index = obarray_end - obarray;
+    if (index >= obarray_size) {
+        obarray_size *= 2;
+        obarray = s_realloc(obarray, obarray_size * sizeof(String *));
+        obarray_end = obarray + index;
+    }
+    *obarray_end++ = symbol;
+    return symbol;
+}
+
+String *new_interned_string(size_t len, char32_t *chars) {
     String *str = s_malloc(sizeof(String) + len * sizeof(char32_t));
     str->len = len;
     memcpy(str->chars, chars, len * sizeof(char32_t));
-    return str;
+    return intern_symbol(str);
 }
 
 String *new_gc_string(size_t len, char32_t *chars) {
-    String *str = gc_alloc(sizeof(String) + len * sizeof(char32_t));
+    String *str = gc_alloc(sizeof(String) + (len ? len : 1) * sizeof(char32_t));
     str->len = len;
     memcpy(str->chars, chars, len * sizeof(char32_t));
+    if (len == 0)
+        str->chars[0] = 0;
     return str;
 }
 
-String *new_string_from_cstring(char *s) {
+String *new_interned_string_from_cstring(char *s) {
     size_t len = strlen(s);
     String *str = s_malloc(sizeof(String) + len * sizeof(char32_t));
     str->len = len;
     for (size_t i = 0; i < len; i++)
         str->chars[i] = (char32_t)s[i];
-    return str;
+    return intern_symbol(str);
 }
 
 int string_eq(String *str1, String *str2) {

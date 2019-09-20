@@ -179,12 +179,12 @@ void print_inst(uint32_t n) {
         printf("VAR %d %d\n", insts[n].var.frame, insts[n].var.index);
         break;
     case INST_NAME:
-        printf("NAME");
+        printf("NAME ");
         puts32(insts[n].name);
         printf("\n");
         break;
     case INST_DEF:
-        printf("DEF");
+        printf("DEF ");
         puts32(insts[n].name);
         printf("\n");
         break;
@@ -192,7 +192,7 @@ void print_inst(uint32_t n) {
         printf("SET %d %d\n", insts[n].var.frame, insts[n].var.index);
         break;
     case INST_SET_NAME:
-        printf("SET_NAME");
+        printf("SET_NAME ");
         puts32(insts[n].name);
         printf("\n");
         break;
