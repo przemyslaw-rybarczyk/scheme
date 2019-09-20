@@ -55,15 +55,17 @@
          (cond ((and (pair? (cdr pattern)) (eq? '... (cadr pattern)))
                 (if (not (null? (cddr pattern)))
                     (error "Ellipsis not at the end of a list"))
-                (let ((bindings-lists (map (lambda (subexpr) (get-pattern-bindings subexpr (car pattern) literals)) expr)))
-                  (if (memq #f bindings-lists)
-                      #f
-                      (if (null? bindings-lists)
-                          (get-empty-bindings pattern literals)
-                          (apply
-                            map
-                            (lambda bindings (list (caar bindings) (+ 1 (cadar bindings)) (map caddr bindings)))
-                            bindings-lists)))))
+                (if (list? expr)
+                    (let ((bindings-lists (map (lambda (subexpr) (get-pattern-bindings subexpr (car pattern) literals)) expr)))
+                      (if (memq #f bindings-lists)
+                          #f
+                          (if (null? bindings-lists)
+                              (get-empty-bindings pattern literals)
+                              (apply
+                                map
+                                (lambda bindings (list (caar bindings) (+ 1 (cadar bindings)) (map caddr bindings)))
+                                bindings-lists))))
+                    #f))
                ((pair? expr)
                 (let ((car-bindings (get-pattern-bindings (car expr) (car pattern) literals))
                       (cdr-bindings (get-pattern-bindings (cdr expr) (cdr pattern) literals)))
