@@ -171,9 +171,7 @@ void print_inst(uint32_t n) {
     printf("%d ", n);
     switch (insts[n].type) {
     case INST_CONST:
-        printf("CONST ");
-        print_val(insts[n].val);
-        printf("\n");
+        printf("CONST %ld\n", insts[n].val);
         break;
     case INST_VAR:
         printf("VAR %d %d\n", insts[n].var.frame, insts[n].var.index);
