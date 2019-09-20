@@ -47,7 +47,6 @@ Global_env *make_global_env(int include_r5rs, int include_compiler) {
 }
 
 void setup_env(void) {
-    compiler_env = make_global_env(1, 1);
     for (uint32_t program = compiler_pc; insts[program].type != INST_EOF; program = next_expr(program + 1))
         exec(program, compiler_env);
 }

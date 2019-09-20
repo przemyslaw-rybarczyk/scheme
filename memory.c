@@ -21,14 +21,10 @@ typedef struct GC_object {
     enum {
         GC_VAL,
         GC_ENV,
-        GC_PAIR,
-        GC_LAMBDA,
     } type;
     union {
         Val *val;
         Env **env;
-        Pair **pair;
-        Lambda **lambda;
     };
 } GC_object;
 
@@ -79,6 +75,7 @@ void setup_memory(void) {
  * | Env       | env->size == UINT32_MAX             | env->outer                |
  * | Lambda    | lambda->body == UINT32_MAX          | lambda->new_ptr           |
  * | Pair      | pair->car.type == TYPE_BROKEN_HEART | pair->car.pair_data       |
+ * | String    | str->chars[0] == UINT32_MAX         | str->new_ptr              |
  * +-----------+-------------------------------------+---------------------------+
  *
  * If a broken heart value is detected, the data has already been moved and the
@@ -155,12 +152,6 @@ static void garbage_collect(void) {
             break;
         case GC_ENV:
             *obj.env = move_env(*obj.env);
-            break;
-        case GC_PAIR:
-            *obj.pair = move_pair(*obj.pair);
-            break;
-        case GC_LAMBDA:
-            *obj.lambda = move_lambda(*obj.lambda);
             break;
         }
     }
