@@ -11,7 +11,6 @@
 #include "display.h"
 #include "safestd.h"
 #include "string.h"
-#include "symbol.h"
 
 Inst *insts;
 static uint32_t insts_size = 4096;
@@ -61,10 +60,10 @@ void setup_insts(void) {
     char *path = get_path();
     load_insts(fopen_relative(path, "compiler.sss", "rb"));
     compile_pc = this_inst();
-    insts[next_inst()] = (Inst){INST_NAME, {.name = new_string_from_cstring("parse-and-compile")}};
+    insts[next_inst()] = (Inst){INST_NAME, {.name = new_interned_string_from_cstring("parse-and-compile")}};
     insts[next_inst()] = (Inst){INST_TAIL_CALL, {.num = 0}};
     parse_pc = this_inst();
-    insts[next_inst()] = (Inst){INST_NAME, {.name = new_string_from_cstring("parse")}};
+    insts[next_inst()] = (Inst){INST_NAME, {.name = new_interned_string_from_cstring("parse")}};
     insts[next_inst()] = (Inst){INST_TAIL_CALL, {.num = 0}};
 }
 
@@ -210,15 +209,14 @@ static uint32_t load_uint32(FILE *fp) {
     return n;
 }
 
-static String *load_str(FILE *fp) {
+static String *load_str(FILE *fp, String *(*string_constuctor)(size_t, char32_t *)) {
     size_t len = 0;
     for (int i = 0; i < 8; i++)
         len = len << 8 | s_fgetc2(fp);
-    String *str = s_malloc(sizeof(String) + len * sizeof(char32_t));
-    str->len = len;
+    char32_t *chars = s_malloc(len * sizeof(char32_t));
     for (size_t i = 0; i < len; i++)
-        str->chars[i] = s_fgetc32_2(fp);
-    return str;
+        chars[i] = s_fgetc32_2(fp);
+    return string_constuctor(len, chars);
 }
 
 static Val load_val(FILE *fp) {
@@ -243,10 +241,9 @@ static Val load_val(FILE *fp) {
     case TYPE_BOOL:
         return (Val){TYPE_BOOL, {.int_data = s_fgetc2(fp)}};
     case TYPE_STRING:
-        // TODO move string into GC memory
-        return (Val){TYPE_STRING, {.string_data = load_str(fp)}};
+        return (Val){TYPE_STRING, {.string_data = load_str(fp, new_gc_string)}};
     case TYPE_SYMBOL:
-        return (Val){TYPE_SYMBOL, {.string_data = intern_symbol(load_str(fp))}};
+        return (Val){TYPE_SYMBOL, {.string_data = load_str(fp, new_interned_string)}};
     case TYPE_NIL:
         return (Val){TYPE_NIL};
     case TYPE_VOID:
@@ -283,7 +280,7 @@ void load_insts(FILE *fp) {
         case INST_NAME:
         case INST_DEF:
         case INST_SET_NAME:
-            insts[n].name = load_str(fp);
+            insts[n].name = load_str(fp, new_interned_string);
             break;
         case INST_JUMP:
         case INST_JUMP_FALSE:

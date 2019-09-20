@@ -11,7 +11,6 @@
 #include "primitives/compiler.h"
 #include "safestd.h"
 #include "string.h"
-#include "symbol.h"
 #include "unicode/unicode.h"
 
 #define INIT_TOKEN_LENGTH 16
@@ -47,7 +46,7 @@ Val get_token(FILE *f) {
     // simple cases
     if (c == '(' || c == ')' || c == '.' || c == '\'' || c == EOF32) {
         Pair *pair = gc_alloc(sizeof(Pair));
-        pair->car = (Val){TYPE_SYMBOL, {.string_data = intern_symbol(new_string_from_cstring("token"))}};
+        pair->car = (Val){TYPE_SYMBOL, {.string_data = new_interned_string_from_cstring("token")}};
         pair->cdr = (Val){TYPE_INT, {.int_data = c}};
         return (Val){TYPE_PAIR, {.pair_data = pair}};
     }
@@ -104,7 +103,7 @@ Val get_token(FILE *f) {
             return (Val){TYPE_FLOAT, {.float_data = float_val}};
 invalid_num:
         eprintf("Syntax error: incorrect numeric literal ");
-        eputs32(new_string(i, s));
+        eputs32(new_gc_string(i, s));
         eprintf("\n");
         exit(1);
     }
@@ -131,12 +130,12 @@ invalid_num:
         if (strbuf_eq_cstr(i, s, "#!undef"))
             return (Val){TYPE_PRIM, {.prim_data = add_prim}};
         eprintf("Syntax error: incorrect literal ");
-        eputs32(new_string(i, s));
+        eputs32(new_gc_string(i, s));
         eprintf("\n");
         exit(1);
     }
 
-    return (Val){TYPE_SYMBOL, {.string_data = intern_symbol(new_string(i, s))}};
+    return (Val){TYPE_SYMBOL, {.string_data = new_interned_string(i, s)}};
 }
 
 uint32_t read_expr(FILE *f) {

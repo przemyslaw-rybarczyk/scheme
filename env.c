@@ -70,7 +70,7 @@ Val locate_var(Env_loc var, Env *env, Global_env *global) {
  */
 uint32_t locate_global_var(String *var, Global_env *global) {
     for (uint32_t i = 0; i < global->size; i++)
-        if (string_eq(global->bindings[i].var, var))
+        if (global->bindings[i].var == var)
             return i;
     eprintf("Error: unbound variable ");
     eputs32(var);
@@ -98,7 +98,7 @@ void assign_var(Env_loc var, Val val, Env *env, Global_env *global) {
  */
 void define_var(String *var, Val val, Global_env *global) {
     for (uint32_t i = 0; i < global->size; i++) {
-        if (string_eq(global->bindings[i].var, var)) {
+        if (global->bindings[i].var == var) {
             global->bindings[i].val = val;
             return;
         }
