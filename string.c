@@ -25,7 +25,7 @@ void setup_obarray(void) {
  * If it is already there, the found string is returned and the argument freed.
  * Otherwise, the symbol string is added to the obarray and returned back.
  */
-static String *intern_symbol(String *symbol) {
+String *intern_string(String *symbol) {
     for (String **obarray_ptr = obarray; obarray_ptr < obarray_end; obarray_ptr++) {
         if (string_eq(symbol, *obarray_ptr)) {
             free(symbol);
@@ -42,11 +42,18 @@ static String *intern_symbol(String *symbol) {
     return symbol;
 }
 
+String *new_uninterned_string(size_t len, char32_t *chars) {
+    String *str = s_malloc(sizeof(String) + len * sizeof(char32_t));
+    str->len = len;
+    memcpy(str->chars, chars, len * sizeof(char32_t));
+    return str;
+}
+
 String *new_interned_string(size_t len, char32_t *chars) {
     String *str = s_malloc(sizeof(String) + len * sizeof(char32_t));
     str->len = len;
     memcpy(str->chars, chars, len * sizeof(char32_t));
-    return intern_symbol(str);
+    return intern_string(str);
 }
 
 String *new_gc_string(size_t len, char32_t *chars) {
@@ -64,7 +71,7 @@ String *new_interned_string_from_cstring(char *s) {
     str->len = len;
     for (size_t i = 0; i < len; i++)
         str->chars[i] = (char32_t)s[i];
-    return intern_symbol(str);
+    return intern_string(str);
 }
 
 int string_eq(String *str1, String *str2) {

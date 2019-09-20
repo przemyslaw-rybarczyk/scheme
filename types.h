@@ -192,7 +192,8 @@ typedef struct Env_loc {
 /* -- inst
  * Represents a bytecode instruction.
  * The following are valid instructions:
- * - INST_CONST / val - Pushes a constant value onto the stack.
+ * - INST_CONST / val - Pushes a constant value at a given index in the
+ *   constants table onto the stack.
  * - INST_VAR / var - Finds a variable at the given location
  *   in the current environment and pushes it onto the stack.
  * - INST_NAME / name - Locates a name in the global environment
@@ -235,7 +236,7 @@ enum Inst_type {INST_CONST, INST_VAR, INST_NAME, INST_DEF,
 typedef struct Inst {
     enum Inst_type type;
     union {
-        struct Val val;
+        size_t val;
         struct Env_loc var;
         String *name;
         uint32_t index;

@@ -68,7 +68,7 @@ Val get_token(FILE *f) {
                 s = s_realloc(s, capacity * sizeof(char32_t));
             }
         }
-        return (Val){TYPE_STRING, {.string_data = new_gc_string(i, s)}};
+        return (Val){TYPE_STRING, {.string_data = new_uninterned_string(i, s)}};
     }
 
     // name
