@@ -10,9 +10,9 @@
 #include "exec_gc.h"
 #include "safestd.h"
 
-static void *mem_start;
+static char *mem_start;
 static size_t mem_size = 2097152;
-static void *free_ptr;
+static char *free_ptr;
 
 /* -- GC_object
  * Contains a pointer to a pointer which is to be updated.
@@ -99,19 +99,30 @@ void gc_unlock_env(void) {
     env_lock = NULL;
 }
 
+static size_t align_size(size_t size) {
+    if (size % 8 == 0)
+        return size;
+    return (size / 8 + 1) * 8;
+}
+
 /* -- gc_alloc
  * Allocates a given amount of memory and returns its address, possibly
  * invoking the garbage collector.
  */
 void *gc_alloc(size_t size) {
-#ifndef GC_ALWAYS
-    if (free_ptr >= mem_start + mem_size - size)
-#endif
+    size = align_size(size);
+#ifdef GC_ALWAYS
+    while (free_ptr - mem_start >= mem_size - size)
+        mem_size *= 2;
+    garbage_collect();
+#else
+    if (free_ptr - mem_start >= (ssize_t)mem_size - (ssize_t)size) {
+        mem_size *= 2;
+        while (free_ptr - mem_start >= (ssize_t)mem_size - (ssize_t)size)
+            mem_size *= 2;
         garbage_collect();
-    if (free_ptr >= mem_start + mem_size - size) {
-        eprintf("Internal error: out of memory\n");
-        exit(1);
     }
+#endif
     free_ptr += size;
     return free_ptr - size;
 }
@@ -122,7 +133,7 @@ void *gc_alloc(size_t size) {
  * as it's impossible to run out of memory there.
  */
 static void *force_alloc(size_t size) {
-    free_ptr += size;
+    free_ptr += align_size(size);
     return free_ptr - size;
 }
 
