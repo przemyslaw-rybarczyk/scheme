@@ -130,7 +130,7 @@ static void save_val(FILE *fp, Val val) {
     case TYPE_BOOL:
         s_fputc((uint8_t)val.int_data, fp);
         break;
-    case TYPE_STRING:
+    case TYPE_CONST_STRING:
     case TYPE_SYMBOL:
         save_string(fp, val.string_data);
         break;
@@ -244,8 +244,8 @@ static Val load_val(FILE *fp) {
     }
     case TYPE_BOOL:
         return (Val){TYPE_BOOL, {.int_data = s_fgetc2(fp)}};
-    case TYPE_STRING:
-        return (Val){TYPE_STRING, {.string_data = load_str(fp)}};
+    case TYPE_CONST_STRING:
+        return (Val){TYPE_CONST_STRING, {.string_data = load_str(fp)}};
     case TYPE_SYMBOL:
         return (Val){TYPE_SYMBOL, {.string_data = intern_string(load_str(fp))}};
     case TYPE_NIL:

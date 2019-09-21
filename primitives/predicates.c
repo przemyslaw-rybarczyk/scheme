@@ -58,7 +58,8 @@ int equal(Val val1, Val val2) {
             return 0;
         switch (val1.type) {
         case TYPE_STRING:
-            if (val2.type != TYPE_STRING || !string_eq(val1.string_data, val2.string_data)) {
+        case TYPE_CONST_STRING:
+            if (!(val2.type == TYPE_STRING || val2.type == TYPE_CONST_STRING) || !string_eq(val1.string_data, val2.string_data)) {
                 stack_ptr = stack_ptr_before;
                 return 0;
             }
@@ -117,7 +118,7 @@ Val symbol_prim(Val *args, uint32_t num) {
 
 Val string_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
-    return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_STRING}};
+    return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_STRING || args[0].type == TYPE_CONST_STRING}};
 }
 
 Val procedure_prim(Val *args, uint32_t num) {
