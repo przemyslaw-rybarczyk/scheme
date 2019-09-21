@@ -9,6 +9,7 @@
 #include "primitives/number.h"
 #include "primitives/pair.h"
 #include "primitives/predicates.h"
+#include "primitives/string.h"
 #include "safestd.h"
 #include "string.h"
 
@@ -117,6 +118,7 @@ static struct CString_binding cstring_r5rs_bindings[] = {
     PRIM2("integer->char", integer_to_char),
     PRIM2("char-upcase", char_upcase),
     PRIM2("char-downcase", char_downcase),
+    PRIM2("make-string", make_string),
     PRIM(display),
     PRIM(newline),
     PRIM(error),

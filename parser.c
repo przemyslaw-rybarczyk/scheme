@@ -50,11 +50,8 @@ String *new_string(size_t len, char32_t *chars) {
 }
 
 String *new_gc_string(size_t len, char32_t *chars) {
-    String *str = gc_alloc(sizeof(String) + (len ? len : 1) * sizeof(char32_t));
-    str->len = len;
+    String *str = gc_alloc_string(len);
     memcpy(str->chars, chars, len * sizeof(char32_t));
-    if (len == 0)
-        str->chars[0] = 0;
     free(chars);
     return str;
 }
@@ -80,6 +77,19 @@ Val get_token(FILE *f) {
             if (c == EOF32) {
                 eprintf("Syntax error: premature end of file - '\"' expected\n");
                 exit(1);
+            }
+            if (c == '\\') {
+                c = s_fgetc32(f);
+                if (c == EOF32) {
+                    eprintf("Syntax error: premature end of file - '\"' expected\n");
+                    exit(1);
+                }
+                if (c != '"' && c != '\\') {
+                    eprintf("Syntax error: invalid escape sequence in string: \\");
+                    fputc32((char32_t)c, stderr);
+                    eprintf("\n");
+                    exit(1);
+                }
             }
             s[i++] = (char32_t)c;
             if (i >= capacity) {

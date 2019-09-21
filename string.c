@@ -42,6 +42,14 @@ String *intern_string(String *symbol) {
     return symbol;
 }
 
+String *gc_alloc_string(size_t len) {
+    String *str = gc_alloc(sizeof(String) + (len ? len : 1) * sizeof(char32_t));
+    str->len = len;
+    if (len == 0)
+        str->chars[0] = 0;
+    return str;
+}
+
 String *new_interned_string_from_cstring(char *s) {
     size_t len = strlen(s);
     String *str = s_malloc(sizeof(String) + len * sizeof(char32_t));
