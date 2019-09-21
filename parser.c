@@ -148,9 +148,9 @@ invalid_num:
     if (s[0] == '#') {
         // char
         if (s[1] == '\\') {
-            if (s[2] == '\0')
-                return (Val){TYPE_CHAR, {.char_data = (unsigned char)s_fgetc(f)}};
-            if (s[3] == '\0')
+            if (i == 2)
+                return (Val){TYPE_CHAR, {.char_data = (char32_t)c}};
+            if (i == 3)
                 return (Val){TYPE_CHAR, {.char_data = s[2]}};
             if (strbuf_eq_cstr(i, s, "#\\space"))
                 return (Val){TYPE_CHAR, {.char_data = ' '}};
