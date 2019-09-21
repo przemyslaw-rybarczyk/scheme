@@ -60,6 +60,7 @@ typedef High_prim_return High_prim(struct Val *, uint32_t);
  * - Floating-point - TYPE_FLOAT / float_data
  * - Boolean - TYPE_BOOL / int_data
  * - String - TYPE_STRING / string_data
+ * - Constant string - TYPE_CONST_STRING / string_data
  * - Symbol - TYPE_SYMBOL / string_data
  * - Primitive - TYPE_PRIM / prim_data
  * - High primitive - TYPE_HIGH_PRIM / prim_data
@@ -88,6 +89,7 @@ typedef enum Type {
     TYPE_BOOL,
     TYPE_CHAR,
     TYPE_STRING,
+    TYPE_CONST_STRING,
     TYPE_SYMBOL,
     TYPE_PRIM,
     TYPE_HIGH_PRIM,

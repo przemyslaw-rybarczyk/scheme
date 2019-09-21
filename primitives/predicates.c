@@ -19,6 +19,7 @@ int eq(Val val1, Val val2) {
     case TYPE_CHAR:
         return val1.char_data == val2.char_data;
     case TYPE_STRING:
+    case TYPE_CONST_STRING:
     case TYPE_SYMBOL:
         return val1.string_data == val2.string_data;
     case TYPE_PRIM:

@@ -29,6 +29,7 @@ static void print_val_(Val val0, int display_style) {
             putchar32(val.char_data);
             break;
         case TYPE_STRING:
+        case TYPE_CONST_STRING:
             if (display_style == 0)
                 printf("\"");
             puts32(val.string_data);
@@ -136,6 +137,7 @@ const char *type_name(Type type) {
         return "bool";
     case TYPE_CHAR:
         return "char";
+    case TYPE_CONST_STRING:
     case TYPE_STRING:
         return "string";
     case TYPE_SYMBOL:
