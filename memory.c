@@ -184,8 +184,6 @@ static Val move_val(Val val) {
 }
 
 static String *move_string(String *str) {
-    // TEMPORARY
-    return str;
     if (str->chars[0] == UINT32_MAX)
         return str->new_ptr;
     size_t str_size = sizeof(String) + (str->len ? str->len : 1) * sizeof(char32_t);
