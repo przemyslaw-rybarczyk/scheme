@@ -212,14 +212,15 @@ static uint32_t load_uint32(FILE *fp) {
     return n;
 }
 
-static String *load_str(FILE *fp, String *(*string_constuctor)(size_t, char32_t *)) {
+static String *load_str(FILE *fp) {
     size_t len = 0;
     for (int i = 0; i < 8; i++)
         len = len << 8 | s_fgetc2(fp);
-    char32_t *chars = s_malloc(len * sizeof(char32_t));
+    String *str = s_malloc(sizeof(String) + len * sizeof(char32_t));
+    str->len = len;
     for (size_t i = 0; i < len; i++)
-        chars[i] = s_fgetc32_2(fp);
-    return string_constuctor(len, chars);
+        str->chars[i] = s_fgetc32_2(fp);
+    return str;
 }
 
 static Val load_val(FILE *fp) {
@@ -244,9 +245,9 @@ static Val load_val(FILE *fp) {
     case TYPE_BOOL:
         return (Val){TYPE_BOOL, {.int_data = s_fgetc2(fp)}};
     case TYPE_STRING:
-        return (Val){TYPE_STRING, {.string_data = load_str(fp, new_uninterned_string)}};
+        return (Val){TYPE_STRING, {.string_data = load_str(fp)}};
     case TYPE_SYMBOL:
-        return (Val){TYPE_SYMBOL, {.string_data = load_str(fp, new_interned_string)}};
+        return (Val){TYPE_SYMBOL, {.string_data = intern_string(load_str(fp))}};
     case TYPE_NIL:
         return (Val){TYPE_NIL};
     case TYPE_VOID:
@@ -283,7 +284,7 @@ void load_insts(FILE *fp) {
         case INST_NAME:
         case INST_DEF:
         case INST_SET_NAME:
-            insts[n].name = load_str(fp, new_interned_string);
+            insts[n].name = intern_string(load_str(fp));
             break;
         case INST_JUMP:
         case INST_JUMP_FALSE:

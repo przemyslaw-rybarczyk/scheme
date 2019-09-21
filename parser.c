@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "parser.h"
 #include "types.h"
@@ -40,6 +41,24 @@ int strbuf_eq_cstr(size_t len, char32_t *chars, char *s) {
     return 1;
 }
 
+String *new_string(size_t len, char32_t *chars) {
+    String *str = s_malloc(sizeof(String) + len * sizeof(char32_t));
+    str->len = len;
+    memcpy(str->chars, chars, len * sizeof(char32_t));
+    free(chars);
+    return str;
+}
+
+String *new_gc_string(size_t len, char32_t *chars) {
+    String *str = gc_alloc(sizeof(String) + (len ? len : 1) * sizeof(char32_t));
+    str->len = len;
+    memcpy(str->chars, chars, len * sizeof(char32_t));
+    if (len == 0)
+        str->chars[0] = 0;
+    free(chars);
+    return str;
+}
+
 Val get_token(FILE *f) {
     int32_t c = fgetc32_nospace(f);
 
@@ -68,7 +87,7 @@ Val get_token(FILE *f) {
                 s = s_realloc(s, capacity * sizeof(char32_t));
             }
         }
-        return (Val){TYPE_STRING, {.string_data = new_uninterned_string(i, s)}};
+        return (Val){TYPE_STRING, {.string_data = new_string(i, s)}};
     }
 
     // name
@@ -96,12 +115,19 @@ Val get_token(FILE *f) {
         num[i] = '\0';
         char *endptr;
         long long int_val = strtoll(num, &endptr, 10);
-        if (*endptr == '\0')
+        if (*endptr == '\0') {
+            free(s);
+            free(num);
             return (Val){TYPE_INT, {.int_data = int_val}};
+        }
         double float_val = strtod(num, &endptr);
-        if (*endptr == '\0')
+        if (*endptr == '\0') {
+            free(s);
+            free(num);
             return (Val){TYPE_FLOAT, {.float_data = float_val}};
+        }
 invalid_num:
+        free(num);
         eprintf("Syntax error: incorrect numeric literal ");
         eputs32(new_gc_string(i, s));
         eprintf("\n");
@@ -135,7 +161,7 @@ invalid_num:
         exit(1);
     }
 
-    return (Val){TYPE_SYMBOL, {.string_data = new_interned_string(i, s)}};
+    return (Val){TYPE_SYMBOL, {.string_data = intern_string(new_string(i, s))}};
 }
 
 uint32_t read_expr(FILE *f) {

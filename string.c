@@ -42,29 +42,6 @@ String *intern_string(String *symbol) {
     return symbol;
 }
 
-String *new_uninterned_string(size_t len, char32_t *chars) {
-    String *str = s_malloc(sizeof(String) + len * sizeof(char32_t));
-    str->len = len;
-    memcpy(str->chars, chars, len * sizeof(char32_t));
-    return str;
-}
-
-String *new_interned_string(size_t len, char32_t *chars) {
-    String *str = s_malloc(sizeof(String) + len * sizeof(char32_t));
-    str->len = len;
-    memcpy(str->chars, chars, len * sizeof(char32_t));
-    return intern_string(str);
-}
-
-String *new_gc_string(size_t len, char32_t *chars) {
-    String *str = gc_alloc(sizeof(String) + (len ? len : 1) * sizeof(char32_t));
-    str->len = len;
-    memcpy(str->chars, chars, len * sizeof(char32_t));
-    if (len == 0)
-        str->chars[0] = 0;
-    return str;
-}
-
 String *new_interned_string_from_cstring(char *s) {
     size_t len = strlen(s);
     String *str = s_malloc(sizeof(String) + len * sizeof(char32_t));
