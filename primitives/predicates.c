@@ -116,7 +116,7 @@ Val symbol_prim(Val *args, uint32_t num) {
     return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_SYMBOL}};
 }
 
-Val string_prim(Val *args, uint32_t num) {
+Val string_q_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
     return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_STRING || args[0].type == TYPE_CONST_STRING}};
 }
