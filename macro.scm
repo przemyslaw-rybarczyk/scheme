@@ -81,6 +81,12 @@
         (else
          #f)))
 
+(define (validate-expr expr patterns literals)
+  (if (null? patterns)
+      (error "Invalid expression")
+      (if (not (get-pattern-bindings expr (car patterns) literals))
+          (validate-expr expr (cdr patterns) literals))))
+
 (define (filter f x)
   (if (null? x)
       '()

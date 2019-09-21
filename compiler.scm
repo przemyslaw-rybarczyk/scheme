@@ -56,6 +56,7 @@
   (cond ((and (pair? expr) (eq? 'define (car expr)))
          (compile-define expr env tail))
         ((and (pair? expr) (eq? 'begin (car expr)))
+         (validate-expr expr '((begin expr ...)) '())
          (cond ((null? (cdr expr))
                 (set-const! (next-inst) #!void)
                 (put-tail! tail))
@@ -67,6 +68,7 @@
                 (set-delete! (next-inst))
                 (compile-top-level (cons 'begin (cddr expr)) env tail))))
         ((and (pair? expr) (eq? 'define-syntax (car expr)))
+         (validate-expr expr '((define-syntax keyword (syntax-rules literals (pattern template) ...))) '())
          (validate-syntax-binding (cdr expr))
          (set! forms (cons (list (cadr expr) 'macro (list (map (lambda (rule) (list (cdar rule) (cadr rule))) (cddr (caddr expr)))
                                                           (cadr (caddr expr))))
@@ -166,6 +168,7 @@
   (loop-env name env0 0))
 
 (define (compile-appl expr env tail)
+  (validate-expr expr '((f x ...)) '())
   (for-each
     (lambda (expr) (compile expr env #f))
     expr)
@@ -173,6 +176,7 @@
    (next-inst) (- (length expr) 1)))
 
 (define (compile-set expr env tail)
+  (validate-expr expr '((set! name expr)) '())
   (if (not (null? (cdddr expr)))
       (error "set! expression too long"))
   (compile (caddr expr) env #f)
@@ -185,8 +189,7 @@
     (put-tail! tail)))
 
 (define (compile-if expr env tail)
-  (if (and (not (null? (cdddr expr))) (not (null? (cddddr expr))))
-      (error "if expression too long"))
+  (validate-expr expr '((if pred conseq) (if pred conseq alter)) '())
   (compile (cadr expr) env #f)
   (let ((jump-false (next-inst)))
     (compile (caddr expr) env tail)
@@ -216,6 +219,7 @@
          (list x))))
 
 (define (compile-lambda expr env tail)
+  (validate-expr expr '((lambda params expr ...)) '())
   (let ((args (transform-variadic (cadr expr))))
     (if (memq #f (map ident? args))
         (error "lambda parameter is not a variable name"))
@@ -237,11 +241,11 @@
         (put-tail! tail)))))
 
 (define (compile-begin expr env tail)
+  (validate-expr expr '((begin expr ...)) '())
   (compile-seq (cdr expr) env tail))
 
 (define (compile-quote expr env tail)
-  (if (not (null? (cddr expr)))
-      (error "quote expression too long"))
+  (validate-expr expr '((quote expr)) '())
   (compile-quoted (cadr expr))
   (put-tail! tail))
 
@@ -254,20 +258,11 @@
       (set-const! (next-inst) expr)))
 
 (define (validate-syntax-binding expr)
-  (if (not (null? (cddr expr)))
-      (error "Syntax binding too long"))
   (if (not (ident? (car expr)))
       (error "Syntax binding keyword is not an identifier"))
   (let ((transformer (cadr expr)))
-    (if (not (eq? 'syntax-rules (car transformer)))
-        (error "Transformer is not syntax-rules"))
-    (if (or (not (list (cadr transformer)))
-            (memq #f (map ident? (cadr transformer))))
+    (if (memq #f (map ident? (cadr transformer)))
         (error "Transformer literals are not a list of identifiers"))
-    (if (not (list? (cddr transformer)))
-        (error "Transformer syntax rules are not a list"))
-    (if (memq #f (map (lambda (rule) (null? (cddr rule))) (cddr transformer)))
-        (error "Syntax rule too long"))
     (if (memq #f (map (lambda (rule) (eq-ident? (caar rule) (car expr))) (cddr transformer)))
         (error "Syntax rule pattern doesn't start with bound symbol"))
     (if (memq #t (map (lambda (rule)
@@ -278,8 +273,7 @@
 ;;; Each macro is of the form (name rules literals env).
 
 (define (compile-let-syntax expr env tail)
-  (if (not (list? (cadr expr)))
-      (error "Syntax bindings are not a list"))
+  (validate-expr expr '((let-syntax ((keyword (syntax-rules literals (pattern template) ...)) ...) expr ...)) '(syntax-rules))
   (for-each validate-syntax-binding (cadr expr))
   (compile-body
     (cddr expr)
@@ -292,6 +286,7 @@
     tail))
 
 (define (compile-letrec-syntax expr env tail)
+  (validate-expr expr '((letrec-syntax ((keyword (syntax-rules literals (pattern template) ...)) ...) expr ...)) '(syntax-rules))
   (if (not (list? (cadr expr)))
       (error "Syntax bindings are not a list"))
   (for-each validate-syntax-binding (cadr expr))
@@ -305,13 +300,11 @@
     (compile-body (cddr expr) new-env tail)))
 
 (define (transform-let expr)
-  (if (memq #f (map null? (map cddr (cadr expr))))
-      (error "invalid let expression binding"))
+  (validate-expr expr '((let ((var val) ...) expr ...)) '())
   (cons (cons 'lambda (cons (map car (cadr expr)) (cddr expr))) (map cadr (cadr expr))))
 
 (define (transform-letrec expr)
-  (if (memq #f (map null? (map cddr (cadr expr))))
-      (error "invalid letrec expression binding"))
+  (validate-expr expr '((letrec ((var val) ...) expr ...)) '())
   (list 'let
         (map (lambda (x) (list (car x) undef)) (cadr expr))
         (let ((new-symbols (map (lambda (x) (new-symbol)) (cadr expr))))
@@ -356,12 +349,10 @@
          (compile-seq (cdr exprs) env tail))))
 
 (define (transform-define expr)
+  (validate-expr expr '((define var val) (define (var . params) expr ...)) '())
   (if (pair? (cadr expr))
       (list 'define (caadr expr) (cons 'lambda (cons (cdadr expr) (cddr expr))))
-      (begin
-        (if (not (null? (cdddr expr)))
-            (error "define expression too long"))
-        expr)))
+      expr))
 
 (define (split-defines exprs)
   (cond ((null? exprs)
