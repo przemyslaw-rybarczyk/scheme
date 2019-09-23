@@ -379,6 +379,12 @@
   (if tail
       (set-return! (next-inst))))
 
+(define (error-define expr env tail)
+  (error "Invalid use of define"))
+
+(define (error-define-syntax expr env tail)
+  (error "Invalid use of define-syntax"))
+
 (define forms
   (list
     (list 'set! 'prim compile-set)
@@ -388,6 +394,8 @@
     (list 'quote 'prim compile-quote)
     (list 'let-syntax 'prim compile-let-syntax)
     (list 'letrec-syntax 'prim compile-letrec-syntax)
+    (list 'define 'prim error-define)
+    (list 'define-syntax 'prim error-define-syntax)
     (list 'let 'deriv transform-let)
     (list 'letrec 'deriv transform-letrec)
     (list 'cond 'deriv transform-cond)
