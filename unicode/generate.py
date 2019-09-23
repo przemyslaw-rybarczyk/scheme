@@ -8,6 +8,8 @@ whitespace = [False] * 0x110000
 to_lowercase = [None] * 0x110000
 to_uppercase = [None] * 0x110000
 to_foldcase = [None] * 0x110000
+full_uppercase = [None] * 0x110000
+full_foldcase = [None] * 0x110000
 
 def code_range(codes):
     if '..' in codes:
@@ -63,13 +65,13 @@ for data in open_unicode_file('UnicodeData.txt'):
     if data[13]:
         lower = int(data[13], 16)
         if lower & 0xFF0000 != code & 0xFF0000:
-            print("Assumption failed: lowercase conversion of %04X is not in the same plane" % c)
+            print("Assumption failed: lowercase conversion of %04X is not in the same plane" % code)
             raise SystemExit
         to_lowercase[code] = lower & 0xFFFF if lower != code else None
     if data[14]:
         upper = int(data[14], 16)
         if upper & 0xFF0000 != code & 0xFF0000:
-            print("Assumption failed: uppercase conversion of %04X is not in the same plane" % c)
+            print("Assumption failed: uppercase conversion of %04X is not in the same plane" % code)
             raise SystemExit
         to_uppercase[code] = upper & 0xFFFF if upper != code else None
 
@@ -78,9 +80,37 @@ for code, status, mapping, _ in open_unicode_file('CaseFolding.txt'):
     if status == 'C' or status == 'S':
         mapping = int(mapping, 16)
         if mapping & 0xFF0000 != code & 0xFF0000:
-            print("Assumption failed: case folding of %04X is not in the same plane" % c)
+            print("Assumption failed: simple case folding of %04X is not in the same plane" % code)
             raise SystemExit
         to_foldcase[code] = mapping & 0xFFFF if mapping != code else None
+    elif status == 'F':
+        mapping = list(map(lambda m: int(m, 16), mapping.split()))
+        if len(mapping) > 3:
+            print("Assumption failed: full case folding of %04X is longer than 3 characters" % code)
+            raise SystemExit
+        for c in mapping:
+            if c >= 0x10000:
+                print("Assumption failed: full case folding of %04X contains non-BMP character" % code)
+                raise SystemExit
+        full_foldcase[code] = mapping
+
+for data in open_unicode_file('SpecialCasing.txt'):
+    if data[4]:
+        continue
+    code = int(data[0], 16)
+    if len(data[1].split()) > 1 and code != 0x130:
+        print("Assumption failed: code point other than U+0130 has lowercase longer than 1 character")
+        raise SystemExit
+    mapping = list(map(lambda m: int(m, 16), data[3].split()))
+    if len(mapping) > 3:
+        print("Assumption failed: uppercase of %04X is longer than 3 characters" % code)
+        raise SystemExit
+    for c in mapping:
+        if c >= 0x10000:
+            print("Assumption failed: uppercase of %04X contains non-BMP character" % code)
+            raise SystemExit
+    if len(mapping) > 1:
+        full_uppercase[code] = mapping
 
 used_codes = 0x30000
 
@@ -109,6 +139,7 @@ row_index = []
 row_table_index = []
 short_row_table = []
 long_row_table = []
+very_long_row_table = []
 short_row_table_length = []
 long_row_table_length = []
 for a in range(0, used_codes, row_table_index_step):
@@ -116,8 +147,10 @@ for a in range(0, used_codes, row_table_index_step):
     for b in range(a, a + row_table_index_step, row_length):
         short_row = [None] * row_length
         long_row = [None] * row_length
+        very_long_row = [None] * row_length
         short_row_used = False
         long_row_used = False
+        very_long_row_used = False
         for c in range(b, b + row_length):
             short_row[c - b] = properties(c)
             if properties(c) != properties(b):
@@ -125,13 +158,28 @@ for a in range(0, used_codes, row_table_index_step):
             long_row[c - b] = (to_uppercase[c], to_lowercase[c], to_foldcase[c])
             if long_row[c - b] != (None, None, None):
                 long_row_used = True
-        if long_row_used:
+            very_long_row[c - b] = (full_uppercase[c], full_foldcase[c])
+            if very_long_row[c - b] != (None, None):
+                very_long_row_used = True
+        if very_long_row_used or long_row_used:
             for c in range(b, b + row_length):
                 long_row[c - b] = list(long_row[c - b])
                 for i in range(3):
                     if long_row[c - b][i] == None:
                         long_row[c - b][i] = c & 0xFFFF
                 long_row[c - b] = tuple(long_row[c - b])
+        if very_long_row_used:
+            for c in range(b, b + row_length):
+                very_long_row[c - b] = list(very_long_row[c - b])
+                for i in range(2):
+                    if very_long_row[c - b][i] == None:
+                        very_long_row[c - b][i] = ((to_uppercase[c] or c, to_foldcase[c] or c)[i], 0, 0)
+                    else:
+                        very_long_row[c - b][i] = tuple((very_long_row[c - b][i] + [0, 0, 0])[:3])
+                very_long_row[c - b] = tuple(very_long_row[c - b])
+            row_index.append(2 * used_codes + len(very_long_row_table))
+            very_long_row_table.append((short_row, long_row, very_long_row))
+        elif long_row_used:
             row_index.append(used_codes + len(long_row_table) - row_table_index[-1][1])
             long_row_table.append((short_row, long_row))
         elif short_row_used:
@@ -143,24 +191,35 @@ for a in range(0, used_codes, row_table_index_step):
     long_row_table_length.append(len(long_row_table) - row_table_index[-1][1])
 
 table_switch_point = max(short_row_table_length)
-for l in long_row_table_length:
-    if l + table_switch_point >= 240:
-        print("Assumption failed: too many rows in table index block")
-        raise SystemExit
+table_switch_point_2 = table_switch_point + max(long_row_table_length)
+if table_switch_point_2 + len(very_long_row_table) >= 240:
+    print("Assumption failed: too many rows in table index block")
+    raise SystemExit
 
 for i in range(used_codes // row_length):
-    if row_index[i] >= used_codes:
-        row_index[i] = row_index[i] - used_codes + table_switch_point;
+    if row_index[i] >= 2 * used_codes:
+        row_index[i] = row_index[i] - 2 * used_codes + table_switch_point_2
+    elif row_index[i] >= used_codes:
+        row_index[i] = row_index[i] - used_codes + table_switch_point
 
 with open('unicode_data.h', 'w') as f:
     f.write('static const uint8_t table_switch_point = ')
     f.write(str(table_switch_point))
+    f.write(';\nstatic const uint8_t table_switch_point_2 = ')
+    f.write(str(table_switch_point_2))
     f.write(';\n\n')
     f.write('struct Long_row_table_entry {\n    uint8_t short_data[')
     f.write(str(row_length // 2))
     f.write('];\n    uint16_t long_data[')
     f.write(str(row_length))
     f.write('][3];\n};\n\n')
+    f.write('struct Very_long_row_table_entry {\n    uint8_t short_data[')
+    f.write(str(row_length // 2))
+    f.write('];\n    uint16_t long_data[')
+    f.write(str(row_length))
+    f.write('][3];\n    uint16_t very_long_data[')
+    f.write(str(row_length))
+    f.write('][2][3];\n};\n\n')
     f.write('static uint8_t short_row_table[')
     f.write(str(len(short_row_table)))
     f.write('][')
@@ -187,12 +246,40 @@ with open('unicode_data.h', 'w') as f:
         for i in range(row_length):
             f.write('{0x%04X, 0x%04X, 0x%04X}' % long_row[i])
             if i == row_length - 1:
-                f.write(',\n')
+                f.write('}},\n')
             elif i % 4 == 3:
                 f.write(',\n      ')
             else:
                 f.write(', ')
-        f.write('     }}, \n')
+    f.write('};\n\n')
+    f.write('static struct Very_long_row_table_entry very_long_row_table[')
+    f.write(str(len(very_long_row_table)))
+    f.write('] = {\n')
+    for short_row, long_row, very_long_row in very_long_row_table:
+        f.write('    {{')
+        for i in range(0, row_length, 2):
+            f.write('0x%X%X' % (short_row[i], short_row[i + 1]))
+            if i != row_length - 2:
+                f.write(', ')
+        f.write('},\n     {')
+        for i in range(row_length):
+            f.write('{0x%04X, 0x%04X, 0x%04X}' % long_row[i])
+            if i == row_length - 1:
+                f.write('},\n')
+            elif i % 4 == 3:
+                f.write(',\n      ')
+            else:
+                f.write(', ')
+        f.write('     {')
+        for i in range(row_length):
+            f.write('{{0x%04X, 0x%04X, 0x%04X}, ' % very_long_row[i][0])
+            f.write('{0x%04X, 0x%04X, 0x%04X}}' % very_long_row[i][1])
+            if i == row_length - 1:
+                f.write('}},\n')
+            elif i % 2 == 1:
+                f.write(',\n      ')
+            else:
+                f.write(', ')
     f.write('};\n\n')
     f.write('static uint8_t row_index[')
     f.write(str(len(row_index)))

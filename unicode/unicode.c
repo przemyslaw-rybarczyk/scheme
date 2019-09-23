@@ -1,6 +1,8 @@
+#include <stddef.h>
 #include <stdint.h>
 #include <uchar.h>
 
+#include "unicode.h"
 #include "unicode_data.h"
 
 /* == unicode.c
@@ -16,8 +18,9 @@
  * property values.
  *
  * Other values represent indices of entries in one of the row tables. Values
- * less than table_switch_point correspond to short rows and the remaining
- * values correspond to long rows. A row is represented as a short row if none
+ * less than table_switch_point correspond to short rows, other values less
+ * than table_switch_point_2 correspond to long rows and the remaining values
+ * correspond to very long rows. A row is represented as a short row if none
  * of its code points have casing variants. The binary properties are then
  * stored as 16 bytes, each one containing values for two code points.
  *
@@ -27,10 +30,21 @@
  * these always lie in the same Unicode plane as the original code point,
  * there is no need to represent the remaining bits.
  *
+ * A very long row contains the same data as a long row, along with two arrays
+ * of three characters each, representing the full uppercase conversion and case
+ * folding of the characters. If the conversion is shorter than three characters,
+ * the remaining characters are set to 0x0000. The characters are only 16 bits,
+ * since no full uppercase conversion involves characters outside the BMP.
+ *
+ * The only character with a full lowercase conversion longer than 1 character
+ * is U+0130 (LATIN CAPITAL LETTER I WITH DOT ABOVE), so this conversion is
+ * hardcoded in this file.
+ *
  * Since there are more entries in the tables than can be indexed by a single
  * byte, the indices given in the row index table are relative to the first row
  * of a block of size 0x8000 contained in each table. The pointers to these rows
- * are found the row table index.
+ * are found the row table index. Very long rows are the exception, since there
+ * are so few of them.
  *
  * Of the four bits representing binary property data, the first two represent
  * the White_Space and Numeric_Type=Decimal properties. The remaining two
@@ -39,6 +53,8 @@
  * Uppercase, and Alphabetic but neither Lowercase nor Uppercase. Note that
  * Lowercase and Uppercase are both subsets of Alphabetic and do not intersect,
  * allowing for this kind of representation.
+ *
+ * This file is compatible with Unicode 12.1.
  */
 
 static uint8_t get_short_properties(char32_t c) {
@@ -50,8 +66,10 @@ static uint8_t get_short_properties(char32_t c) {
     uint8_t short_data;
     if (row_num < table_switch_point)
         short_data = row_table_index[c >> 15].short_row_table_ptr[row_num][(c >> 1) & 0x0F];
-    else
+    else if (row_num < table_switch_point_2)
         short_data = row_table_index[c >> 15].long_row_table_ptr[row_num - table_switch_point].short_data[(c >> 1) & 0x0F];
+    else
+        short_data = very_long_row_table[row_num - table_switch_point_2].short_data[(c >> 1) & 0x0F];
     if (c & 1)
         return short_data & 0x0F;
     else
@@ -88,7 +106,10 @@ static char32_t get_long_property(char32_t c, int prop) {
     uint8_t row_num = row_index[c >> 5];
     if (row_num >= 0xF0 || row_num < table_switch_point)
         return c;
-    return (c & 0xFF0000) | row_table_index[c >> 15].long_row_table_ptr[row_num - table_switch_point].long_data[c & 0x1F][prop];
+    else if (row_num < table_switch_point_2)
+        return (c & 0xFF0000) | row_table_index[c >> 15].long_row_table_ptr[row_num - table_switch_point].long_data[c & 0x1F][prop];
+    else
+        return very_long_row_table[row_num - table_switch_point_2].long_data[c & 0x1F][prop];
 }
 
 char32_t to_uppercase(char32_t c) {
@@ -101,4 +122,30 @@ char32_t to_lowercase(char32_t c) {
 
 char32_t fold_case(char32_t c) {
     return get_long_property(c, 2);
+}
+
+static uint16_t *get_very_long_property(char32_t c, int prop) {
+    if (c >= 0x30000)
+        return NULL;
+    uint8_t row_num = row_index[c >> 5];
+    if (row_num >= 0xF0 || row_num < table_switch_point_2)
+        return NULL;
+    else
+        return very_long_row_table[row_num - table_switch_point_2].very_long_data[c & 0x1F][prop];
+}
+
+uint16_t *full_uppercase(char32_t c) {
+    return get_very_long_property(c, 0);
+}
+
+static uint16_t dotted_i_lowercase[3] = {0x0069, 0x0307, 0x0000};
+
+uint16_t *full_lowercase(char32_t c) {
+    if (c == 0x0130)
+        return dotted_i_lowercase;
+    return NULL;
+}
+
+uint16_t *full_foldcase(char32_t c) {
+    return get_very_long_property(c, 1);
 }
