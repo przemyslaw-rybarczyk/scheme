@@ -2,9 +2,9 @@
 
 set -e
 
-wget -N https://unicode.org/Public/UCD/latest/ucd/CaseFolding.txt
-wget -N https://unicode.org/Public/UCD/latest/ucd/PropList.txt
-wget -N https://unicode.org/Public/UCD/latest/ucd/SpecialCasing.txt
-wget -N https://unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
-wget -N https://unicode.org/Public/UCD/latest/ucd/extracted/DerivedGeneralCategory.txt
+wget -N https://unicode.org/Public/12.1.0/ucd/CaseFolding.txt
+wget -N https://unicode.org/Public/12.1.0/ucd/PropList.txt
+wget -N https://unicode.org/Public/12.1.0/ucd/SpecialCasing.txt
+wget -N https://unicode.org/Public/12.1.0/ucd/UnicodeData.txt
+wget -N https://unicode.org/Public/12.1.0/ucd/extracted/DerivedGeneralCategory.txt
 ./generate.py
