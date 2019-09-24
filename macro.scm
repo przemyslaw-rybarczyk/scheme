@@ -116,15 +116,23 @@
           (else
            (apply map (lambda sub-vals (map list vars (map (lambda (x) (- x 1)) levels) sub-vals)) vals)))))
 
-(define (apply-pattern-bindings bindings template macro-id env)
+(define (reduce-ident x)
+  (if (and (procedure? x) (pair? (x)))
+      (reduce-ident (car (x)))
+      x))
+
+(define (apply-pattern-bindings bindings template macro-id env ellipses)
   (cond ((pair? template)
-         (if (and (pair? (cdr template)) (eq? '... (cadr template)))
-             (let ((repeated-bindings (used-bindings template bindings)))
-               (map (lambda (sub-bindings) (apply-pattern-bindings sub-bindings (car template) macro-id env))
-                    (split-bindings repeated-bindings)))
-             (cons (apply-pattern-bindings bindings (car template) macro-id env)
-                   (apply-pattern-bindings bindings (cdr template) macro-id env))))
-        ((eq? template '...)
+         (cond ((and ellipses (pair? (cdr template)) (null? (cddr template)) (eq? '... (reduce-ident (car template))))
+                (apply-pattern-bindings bindings (cdr template) macro-id env #f))
+               ((and ellipses (pair? (cdr template)) (eq? '... (reduce-ident (cadr template))))
+                (let ((repeated-bindings (used-bindings template bindings)))
+                  (map (lambda (sub-bindings) (apply-pattern-bindings sub-bindings (car template) macro-id env ellipses))
+                       (split-bindings repeated-bindings))))
+               (else
+                (cons (apply-pattern-bindings bindings (car template) macro-id env ellipses)
+                      (apply-pattern-bindings bindings (cdr template) macro-id env ellipses)))))
+        ((and ellipses (eq? (reduce-ident template) '...))
          (error "Invalid ellipsis in pattern"))
         ((ident? template)
          (let ((binding (assq-ident template bindings)))
@@ -147,5 +155,5 @@
       (error "Invalid macro expression - no patterns match")
       (let ((bindings (get-pattern-bindings expr (caar rules) literals)))
         (if bindings
-            (apply-pattern-bindings bindings (cadar rules) (new-macro-id) env)
+            (apply-pattern-bindings bindings (cadar rules) (new-macro-id) env #t)
             (apply-macro expr (cdr rules) literals env)))))
