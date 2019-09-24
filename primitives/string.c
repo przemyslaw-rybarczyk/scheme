@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "string.h"
 #include "../types.h"
+#include "../exec_stack.h"
 #include "../memory.h"
 #include "../string.h"
 #include "../unicode/unicode.h"
@@ -148,3 +150,98 @@ def_string_cmp_prim(string_ci_lt_prim, string_ci_cmp, <);
 def_string_cmp_prim(string_ci_gt_prim, string_ci_cmp, >);
 def_string_cmp_prim(string_ci_le_prim, string_ci_cmp, <=);
 def_string_cmp_prim(string_ci_ge_prim, string_ci_cmp, >=);
+
+Val substring_prim(Val *args, uint32_t num) {
+    args_assert(num == 3);
+    if (args[0].type != TYPE_STRING && args[0].type != TYPE_CONST_STRING)
+        type_error(args[0]);
+    if (args[1].type != TYPE_INT)
+        type_error(args[1]);
+    if (args[2].type != TYPE_INT)
+        type_error(args[1]);
+    long long start = args[1].int_data;
+    long long end = args[2].int_data;
+    if ((start < 0 || start > args[0].string_data->len) || (end < 0 || end > args[0].string_data->len)) {
+        eprintf("Error: string index out of range\n");
+        exit(1);
+    }
+    if (start > end) {
+        eprintf("Error: start of substring greater than end\n");
+        exit(1);
+    }
+    String *str = gc_alloc_string((size_t)(end - start));
+    memcpy(str->chars, &args[0].string_data->chars[start], (size_t)(end - start) * sizeof(char32_t));
+    return (Val){TYPE_STRING, {.string_data = str}};
+}
+
+Val string_append_prim(Val *args, uint32_t num) {
+    size_t size = 0;
+    for (uint32_t i = 0; i < num; i++) {
+        if (args[i].type != TYPE_STRING && args[i].type != TYPE_CONST_STRING)
+            type_error(args[i]);
+        size += args[i].string_data->len;
+    }
+    String *str = gc_alloc_string(size);
+    char32_t *chars = str->chars;
+    for (uint32_t i = 0; i < num; i++) {
+        memcpy(chars, args[i].string_data->chars, args[i].string_data->len * sizeof(char32_t));
+        chars += args[i].string_data->len;
+    }
+    return (Val){TYPE_STRING, {.string_data = str}};
+}
+
+Val string_to_list_prim(Val *args, uint32_t num) {
+    args_assert(num == 1);
+    if (args[0].type != TYPE_STRING && args[0].type != TYPE_CONST_STRING)
+        type_error(args[0]);
+    Val *arg = stack_ptr;
+    stack_push(args[0]);
+    stack_push((Val){TYPE_NIL});
+    for (ssize_t i = (ssize_t)arg->string_data->len - 1; i >= 0; i--) {
+        Pair *pair = gc_alloc(sizeof(Pair));
+        pair->car = (Val){TYPE_CHAR, {.char_data = arg->string_data->chars[i]}};
+        pair->cdr = stack_pop();
+        stack_push((Val){TYPE_PAIR, {.pair_data = pair}});
+    }
+    return stack_pop();
+}
+
+Val list_to_string_prim(Val *args, uint32_t num) {
+    args_assert(num == 1);
+    size_t len = 0;
+    for (Val list = args[0]; list.type == TYPE_PAIR; list = list.pair_data->cdr)
+        len++;
+    String *str = gc_alloc_string(len);
+    Val list = args[0];
+    for (size_t i = 0; i < len; i++) {
+        if (list.pair_data->car.type != TYPE_CHAR)
+            type_error(list.pair_data->car);
+        str->chars[i] = list.pair_data->car.char_data;
+        list = list.pair_data->cdr;
+    }
+    return (Val){TYPE_STRING, {.string_data = str}};
+}
+
+Val string_copy_prim(Val *args, uint32_t num) {
+    args_assert(num == 1);
+    if (args[0].type != TYPE_STRING && args[0].type != TYPE_CONST_STRING)
+        type_error(args[0]);
+    String *str = gc_alloc_string(args[0].string_data->len);
+    memcpy(str->chars, args[0].string_data->chars, args[0].string_data->len * sizeof(char32_t));
+    return (Val){TYPE_STRING, {.string_data = str}};
+}
+
+Val string_fill_prim(Val *args, uint32_t num) {
+    args_assert(num == 2);
+    if (args[0].type == TYPE_CONST_STRING) {
+        eprintf("Error: string is immutable\n");
+        exit(1);
+    }
+    if (args[0].type != TYPE_STRING)
+        type_error(args[0]);
+    if (args[1].type != TYPE_CHAR)
+        type_error(args[1]);
+    for (size_t i = 0; i < args[0].string_data->len; i++)
+        args[0].string_data->chars[i] = args[1].char_data;
+    return (Val){TYPE_VOID};
+}
