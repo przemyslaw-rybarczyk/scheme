@@ -44,9 +44,9 @@ The completion status of the interpreter, grouped by chapters of R5RS which it c
     - 6.3. Other data types
         - ██████ 6.3.1. Booleans
         - ██████ 6.3.2. Pairs and lists
-        - ████░░ 6.3.3. Symbols
+        - ██████ 6.3.3. Symbols
         - ██████ 6.3.4. Characters
-        - █░░░░░ 6.3.5. Strings
+        - ██████ 6.3.5. Strings
         - ░░░░░░ 6.3.6. Vectors
     - ██░░░░ 6.4. Control features
     - ░░░░░░ 6.5. `eval`

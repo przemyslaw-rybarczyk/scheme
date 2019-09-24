@@ -27,10 +27,8 @@ void setup_obarray(void) {
  */
 String *intern_string(String *symbol) {
     for (String **obarray_ptr = obarray; obarray_ptr < obarray_end; obarray_ptr++) {
-        if (string_eq(symbol, *obarray_ptr)) {
-            free(symbol);
+        if (string_eq(symbol, *obarray_ptr))
             return *obarray_ptr;
-        }
     }
     ptrdiff_t index = obarray_end - obarray;
     if (index >= obarray_size) {

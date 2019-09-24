@@ -139,6 +139,8 @@ static struct CString_binding cstring_r5rs_bindings[] = {
     PRIM2("list->string", list_to_string),
     PRIM2("string-copy", string_copy),
     PRIM2("string-fill!", string_fill),
+    PRIM2("symbol->string", symbol_to_string),
+    PRIM2("string->symbol", string_to_symbol),
     PRIM(display),
     PRIM(newline),
     PRIM(error),

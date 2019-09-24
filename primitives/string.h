@@ -21,3 +21,5 @@ Val string_to_list_prim(Val *args, uint32_t num);
 Val list_to_string_prim(Val *args, uint32_t num);
 Val string_copy_prim(Val *args, uint32_t num);
 Val string_fill_prim(Val *args, uint32_t num);
+Val symbol_to_string_prim(Val *args, uint32_t num);
+Val string_to_symbol_prim(Val *args, uint32_t num);

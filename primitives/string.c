@@ -245,3 +245,17 @@ Val string_fill_prim(Val *args, uint32_t num) {
         args[0].string_data->chars[i] = args[1].char_data;
     return (Val){TYPE_VOID};
 }
+
+Val symbol_to_string_prim(Val *args, uint32_t num) {
+    args_assert(num == 1);
+    if (args[0].type != TYPE_SYMBOL)
+        type_error(args[0]);
+    return (Val){TYPE_CONST_STRING, {.string_data = args[0].string_data}};
+}
+
+Val string_to_symbol_prim(Val *args, uint32_t num) {
+    args_assert(num == 1);
+    if (args[0].type != TYPE_STRING && args[0].type != TYPE_CONST_STRING)
+        type_error(args[0]);
+    return (Val){TYPE_SYMBOL, {.string_data = intern_string(args[0].string_data)}};
+}
