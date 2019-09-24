@@ -18,7 +18,7 @@
 (define period 46)
 
 (define (parse-and-compile)
-  (compile-top-level (parse) '() #t))
+  (compile-top-level (parse) #t))
 
 (define (parse)
   (let ((token (read-token)))
@@ -52,17 +52,17 @@
 
 (define undef +)
 
-(define (compile-top-level expr env tail)
-  (let ((expanded (expand-to-define expr env)))
+(define (compile-top-level expr tail)
+  (let ((expanded (expand-to-define expr '())))
     (if (pair? expanded)
         (cond ((eq? 'define (car expanded))
                (let ((expr (transform-define expanded)))
-                 (compile (caddr expr) env #f)
+                 (compile (caddr expr) '() #f)
                  (set-def! (next-inst) (cadr expr))
                  (put-tail! tail)))
               ((eq? 'begin (car expanded))
                (validate-expr expanded '((begin expr ...)) '())
-               (compile-top-level-seq (cdr expr) env tail))
+               (compile-top-level-seq (cdr expr) tail))
               ((eq? 'define-syntax (car expanded))
                (validate-expr expr '((define-syntax keyword (syntax-rules literals (pattern template) ...))) '(syntax-rules))
                (validate-syntax-binding (cdr expr))
@@ -73,19 +73,19 @@
                (set-const! (next-inst) #!void)
                (put-tail! tail))
               (else
-               (compile expr env tail)))
-        (compile expr env tail))))
+               (compile expr '() tail)))
+        (compile expr '() tail))))
 
-(define (compile-top-level-seq exprs env tail)
+(define (compile-top-level-seq exprs tail)
   (cond ((null? exprs)
          (set-const! (next-inst) #!void)
          (put-tail! tail))
         ((null? (cdr exprs))
-         (compile-top-level (car exprs) env tail))
+         (compile-top-level (car exprs) tail))
         (else
-         (compile-top-level (car exprs) env #f)
+         (compile-top-level (car exprs) #f)
          (set-delete! (next-inst))
-         (compile-top-level-seq (cdr exprs) env tail))))
+         (compile-top-level-seq (cdr exprs) tail))))
 
 (define (compile expr env tail)
   (cond ((pair? expr)
