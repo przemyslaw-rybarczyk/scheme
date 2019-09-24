@@ -32,12 +32,29 @@
         (else
          (assq-ident obj (cdr list)))))
 
+(define (reduce-ident x)
+  (if (and (procedure? x) (pair? (x)))
+      (reduce-ident (car (x)))
+      x))
+
+(define (full-equal-ident? obj list)
+  (or (equal-ident? obj list)
+      (if (procedure? obj)
+          (full-equal-ident? (car (obj)) list)
+          #f)))
+
+(define (full-memq-ident obj list)
+  (or (memq-ident obj list)
+      (if (procedure? obj)
+          (full-memq-ident (car (obj)) list)
+          #f)))
+
 ;;; Each binding is of the form (name number-of-ellpises bindings).
 ;;; An identifier is a symbol or a nullary function returning (name macro-id env).
 
 (define (get-empty-bindings pattern literals)
   (cond ((pair? pattern)
-         (cond ((and (pair? (cdr pattern)) (eq? '... (cadr pattern)))
+         (cond ((and (pair? (cdr pattern)) (eq? '... (reduce-ident (cadr pattern))))
                 (if (not (null? (cddr pattern)))
                     (error "Ellipsis not at the end of a list"))
                 (map (lambda (binding) (list (car binding) (+ 1 (cadr binding)) (caddr binding)))
@@ -52,7 +69,7 @@
 
 (define (get-pattern-bindings expr pattern literals)
   (cond ((pair? pattern)
-         (cond ((and (pair? (cdr pattern)) (eq? '... (cadr pattern)))
+         (cond ((and (pair? (cdr pattern)) (eq? '... (reduce-ident (cadr pattern))))
                 (if (not (null? (cddr pattern)))
                     (error "Ellipsis not at the end of a list"))
                 (if (list? expr)
@@ -74,9 +91,9 @@
                       #f)))
                (else
                 #f)))
-        ((and (ident? pattern) (not (memq-ident pattern literals)))
+        ((and (ident? pattern) (not (full-memq-ident pattern literals)))
          (list (list pattern 0 expr)))
-        ((equal-ident? expr pattern)
+        ((full-equal-ident? expr pattern)
          '())
         (else
          #f)))
@@ -101,7 +118,7 @@
 
 (define (used-bindings template bindings)
   (let ((flattened (filter ident? (flatten template))))
-    (filter (lambda (binding) (memq (car binding) flattened)) bindings)))
+    (filter (lambda (binding) (memq-ident (car binding) flattened)) bindings)))
 
 (define (split-bindings bindings)
   (let ((vars (map car bindings))
@@ -116,17 +133,12 @@
           (else
            (apply map (lambda sub-vals (map list vars (map (lambda (x) (- x 1)) levels) sub-vals)) vals)))))
 
-(define (reduce-ident x)
-  (if (and (procedure? x) (pair? (x)))
-      (reduce-ident (car (x)))
-      x))
-
 (define (apply-pattern-bindings bindings template macro-id env ellipses)
   (cond ((pair? template)
          (cond ((and ellipses (pair? (cdr template)) (null? (cddr template)) (eq? '... (reduce-ident (car template))))
-                (apply-pattern-bindings bindings (cdr template) macro-id env #f))
+                (apply-pattern-bindings bindings (cadr template) macro-id env #f))
                ((and ellipses (pair? (cdr template)) (eq? '... (reduce-ident (cadr template))))
-                (let ((repeated-bindings (used-bindings template bindings)))
+                (let ((repeated-bindings (used-bindings (car template) bindings)))
                   (map (lambda (sub-bindings) (apply-pattern-bindings sub-bindings (car template) macro-id env ellipses))
                        (split-bindings repeated-bindings))))
                (else
