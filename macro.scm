@@ -139,8 +139,9 @@
                 (apply-pattern-bindings bindings (cadr template) macro-id env #f))
                ((and ellipses (pair? (cdr template)) (eq? '... (reduce-ident (cadr template))))
                 (let ((repeated-bindings (used-bindings (car template) bindings)))
-                  (map (lambda (sub-bindings) (apply-pattern-bindings sub-bindings (car template) macro-id env ellipses))
-                       (split-bindings repeated-bindings))))
+                  (append (map (lambda (sub-bindings) (apply-pattern-bindings sub-bindings (car template) macro-id env ellipses))
+                               (split-bindings repeated-bindings))
+                          (apply-pattern-bindings bindings (cddr template) macro-id env ellipses))))
                (else
                 (cons (apply-pattern-bindings bindings (car template) macro-id env ellipses)
                       (apply-pattern-bindings bindings (cdr template) macro-id env ellipses)))))
