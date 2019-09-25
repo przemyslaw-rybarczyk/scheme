@@ -6,7 +6,10 @@
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 
 /* -- String
- * TODO document
+ * A string may be allocated in one of three ways. Uninterned strings are used
+ * to represent string constants. Interned strings are used to represent symbols
+ * and variable names. GC-allocated strings represent mutable strings and are
+ * allocated from garbage collected memory.
  * Every GC-allocated string must have at least one character, even if it's empty.
  * The character is used for purposes of garbage collection.
  */
