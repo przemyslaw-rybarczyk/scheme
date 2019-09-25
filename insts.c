@@ -144,7 +144,7 @@ static void save_val(FILE *fp, Val val) {
     }
 }
 
-static const char *magic = "\xf0\x9f\x91\xad""v3.0";
+static const char *magic = "\xf0\x9f\x91\xad""v4.0";
 
 void save_insts(FILE *fp, uint32_t start, uint32_t end) {
     s_fputs(magic, fp);
