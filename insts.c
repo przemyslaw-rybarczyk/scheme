@@ -144,10 +144,12 @@ static void save_val(FILE *fp, Val val) {
     }
 }
 
-static const char *magic = "\xf0\x9f\x91\xad""v4.0";
+static const char *magic = "\xf0\x9f\x91\xad";
+static const char *version = "v4.0";
 
 void save_insts(FILE *fp, uint32_t start, uint32_t end) {
     s_fputs(magic, fp);
+    s_fputs(version, fp);
     for (uint32_t n = start; n != end; n++) {
         s_fputc(insts[n].type, fp);
         switch (insts[n].type) {
@@ -262,10 +264,15 @@ static Val load_val(FILE *fp) {
 
 void load_insts(FILE *fp) {
     uint32_t start = this_inst();
-    char s[9];
-    s_fgets(s, 9, fp);
+    char s[5];
+    s_fgets(s, 5, fp);
     if (strcmp(s, magic) != 0) {
         eprintf("Error: not a valid bytecode file\n");
+        exit(1);
+    }
+    s_fgets(s, 5, fp);
+    if (strcmp(s, version) != 0) {
+        eprintf("Error: invalid bytecode file version %s\n", s);
         exit(1);
     }
     int c;
