@@ -257,5 +257,5 @@ Val string_to_symbol_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
     if (args[0].type != TYPE_STRING && args[0].type != TYPE_CONST_STRING)
         type_error(args[0]);
-    return (Val){TYPE_SYMBOL, {.string_data = intern_string(args[0].string_data)}};
+    return (Val){TYPE_SYMBOL, {.string_data = intern_gc_string(args[0].string_data)}};
 }

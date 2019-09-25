@@ -27,8 +27,10 @@ void setup_obarray(void) {
  */
 String *intern_string(String *symbol) {
     for (String **obarray_ptr = obarray; obarray_ptr < obarray_end; obarray_ptr++) {
-        if (string_eq(symbol, *obarray_ptr))
+        if (string_eq(symbol, *obarray_ptr)) {
+            free(symbol);
             return *obarray_ptr;
+        }
     }
     ptrdiff_t index = obarray_end - obarray;
     if (index >= obarray_size) {
@@ -38,6 +40,24 @@ String *intern_string(String *symbol) {
     }
     *obarray_end++ = symbol;
     return symbol;
+}
+
+String *intern_gc_string(String *symbol) {
+    for (String **obarray_ptr = obarray; obarray_ptr < obarray_end; obarray_ptr++) {
+        if (string_eq(symbol, *obarray_ptr))
+            return *obarray_ptr;
+    }
+    ptrdiff_t index = obarray_end - obarray;
+    if (index >= obarray_size) {
+        obarray_size *= 2;
+        obarray = s_realloc(obarray, obarray_size * sizeof(String *));
+        obarray_end = obarray + index;
+    }
+    size_t size = sizeof(String) + symbol->len * sizeof(char32_t);
+    String *interned = s_malloc(size);
+    memcpy(interned, symbol, size);
+    *obarray_end++ = interned;
+    return interned;
 }
 
 String *gc_alloc_string(size_t len) {
