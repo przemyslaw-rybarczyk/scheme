@@ -20,8 +20,8 @@ void setup_obarray(void) {
     obarray_end = obarray;
 }
 
-/* -- intern_symbol
- * Given a symbol string, it attempts to find it in the obarray.
+/* -- intern_string
+ * Given a string, it attempts to find it in the obarray.
  * If it is already there, the found string is returned and the argument freed.
  * Otherwise, the symbol string is added to the obarray and returned back.
  */
@@ -42,6 +42,10 @@ String *intern_string(String *symbol) {
     return symbol;
 }
 
+/* -- intern_gc_string
+ * Works like intern_string, except it takes a GC-allocated string as an argument.
+ * The string is not freed if it already exists in the obarray, and is copied otherwise.
+ */
 String *intern_gc_string(String *symbol) {
     for (String **obarray_ptr = obarray; obarray_ptr < obarray_end; obarray_ptr++) {
         if (string_eq(symbol, *obarray_ptr))
