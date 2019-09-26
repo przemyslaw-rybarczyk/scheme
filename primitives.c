@@ -114,7 +114,6 @@ Binding compiler_bindings[] = {
     PRIM2("set-return!", set_return),
     PRIM2("set-delete!", set_delete),
     PRIM2("set-cons!", set_cons),
-    PRIM2("new-symbol", new_symbol),
 };
 
 uint32_t compiler_bindings_size = sizeof(compiler_bindings) / sizeof(Binding);
