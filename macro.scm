@@ -133,6 +133,34 @@
           (else
            (apply map (lambda sub-vals (map list vars (map (lambda (x) (- x 1)) levels) sub-vals)) vals)))))
 
+(define (display-expr-list exprs)
+  (cond ((null? exprs))
+        ((not (pair? exprs))
+         (display ". ")
+         (display exprs))
+        ((null? (cdr exprs))
+         (display-expr (car exprs)))
+        (else
+         (display-expr (car exprs))
+         (display " ")
+         (display-expr-list (cdr exprs)))))
+
+(define (display-expr expr)
+  (cond ((pair? expr)
+         (display "(")
+         (display-expr-list expr)
+         (display ")"))
+        ((eq? expr +)
+         (display "#!undef"))
+        ((procedure? expr)
+         (display "<")
+         (display (car (expr)))
+         (display " ")
+         (display (cadr (expr)))
+         (display ">"))
+        (else
+         (display expr))))
+
 (define (apply-pattern-bindings bindings template macro-id env ellipses)
   (cond ((pair? template)
          (cond ((and ellipses (pair? (cdr template)) (null? (cddr template)) (eq? '... (reduce-ident (car template))))
@@ -163,10 +191,10 @@
   (set! macro-id-gen (+ macro-id-gen 1))
   macro-id-gen)
 
-(define (apply-macro expr rules literals env)
+(define (apply-macro expr literals rules env)
   (if (null? rules)
       (error "Invalid macro expression - no patterns match")
       (let ((bindings (get-pattern-bindings expr (caar rules) literals)))
         (if bindings
             (apply-pattern-bindings bindings (cadar rules) (new-macro-id) env #t)
-            (apply-macro expr (cdr rules) literals env)))))
+            (apply-macro expr literals (cdr rules) env)))))

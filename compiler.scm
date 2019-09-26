@@ -66,10 +66,12 @@
               ((eq? 'define-syntax (car expanded))
                (validate-expr expanded '((define-syntax keyword (syntax-rules literals (pattern template) ...))) '(syntax-rules))
                (validate-syntax-binding (cdr expanded))
-               (set! forms (cons (list (cadr expanded) 'macro (list (map (lambda (rule) (list (cdar rule) (cadr rule)))
-                                                                     (cddr (caddr expanded)))
-                                                                (cadr (caddr expanded))))
-                                 forms))
+               (set! macros (cons (list (cadr expanded)
+                                        (cadr (caddr expanded))
+                                        (map (lambda (rule) (list (cdar rule) (cadr rule)))
+                                             (cddr (caddr expanded)))
+                                        '())
+                                  macros))
                (set-const! (next-inst) #!void)
                (put-tail! tail))
               (else
@@ -94,19 +96,16 @@
                (if (eq? (car loc) 'macro)
                    (compile (apply-macro (cdr expr) (cadr loc) (caddr loc) (cadddr loc)) env tail)
                    (compile-appl expr env tail))
-               (let ((compile-form (assq-ident loc forms)))
-                 (if compile-form
-                     (let ((type (cadr compile-form))
-                           (f (caddr compile-form)))
-                       (cond ((eq? type 'prim)
-                              (f expr env tail))
-                             ((eq? type 'deriv)
-                              (compile (f expr) env tail))
-                             ((eq? type 'macro)
-                              (compile (apply-macro (cdr expr) (car f) (cadr f) '()) env tail))
-                             (else
-                              (error "Internal compiler error: unknown primitive type"))))
-                     (compile-appl expr env tail))))))
+               (let ((macro (assq-ident loc macros)))
+                 (if macro
+                     (compile (apply-macro (cdr expr) (cadr macro) (caddr macro) '()) env tail)
+                     (let ((derived-form (assq-ident loc derived-forms)))
+                       (if derived-form
+                           (compile (apply-macro (cdr expr) (cadr derived-form) (caddr derived-form) (cadddr derived-form)) env tail)
+                           (let ((primitive-form (assq-ident loc primitive-forms)))
+                             (if primitive-form
+                                 ((cadr primitive-form) expr env tail)
+                                 (compile-appl expr env tail))))))))))
         ((ident? expr)
          (compile-name expr env tail))
         ((eq? expr undef)
@@ -126,20 +125,12 @@
             (if (eq? (car loc) 'macro)
                 (expand-to-define (apply-macro (cdr expr) (cadr loc) (caddr loc) (cadddr loc)) env)
                 #f)
-            (let ((compile-form (assq-ident loc forms)))
-              (if compile-form
-                  (let ((type (cadr compile-form))
-                        (f (caddr compile-form)))
-                    (cond ((eq? type 'prim)
-                           (if (and (eq? (cadr compile-form) 'prim)
-                                    (or (eq? loc 'define) (eq? loc 'begin) (eq? loc 'define-syntax)))
-                               (cons loc (cdr expr))
-                               #f))
-                          ((eq? type 'macro)
-                           (expand-to-define (apply-macro (cdr expr) (car f) (cadr f) '()) env))
-                          (else
-                           #f)))
-                  #f))))
+            (let ((macro (assq-ident loc macros)))
+              (if macro
+                  (expand-to-define (apply-macro (cdr expr) (cadr macro) (caddr macro) '()) env)
+                  (if (or (eq? loc 'define) (eq? loc 'begin) (eq? loc 'define-syntax))
+                      (cons loc (cdr expr))
+                      #f)))))
       #f))
 
 (define (compile-name name env tail)
@@ -295,11 +286,14 @@
     (if (memq #f (map (lambda (rule) (eq-ident? (caar rule) (car expr))) (cddr transformer)))
         (error "Syntax rule pattern doesn't start with bound symbol"))
     (if (memq #t (map (lambda (rule)
-                        (has-duplicates? (filter (lambda (symbol) (and (ident? symbol) (not (memq symbol (cadr transformer)))))
-                                                   (flatten (cdar rule))))) (cddr transformer)))
+                        (has-duplicates? (filter (lambda (symbol) (and (ident? symbol)
+                                                                       (not (memq-ident symbol (cadr transformer)))
+                                                                       (not (eq? '... (reduce-ident symbol)))))
+                                                 (flatten (cdar rule)))))
+                      (cddr transformer)))
         (error "Syntax rule pattern contains duplicates"))))
 
-;;; Each macro is of the form (name rules literals env).
+;;; Each local macro is of the form (name literals rules env).
 
 (define (compile-let-syntax expr env tail)
   (validate-expr expr '((let-syntax ((keyword (syntax-rules literals (pattern template) ...)) ...) expr ...)) '(syntax-rules))
@@ -307,8 +301,8 @@
   (compile-body
     (cddr expr)
     (cons (cons 'macro (map (lambda (binding) (list (car binding)
-                                                    (map (lambda (rule) (list (cdar rule) (cadr rule))) (cddadr binding))
                                                     (cadadr binding)
+                                                    (map (lambda (rule) (list (cdar rule) (cadr rule))) (cddadr binding))
                                                     env))
                             (cadr expr)))
           env)
@@ -322,49 +316,11 @@
   (let ((new-env (cons '() env)))
     (set-car! new-env
               (cons 'macro (map (lambda (binding) (list (car binding)
-                                                        (map (lambda (rule) (list (cdar rule) (cadr rule))) (cddadr binding))
                                                         (cadadr binding)
+                                                        (map (lambda (rule) (list (cdar rule) (cadr rule))) (cddadr binding))
                                                         new-env))
                                 (cadr expr))))
     (compile-body (cddr expr) new-env tail)))
-
-(define (transform-let expr)
-  (validate-expr expr '((let ((var val) ...) expr ...)) '())
-  (cons (cons 'lambda (cons (map car (cadr expr)) (cddr expr))) (map cadr (cadr expr))))
-
-(define (transform-letrec expr)
-  (validate-expr expr '((letrec ((var val) ...) expr ...)) '())
-  (list 'let
-        (map (lambda (x) (list (car x) undef)) (cadr expr))
-        (let ((new-symbols (map (lambda (x) (new-symbol)) (cadr expr))))
-          (append (list 'let (map (lambda (x y) (list x (cadr y))) new-symbols (cadr expr)))
-                  (append (map (lambda (x y) (list 'set! (car x) y)) (cadr expr) new-symbols)
-                          (cddr expr))))))
-
-(define (transform-cond expr)
-  (cond ((null? (cdr expr))
-         #!void)
-        ((eq? (caadr expr) 'else)
-         (cons 'begin (cdadr expr)))
-        (else
-         (list 'if (caadr expr) (cons 'begin (cdadr expr)) (cons 'cond (cddr expr))))))
-
-(define (transform-and expr)
-  (cond ((null? (cdr expr))
-         #f)
-        ((null? (cddr expr))
-         (cadr expr))
-        (else
-         (list 'if (cadr expr) (cons 'and (cddr expr)) #f))))
-
-(define (transform-or expr)
-  (cond ((null? (cdr expr))
-         #t)
-        ((null? (cddr expr))
-         (cadr expr))
-        (else
-          (let ((v (new-symbol)))
-            (list 'let (list (list v (cadr expr))) (list 'if v v (cons 'or (cddr expr))))))))
 
 (define (compile-seq exprs env tail)
   (cond ((null? exprs)
@@ -416,19 +372,62 @@
 (define (error-define-syntax expr env tail)
   (error "Invalid use of define-syntax"))
 
-(define forms
+(define primitive-forms
   (list
-    (list 'set! 'prim compile-set)
-    (list 'if 'prim compile-if)
-    (list 'lambda 'prim compile-lambda)
-    (list 'begin 'prim compile-begin)
-    (list 'quote 'prim compile-quote)
-    (list 'let-syntax 'prim compile-let-syntax)
-    (list 'letrec-syntax 'prim compile-letrec-syntax)
-    (list 'define 'prim error-define)
-    (list 'define-syntax 'prim error-define-syntax)
-    (list 'let 'deriv transform-let)
-    (list 'letrec 'deriv transform-letrec)
-    (list 'cond 'deriv transform-cond)
-    (list 'and 'deriv transform-and)
-    (list 'or 'deriv transform-or)))
+    (list 'set! compile-set)
+    (list 'if compile-if)
+    (list 'lambda compile-lambda)
+    (list 'begin compile-begin)
+    (list 'quote compile-quote)
+    (list 'let-syntax compile-let-syntax)
+    (list 'letrec-syntax compile-letrec-syntax)
+    (list 'define error-define)
+    (list 'define-syntax error-define-syntax)))
+
+(define derived-forms
+  '((let ()
+      (((((var val) ...) expr ...)
+        ((lambda (var ...) expr ...) val ...))))
+    (letrec ()
+      (((((var val) ...) expr ...)
+        (letrec-syntax (... ((letrec2 (syntax-rules ()
+                                        ((letrec2 () (temp ...) ((var2 val2) ...) (expr2 ...))
+                                         (let ((var2 0) ...) ; TODO replace 0 with #!undef
+                                           (let ((temp val2) ...)
+                                             (set! var2 temp) ...
+                                             expr2 ...)))
+                                        ((letrec2 (x y ...) (temp ...) bindings exprs)
+                                         (letrec2 (y ...) (new_temp temp ...) bindings exprs))))))
+          (letrec2 (var ...) () ((var val) ...) (expr ...))))))
+    (cond (else)
+      ((()
+        #!void)
+       (((else expr ...))
+        (begin expr ...))
+       (((test expr ...) clause ...)
+        (if test
+            (begin expr ...)
+            (cond clause ...)))))
+    (and ()
+      ((()
+        #t)
+       ((expr)
+        expr)
+       ((expr1 expr2 ...)
+        (if expr1
+            (and expr2 ...)
+            #f))))
+    (or ()
+      ((()
+        #f)
+       ((expr)
+        expr)
+       ((expr1 expr2 ...)
+        (let ((x expr1))
+          (if x x (or expr2 ...))))))))
+
+(for-each
+  (lambda (form) (set-cdr! (cddr form) (list (list (cons 'macro derived-forms)))))
+  derived-forms)
+
+(define macros '())
