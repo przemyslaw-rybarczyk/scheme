@@ -277,12 +277,14 @@
   (put-tail! tail))
 
 (define (compile-quoted expr)
-  (if (pair? expr)
-      (begin
-        (compile-quoted (car expr))
-        (compile-quoted (cdr expr))
-        (set-cons! (next-inst)))
-      (set-const! (next-inst) expr)))
+  (cond ((pair? expr)
+         (compile-quoted (car expr))
+         (compile-quoted (cdr expr))
+         (set-cons! (next-inst)))
+        ((eq? expr +)
+         (set-const! (next-inst) #!undef))
+        (else
+         (set-const! (next-inst) (reduce-ident expr)))))
 
 (define (validate-syntax-binding expr)
   (if (not (ident? (car expr)))
