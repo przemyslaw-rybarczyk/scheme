@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include <inttypes.h>
 #include <uchar.h>
 
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)

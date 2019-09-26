@@ -105,7 +105,7 @@ Val list_tail_prim(Val *args, uint32_t num) {
         type_error(args[1]);
     long long k = args[1].int_data;
     if (k < 0) {
-        eprintf("Error: number less than zero\n");
+        eprintf("Error: list index less than zero\n");
         exit(1);
     }
     Val list = args[0];
@@ -123,7 +123,7 @@ Val list_ref_prim(Val *args, uint32_t num) {
         type_error(args[1]);
     long long k = args[1].int_data;
     if (k < 0) {
-        eprintf("Error: number less than zero\n");
+        eprintf("Error: list index less than zero\n");
         exit(1);
     }
     Val list = args[0];
