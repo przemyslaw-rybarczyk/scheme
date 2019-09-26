@@ -175,13 +175,3 @@ Val set_cons_prim(Val *args, uint32_t num) {
     insts[u32_int_data(args[0])] = (Inst){INST_CONS};
     return (Val){TYPE_VOID};
 }
-
-static uint32_t new_symbol_counter = 0;
-
-// awful workaround for until macros are implemented
-Val new_symbol_prim(Val *args, uint32_t num) {
-    args_assert(num == 0);
-    char *s = s_malloc(32);
-    sprintf(s, "%d", new_symbol_counter++);
-    return (Val){TYPE_SYMBOL, {.string_data = intern_symbol(s)}};
-}
