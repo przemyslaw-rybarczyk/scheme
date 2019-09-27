@@ -60,6 +60,7 @@ typedef High_prim_return High_prim(struct Val *, uint32_t);
  * in assignments and definitions.
  * #!undef is used primarily for defining the letrec construct.
  * Attempting to read a variable whose value is #!undef results in an error.
+ * However, for simplicity, this property is disabled in the compiler.
  * A `type` value of TYPE_BROKEN_HEART is used only for garbage collection.
  * The following values are used only for returning from functions:
  * - Environment - TYPE_ENV / env_data
