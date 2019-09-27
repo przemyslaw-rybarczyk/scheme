@@ -134,7 +134,9 @@
         (if (eq? 'macro (car loc))
             (error "Use of macro as variable")
             (set-var! (next-inst) (car loc) (cdr loc)))
-        (set-name! (next-inst) loc))
+        (if (assq-ident loc macros)
+            (error "Use of macro as variable")
+            (set-name! (next-inst) loc)))
     (put-tail! tail)))
 
 (define (env-distance env1 env2)
@@ -198,7 +200,9 @@
         (if (eq? 'macro (car loc))
             (error "Use of macro as variable")
             (set-set! (next-inst) (car loc) (cdr loc)))
-        (set-set-name! (next-inst) loc))
+        (if (assq-ident loc macros)
+            (error "Use of macro as variable")
+            (set-set-name! (next-inst) loc)))
     (put-tail! tail)))
 
 (define (compile-if expr env tail)
