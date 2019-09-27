@@ -1,8 +1,25 @@
 #pragma once
 
-#include <stdint.h>
+#include <inttypes.h>
+#include <uchar.h>
 
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
+
+/* -- String
+ * A string may be allocated in one of three ways. Uninterned strings are used
+ * to represent string constants. Interned strings are used to represent symbols
+ * and variable names. GC-allocated strings represent mutable strings and are
+ * allocated from garbage collected memory.
+ * Every GC-allocated string must have at least one character, even if it's empty.
+ * The character is used for purposes of garbage collection.
+ */
+typedef struct String {
+    union {
+        size_t len;
+        struct String *new_ptr;
+    };
+    char32_t chars[];
+} String;
 
 struct Pair;
 struct Lambda;
@@ -46,6 +63,7 @@ typedef High_prim_return High_prim(struct Val *, uint32_t);
  * - Floating-point - TYPE_FLOAT / float_data
  * - Boolean - TYPE_BOOL / int_data
  * - String - TYPE_STRING / string_data
+ * - Constant string - TYPE_CONST_STRING / string_data
  * - Symbol - TYPE_SYMBOL / string_data
  * - Primitive - TYPE_PRIM / prim_data
  * - High primitive - TYPE_HIGH_PRIM / prim_data
@@ -73,7 +91,9 @@ typedef enum Type {
     TYPE_INT,
     TYPE_FLOAT,
     TYPE_BOOL,
+    TYPE_CHAR,
     TYPE_STRING,
+    TYPE_CONST_STRING,
     TYPE_SYMBOL,
     TYPE_PRIM,
     TYPE_HIGH_PRIM,
@@ -95,7 +115,8 @@ typedef struct Val {
     union {
         long long int_data;
         double float_data;
-        char *string_data;
+        char32_t char_data;
+        String *string_data;
         struct Val (*prim_data)(struct Val *, uint32_t);
         High_prim *high_prim_data;
         struct Lambda *lambda_data;
@@ -140,7 +161,7 @@ typedef struct Lambda {
 
 typedef struct Binding {
     struct Val val;
-    char *var;
+    String *var;
 } Binding;
 
 typedef struct Global_env {
@@ -177,7 +198,8 @@ typedef struct Env_loc {
 /* -- inst
  * Represents a bytecode instruction.
  * The following are valid instructions:
- * - INST_CONST / val - Pushes a constant value onto the stack.
+ * - INST_CONST / val - Pushes a constant value at a given index in the
+ *   constants table onto the stack.
  * - INST_VAR / var - Finds a variable at the given location
  *   in the current environment and pushes it onto the stack.
  * - INST_NAME / name - Locates a name in the global environment
@@ -220,9 +242,9 @@ enum Inst_type {INST_CONST, INST_VAR, INST_NAME, INST_DEF,
 typedef struct Inst {
     enum Inst_type type;
     union {
-        struct Val val;
+        size_t val;
         struct Env_loc var;
-        char *name;
+        String *name;
         uint32_t index;
         uint32_t num;
         struct {

@@ -10,9 +10,9 @@
 #include "exec_gc.h"
 #include "safestd.h"
 
-static void *mem_start;
+static char *mem_start;
 static size_t mem_size = 2097152;
-static void *free_ptr;
+static char *free_ptr;
 
 /* -- GC_object
  * Contains a pointer to a pointer which is to be updated.
@@ -21,14 +21,10 @@ typedef struct GC_object {
     enum {
         GC_VAL,
         GC_ENV,
-        GC_PAIR,
-        GC_LAMBDA,
     } type;
     union {
         Val *val;
         Env **env;
-        Pair **pair;
-        Lambda **lambda;
     };
 } GC_object;
 
@@ -79,6 +75,7 @@ void setup_memory(void) {
  * | Env       | env->size == UINT32_MAX             | env->outer                |
  * | Lambda    | lambda->body == UINT32_MAX          | lambda->new_ptr           |
  * | Pair      | pair->car.type == TYPE_BROKEN_HEART | pair->car.pair_data       |
+ * | String    | str->chars[0] == UINT32_MAX         | str->new_ptr              |
  * +-----------+-------------------------------------+---------------------------+
  *
  * If a broken heart value is detected, the data has already been moved and the
@@ -102,19 +99,30 @@ void gc_unlock_env(void) {
     env_lock = NULL;
 }
 
+static size_t align_size(size_t size) {
+    if (size % 8 == 0)
+        return size;
+    return (size / 8 + 1) * 8;
+}
+
 /* -- gc_alloc
  * Allocates a given amount of memory and returns its address, possibly
  * invoking the garbage collector.
  */
 void *gc_alloc(size_t size) {
-#ifndef GC_ALWAYS
-    if (free_ptr >= mem_start + mem_size - size)
-#endif
+    size = align_size(size);
+#ifdef GC_ALWAYS
+    while (free_ptr - mem_start >= mem_size - size)
+        mem_size *= 2;
+    garbage_collect();
+#else
+    if (free_ptr - mem_start >= (ssize_t)mem_size - (ssize_t)size) {
+        mem_size *= 2;
+        while (free_ptr - mem_start >= (ssize_t)mem_size - (ssize_t)size)
+            mem_size *= 2;
         garbage_collect();
-    if (free_ptr >= mem_start + mem_size - size) {
-        eprintf("Internal error: out of memory\n");
-        exit(1);
     }
+#endif
     free_ptr += size;
     return free_ptr - size;
 }
@@ -125,11 +133,12 @@ void *gc_alloc(size_t size) {
  * as it's impossible to run out of memory there.
  */
 static void *force_alloc(size_t size) {
-    free_ptr += size;
+    free_ptr += align_size(size);
     return free_ptr - size;
 }
 
 static Val move_val(Val val);
+static String *move_string(String *str);
 static Env *move_env(Env *env);
 static Pair *move_pair(Pair *pair);
 static Lambda *move_lambda(Lambda *lambda);
@@ -155,12 +164,6 @@ static void garbage_collect(void) {
         case GC_ENV:
             *obj.env = move_env(*obj.env);
             break;
-        case GC_PAIR:
-            *obj.pair = move_pair(*obj.pair);
-            break;
-        case GC_LAMBDA:
-            *obj.lambda = move_lambda(*obj.lambda);
-            break;
         }
     }
     free(mem_start);
@@ -174,6 +177,9 @@ static void garbage_collect(void) {
 
 static Val move_val(Val val) {
     switch (val.type) {
+    case TYPE_STRING:
+        val.string_data = move_string(val.string_data);
+        return val;
     case TYPE_PAIR:
         val.pair_data = move_pair(val.pair_data);
         return val;
@@ -188,14 +194,24 @@ static Val move_val(Val val) {
     }
 }
 
+static String *move_string(String *str) {
+    if (str->chars[0] == UINT32_MAX)
+        return str->new_ptr;
+    size_t str_size = sizeof(String) + (str->len ? str->len : 1) * sizeof(char32_t);
+    String *new_str = force_alloc(str_size);
+    memcpy(new_str, str, str_size);
+    str->chars[0] = UINT32_MAX;
+    str->new_ptr = new_str;
+    return new_str;
+}
+
 static Env *move_env(Env *env) {
     if (env == NULL)
         return env;
     if (env->size == UINT32_MAX)
         return env->outer;
     Env *new_env = force_alloc(sizeof(Env) + env->size * sizeof(Val));
-    *new_env = *env;
-    memcpy(new_env->vals, env->vals, env->size * sizeof(Val));
+    memcpy(new_env, env, sizeof(Env) + env->size * sizeof(Val));
     env->size = UINT32_MAX;
     env->outer = new_env;
     gc_stack_push((GC_object){GC_ENV, {.env = &new_env->outer}});

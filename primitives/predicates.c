@@ -4,6 +4,7 @@
 #include "predicates.h"
 #include "../types.h"
 #include "../exec_stack.h"
+#include "../string.h"
 #include "assert.h"
 
 int eq(Val val1, Val val2) {
@@ -15,7 +16,10 @@ int eq(Val val1, Val val2) {
         return val1.int_data == val2.int_data;
     case TYPE_FLOAT:
         return val1.float_data == val2.float_data;
+    case TYPE_CHAR:
+        return val1.char_data == val2.char_data;
     case TYPE_STRING:
+    case TYPE_CONST_STRING:
     case TYPE_SYMBOL:
         return val1.string_data == val2.string_data;
     case TYPE_PRIM:
@@ -54,7 +58,8 @@ int equal(Val val1, Val val2) {
             return 0;
         switch (val1.type) {
         case TYPE_STRING:
-            if (val2.type != TYPE_STRING || strcmp(val1.string_data, val2.string_data) != 0) {
+        case TYPE_CONST_STRING:
+            if (!(val2.type == TYPE_STRING || val2.type == TYPE_CONST_STRING) || !string_eq(val1.string_data, val2.string_data)) {
                 stack_ptr = stack_ptr_before;
                 return 0;
             }
@@ -111,9 +116,9 @@ Val symbol_prim(Val *args, uint32_t num) {
     return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_SYMBOL}};
 }
 
-Val string_prim(Val *args, uint32_t num) {
+Val string_q_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
-    return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_STRING}};
+    return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_STRING || args[0].type == TYPE_CONST_STRING}};
 }
 
 Val procedure_prim(Val *args, uint32_t num) {
@@ -124,6 +129,11 @@ Val procedure_prim(Val *args, uint32_t num) {
 Val boolean_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
     return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_BOOL}};
+}
+
+Val char_prim(Val *args, uint32_t num) {
+    args_assert(num == 1);
+    return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_CHAR}};
 }
 
 Val not_prim(Val *args, uint32_t num) {

@@ -43,6 +43,29 @@ FILE *s_fopen(const char *pathname, const char *mode) {
     return f;
 }
 
+void fputc32(char32_t c, FILE *f) {
+    if (c < 0x80) {
+        putc((char)c, f);
+    } else if (c < 0x800) {
+        putc((char)(0xC0 | (c >> 6)), f);
+        putc((char)(0x80 | (c & 0x3F)), f);
+    } else if (c < 0x10000) {
+        putc((char)(0xE0 | (c >> 12)), f);
+        putc((char)(0x80 | ((c >> 6) & 0x3F)), f);
+        putc((char)(0x80 | (c & 0x3F)), f);
+    } else {
+        putc((char)(0xF0 | (c >> 18)), f);
+        putc((char)(0x80 | ((c >> 12) & 0x3F)), f);
+        putc((char)(0x80 | ((c >> 6) & 0x3F)), f);
+        putc((char)(0x80 | (c & 0x3F)), f);
+    }
+}
+
+void fputs32(String *str, FILE *f) {
+    for (size_t i = 0; i < str->len; i++)
+        fputc32(str->chars[i], f);
+}
+
 int s_fgetc(FILE *f) {
     int c = getc(f);
     if (c == EOF && ferror(f)) {
@@ -50,6 +73,48 @@ int s_fgetc(FILE *f) {
         exit(1);
     }
     return c;
+}
+
+int32_t s_fgetc32(FILE *f) {
+    int b0 = s_fgetc(f);
+    if (b0 == EOF)
+        return EOF32;
+    int32_t c = b0;
+    if ((b0 & 0x80) == 0x00)
+        return c;
+    int b1 = s_fgetc(f);
+    if ((b1 & 0xC0) != 0x80)
+        goto utf8_error;
+    c = (c << 6) | (b1 & 0x3F);
+    if ((b0 & 0xE0) == 0xC0) {
+        c &= 0x7FF;
+        if (c < 0x80)
+            goto utf8_error;
+        return c;
+    }
+    int b2 = s_fgetc(f);
+    if ((b2 & 0xC0) != 0x80)
+        goto utf8_error;
+    c = (c << 6) | (b2 & 0x3F);
+    if ((b0 & 0xF0) == 0xE0) {
+        c &= 0xFFFF;
+        if (c < 0x800 || (0xD800 <= c && c <= 0xDFFF))
+            goto utf8_error;
+        return c;
+    }
+    int b3 = s_fgetc(f);
+    if ((b3 & 0xC0) != 0x80)
+        goto utf8_error;
+    c = (c << 6) | (b3 & 0x3F);
+    if ((b0 & 0xF8) == 0xF0) {
+        c &= 0x1FFFFF;
+        if (c < 0x10000 || c > 0x10FFFF)
+            goto utf8_error;
+        return c;
+    }
+utf8_error:
+    eprintf("Error: invalid UTF-8 input\n");
+    exit(1);
 }
 
 void s_fputc(int c, FILE *f) {

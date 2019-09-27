@@ -4,6 +4,7 @@
 #include "types.h"
 #include "exec_stack.h"
 #include "insts.h"
+#include "safestd.h"
 
 static void print_val_(Val val0, int display_style) {
     stack_push((Val){TYPE_PRINT_CONTROL, {.print_control_data = PRINT_CONTROL_END}});
@@ -23,18 +24,27 @@ static void print_val_(Val val0, int display_style) {
         case TYPE_BOOL:
             printf(val.int_data ? "#t" : "#f");
             break;
+        case TYPE_CHAR:
+            printf("#\\");
+            putchar32(val.char_data);
+            break;
         case TYPE_STRING:
-            printf(display_style ? "%s" : "\"%s\"", val.string_data);
+        case TYPE_CONST_STRING:
+            if (display_style == 0)
+                printf("\"");
+            puts32(val.string_data);
+            if (display_style == 0)
+                printf("\"");
             break;
         case TYPE_SYMBOL:
-            printf("%s", val.string_data);
+            puts32(val.string_data);
             break;
         case TYPE_PRIM:
         case TYPE_HIGH_PRIM:
             printf("<primitive procedure>");
             break;
         case TYPE_LAMBDA:
-            printf("<lambda with arity %d%s>",
+            printf("<lambda with arity %"PRIu32"%s>",
                     val.lambda_data->params & ~PARAMS_VARIADIC,
                     val.lambda_data->params & PARAMS_VARIADIC ? "+" : "");
             break;
@@ -61,7 +71,7 @@ static void print_val_(Val val0, int display_style) {
             printf("</environment at %p/>", val.env_data);
             break;
         case TYPE_INST:
-            printf("</instruction pointer to %d/>", val.inst_data);
+            printf("</instruction pointer to %"PRIu32"/>", val.inst_data);
             break;
         case TYPE_GLOBAL_ENV:
             printf("</global environment at %p/>", val.global_env_data);
@@ -125,6 +135,9 @@ const char *type_name(Type type) {
         return "float";
     case TYPE_BOOL:
         return "bool";
+    case TYPE_CHAR:
+        return "char";
+    case TYPE_CONST_STRING:
     case TYPE_STRING:
         return "string";
     case TYPE_SYMBOL:
@@ -157,45 +170,49 @@ const char *type_name(Type type) {
 }
 
 void print_inst(uint32_t n) {
-    printf("%d ", n);
+    printf("%"PRIu32" ", n);
     switch (insts[n].type) {
     case INST_CONST:
-        printf("CONST ");
-        print_val(insts[n].val);
-        printf("\n");
+        printf("CONST %zu\n", insts[n].val);
         break;
     case INST_VAR:
-        printf("VAR %d %d\n", insts[n].var.frame, insts[n].var.index);
+        printf("VAR %"PRIu32" %"PRIu32"\n", insts[n].var.frame, insts[n].var.index);
         break;
     case INST_NAME:
-        printf("NAME %s\n", insts[n].name);
+        printf("NAME ");
+        puts32(insts[n].name);
+        printf("\n");
         break;
     case INST_DEF:
-        printf("DEF %s\n", insts[n].name);
+        printf("DEF ");
+        puts32(insts[n].name);
+        printf("\n");
         break;
     case INST_SET:
-        printf("SET %d %d\n", insts[n].var.frame, insts[n].var.index);
+        printf("SET %"PRIu32" %"PRIu32"\n", insts[n].var.frame, insts[n].var.index);
         break;
     case INST_SET_NAME:
-        printf("SET_NAME %s\n", insts[n].name);
+        printf("SET_NAME ");
+        puts32(insts[n].name);
+        printf("\n");
         break;
     case INST_JUMP:
-        printf("JUMP %d\n", insts[n].index);
+        printf("JUMP %"PRIu32"\n", insts[n].index);
         break;
     case INST_JUMP_FALSE:
-        printf("JUMP_FALSE %d\n", insts[n].index);
+        printf("JUMP_FALSE %"PRIu32"\n", insts[n].index);
         break;
     case INST_LAMBDA:
-        printf("LAMBDA %d%s %d\n",
+        printf("LAMBDA %"PRIu32"%s %"PRIu32"\n",
                 insts[n].lambda.params & ~PARAMS_VARIADIC,
                 insts[n].lambda.params & PARAMS_VARIADIC ? "+" : "",
                 insts[n].lambda.index);
         break;
     case INST_CALL:
-        printf("CALL %d\n", insts[n].num);
+        printf("CALL %"PRIu32"\n", insts[n].num);
         break;
     case INST_TAIL_CALL:
-        printf("TAIL_CALL %d\n", insts[n].num);
+        printf("TAIL_CALL %"PRIu32"\n", insts[n].num);
         break;
     case INST_RETURN:
         printf("RETURN\n");

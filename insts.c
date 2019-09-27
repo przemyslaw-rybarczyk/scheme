@@ -8,9 +8,10 @@
 
 #include "insts.h"
 #include "types.h"
+#include "consts.h"
 #include "display.h"
 #include "safestd.h"
-#include "symbol.h"
+#include "string.h"
 
 Inst *insts;
 static uint32_t insts_size = 4096;
@@ -50,20 +51,22 @@ void setup_insts(void) {
     insts[tail_call_inst] = (Inst){INST_TAIL_CALL};
     map_continue_inst = next_inst();
     insts[map_continue_inst] = (Inst){INST_CALL};
-    insts[next_inst()] = (Inst){INST_CONST, {.val = (Val){TYPE_HIGH_PRIM, {.high_prim_data = map_prim_continuation}}}};
+    insts[next_inst()] =
+        (Inst){INST_CONST, {.val = add_constant((Val){TYPE_HIGH_PRIM, {.high_prim_data = map_prim_continuation}})}};
     insts[next_inst()] = (Inst){INST_TAIL_CALL, {.num = 0}};
     for_each_continue_inst = next_inst();
     insts[for_each_continue_inst] = (Inst){INST_CALL};
-    insts[next_inst()] = (Inst){INST_CONST, {.val = (Val){TYPE_HIGH_PRIM, {.high_prim_data = for_each_prim_continuation}}}};
+    insts[next_inst()] =
+        (Inst){INST_CONST, {.val = add_constant((Val){TYPE_HIGH_PRIM, {.high_prim_data = for_each_prim_continuation}})}};
     insts[next_inst()] = (Inst){INST_TAIL_CALL, {.num = 0}};
     compiler_pc = this_inst();
     char *path = get_path();
     load_insts(fopen_relative(path, "compiler.sss", "rb"));
     compile_pc = this_inst();
-    insts[next_inst()] = (Inst){INST_NAME, {.name = "parse-and-compile"}};
+    insts[next_inst()] = (Inst){INST_NAME, {.name = new_interned_string_from_cstring("parse-and-compile")}};
     insts[next_inst()] = (Inst){INST_TAIL_CALL, {.num = 0}};
     parse_pc = this_inst();
-    insts[next_inst()] = (Inst){INST_NAME, {.name = "parse"}};
+    insts[next_inst()] = (Inst){INST_NAME, {.name = new_interned_string_from_cstring("parse")}};
     insts[next_inst()] = (Inst){INST_TAIL_CALL, {.num = 0}};
 }
 
@@ -102,6 +105,12 @@ static void save_uint32(FILE *fp, uint32_t n) {
         s_fputc((uint8_t)(n >> 8 * i), fp);
 }
 
+static void save_string(FILE *fp, String *str) {
+    for (int i = 7; i >= 0; i--)
+        s_fputc((uint8_t)(str->len >> 8 * i), fp);
+    fputs32(str, fp);
+}
+
 static void save_val(FILE *fp, Val val) {
     s_fputc(val.type, fp);
     switch (val.type) {
@@ -121,10 +130,9 @@ static void save_val(FILE *fp, Val val) {
     case TYPE_BOOL:
         s_fputc((uint8_t)val.int_data, fp);
         break;
-    case TYPE_STRING:
+    case TYPE_CONST_STRING:
     case TYPE_SYMBOL:
-        s_fputs(val.string_data, fp);
-        s_fputc('\0', fp);
+        save_string(fp, val.string_data);
         break;
     case TYPE_NIL:
     case TYPE_VOID:
@@ -136,15 +144,17 @@ static void save_val(FILE *fp, Val val) {
     }
 }
 
-static const char *magic = "\xf0\x9f\x91\xad""v3.0";
+static const char *magic = "\xf0\x9f\x91\xad";
+static const char *version = "v4.0";
 
 void save_insts(FILE *fp, uint32_t start, uint32_t end) {
     s_fputs(magic, fp);
+    s_fputs(version, fp);
     for (uint32_t n = start; n != end; n++) {
         s_fputc(insts[n].type, fp);
         switch (insts[n].type) {
         case INST_CONST:
-            save_val(fp, insts[n].val);
+            save_val(fp, constant_table[insts[n].val]);
             break;
         case INST_VAR:
         case INST_SET:
@@ -154,8 +164,7 @@ void save_insts(FILE *fp, uint32_t start, uint32_t end) {
         case INST_NAME:
         case INST_DEF:
         case INST_SET_NAME:
-            s_fputs(insts[n].name, fp);
-            s_fputc('\0', fp);
+            save_string(fp, insts[n].name);
             break;
         case INST_JUMP:
         case INST_JUMP_FALSE:
@@ -189,6 +198,15 @@ static unsigned char s_fgetc2(FILE *f) {
     return (unsigned char)c;
 }
 
+static char32_t s_fgetc32_2(FILE *f) {
+    int32_t c = s_fgetc32(f);
+    if (c == EOF32) {
+        eprintf("Error: unexpected end of file\n");
+        exit(1);
+    }
+    return (char32_t)c;
+}
+
 static uint32_t load_uint32(FILE *fp) {
     uint32_t n = 0;
     for (int i = 0; i < 4; i++)
@@ -196,18 +214,14 @@ static uint32_t load_uint32(FILE *fp) {
     return n;
 }
 
-static char *load_str(FILE *fp) {
-    unsigned int size = 16;
-    char *str = s_malloc(size * sizeof(char));
-    char *s = str;
-    while ((*s++ = (char)s_fgetc2(fp)) != '\0') {
-        if (s - str >= size) {
-            size *= 2;
-            ptrdiff_t i = s - str;
-            str = s_realloc(str, size * sizeof(char));
-            s = str + i;
-        }
-    }
+static String *load_str(FILE *fp) {
+    size_t len = 0;
+    for (int i = 0; i < 8; i++)
+        len = len << 8 | s_fgetc2(fp);
+    String *str = s_malloc(sizeof(String) + len * sizeof(char32_t));
+    str->len = len;
+    for (size_t i = 0; i < len; i++)
+        str->chars[i] = s_fgetc32_2(fp);
     return str;
 }
 
@@ -232,10 +246,10 @@ static Val load_val(FILE *fp) {
     }
     case TYPE_BOOL:
         return (Val){TYPE_BOOL, {.int_data = s_fgetc2(fp)}};
-    case TYPE_STRING:
-        return (Val){TYPE_STRING, {.string_data = load_str(fp)}};
+    case TYPE_CONST_STRING:
+        return (Val){TYPE_CONST_STRING, {.string_data = load_str(fp)}};
     case TYPE_SYMBOL:
-        return (Val){TYPE_SYMBOL, {.string_data = intern_symbol(load_str(fp))}};
+        return (Val){TYPE_SYMBOL, {.string_data = intern_string(load_str(fp))}};
     case TYPE_NIL:
         return (Val){TYPE_NIL};
     case TYPE_VOID:
@@ -250,10 +264,15 @@ static Val load_val(FILE *fp) {
 
 void load_insts(FILE *fp) {
     uint32_t start = this_inst();
-    char s[9];
-    s_fgets(s, 9, fp);
+    char s[5];
+    s_fgets(s, 5, fp);
     if (strcmp(s, magic) != 0) {
         eprintf("Error: not a valid bytecode file\n");
+        exit(1);
+    }
+    s_fgets(s, 5, fp);
+    if (strcmp(s, version) != 0) {
+        eprintf("Error: invalid bytecode file version %s\n", s);
         exit(1);
     }
     int c;
@@ -262,7 +281,7 @@ void load_insts(FILE *fp) {
         insts[n].type = c;
         switch (insts[n].type) {
         case INST_CONST:
-            insts[n].val = load_val(fp);
+            insts[n].val = add_constant(load_val(fp));
             break;
         case INST_VAR:
         case INST_SET:
@@ -272,7 +291,7 @@ void load_insts(FILE *fp) {
         case INST_NAME:
         case INST_DEF:
         case INST_SET_NAME:
-            insts[n].name = load_str(fp);
+            insts[n].name = intern_string(load_str(fp));
             break;
         case INST_JUMP:
         case INST_JUMP_FALSE:

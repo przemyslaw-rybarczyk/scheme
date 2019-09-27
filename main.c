@@ -3,14 +3,16 @@
 #include <string.h>
 
 #include "types.h"
+#include "consts.h"
 #include "display.h"
 #include "env.h"
 #include "exec.h"
 #include "insts.h"
 #include "memory.h"
 #include "parser.h"
+#include "primitives.h"
 #include "safestd.h"
-#include "symbol.h"
+#include "string.h"
 
 /* -- input_mode
  * Possible values and corresponding command-line options:
@@ -87,9 +89,12 @@ int main(int argc, char **argv) {
         }
     }
 
+    setup_constant_table();
     setup_memory();
     setup_obarray();
+    setup_primitives();
     execution_env = make_global_env(1, 0);
+    compiler_env = make_global_env(1, 1);
     setup_insts();
     setup_env();
 
