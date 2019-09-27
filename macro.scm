@@ -150,8 +150,6 @@
          (display "(")
          (display-expr-list expr)
          (display ")"))
-        ((eq? expr +)
-         (display "#!undef"))
         ((procedure? expr)
          (display "<")
          (display (car (expr)))

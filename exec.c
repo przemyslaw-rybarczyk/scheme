@@ -71,7 +71,7 @@ Val exec(uint32_t pc, Global_env *init_global_env) {
 
         case INST_VAR:
             stack_push(locate_var(insts[pc++].var, exec_env, global_env));
-            if (stack_ptr[-1].type == TYPE_UNDEF) {
+            if (stack_ptr[-1].type == TYPE_UNDEF && global_env != compiler_env) {
                 eprintf("Error: use of undefined value\n");
                 exit(1);
             }

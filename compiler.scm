@@ -50,8 +50,6 @@
              (let ((tail (parse-list)))
                (cons head tail)))))))
 
-(define undef +)
-
 (define (compile-top-level expr tail)
   (let ((expanded (expand-to-define expr '())))
     (if (pair? expanded)
@@ -108,9 +106,6 @@
                                  (compile-appl expr env tail))))))))))
         ((ident? expr)
          (compile-name expr env tail))
-        ((eq? expr undef)
-         (set-const! (next-inst) #!undef)
-         (put-tail! tail))
         ((null? expr)
          (error "() is not a valid expression"))
         (else
@@ -272,8 +267,6 @@
          (compile-quoted (car expr))
          (compile-quoted (cdr expr))
          (set-cons! (next-inst)))
-        ((eq? expr +)
-         (set-const! (next-inst) #!undef))
         (else
          (set-const! (next-inst) (reduce-ident expr)))))
 
@@ -392,7 +385,7 @@
       (((((var val) ...) expr ...)
         (letrec-syntax (... ((letrec2 (syntax-rules ()
                                         ((letrec2 () (temp ...) ((var2 val2) ...) (expr2 ...))
-                                         (let ((var2 0) ...) ; TODO replace 0 with #!undef
+                                         (let ((var2 #!undef) ...)
                                            (let ((temp val2) ...)
                                              (set! var2 temp) ...
                                              expr2 ...)))

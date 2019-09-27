@@ -115,7 +115,7 @@ Val get_token(FILE *f) {
         if (strcmp(s, "#!void") == 0)
             return (Val){TYPE_VOID};
         if (strcmp(s, "#!undef") == 0)
-            return (Val){TYPE_PRIM, {.prim_data = add_prim}};
+            return (Val){TYPE_UNDEF};
         eprintf("Syntax error: incorrect boolean or special literal %s\n", s);
         exit(1);
     }
