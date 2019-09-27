@@ -105,7 +105,7 @@ Val list_tail_prim(Val *args, uint32_t num) {
         type_error(args[1]);
     long long k = args[1].int_data;
     if (k < 0) {
-        eprintf("Error: number less than zero\n");
+        eprintf("Error: list index less than zero\n");
         exit(1);
     }
     Val list = args[0];
@@ -123,7 +123,7 @@ Val list_ref_prim(Val *args, uint32_t num) {
         type_error(args[1]);
     long long k = args[1].int_data;
     if (k < 0) {
-        eprintf("Error: number less than zero\n");
+        eprintf("Error: list index less than zero\n");
         exit(1);
     }
     Val list = args[0];
@@ -152,9 +152,9 @@ Val name(Val *args, uint32_t num) { \
     return (Val){TYPE_BOOL, {.int_data = 0}}; \
 }
 
-def_member_prim(memq_prim, eq);
-def_member_prim(memv_prim, eqv);
-def_member_prim(member_prim, equal);
+def_member_prim(memq_prim, eq)
+def_member_prim(memv_prim, eqv)
+def_member_prim(member_prim, equal)
 
 #define def_assoc_prim(name, f) \
 Val name(Val *args, uint32_t num) { \
@@ -173,9 +173,9 @@ Val name(Val *args, uint32_t num) { \
     return (Val){TYPE_BOOL, {.int_data = 0}}; \
 }
 
-def_assoc_prim(assq_prim, eq);
-def_assoc_prim(assv_prim, eqv);
-def_assoc_prim(assoc_prim, equal);
+def_assoc_prim(assq_prim, eq)
+def_assoc_prim(assv_prim, eqv)
+def_assoc_prim(assoc_prim, equal)
 
 High_prim_return map_prim_continuation(Val *args, uint32_t num);
 

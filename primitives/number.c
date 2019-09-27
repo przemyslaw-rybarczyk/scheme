@@ -152,44 +152,41 @@ Val div_prim(Val *args, uint32_t num) {
     return (Val){TYPE_FLOAT, {.float_data = quot}};
 }
 
-Val false_val = (Val){TYPE_BOOL, {.int_data = 0}};
-Val true_val = (Val){TYPE_BOOL, {.int_data = 1}};
-
 Val equ_prim(Val *args, uint32_t num) {
     if (num == 0)
         return true_val;
     for (Val *arg_ptr = args; arg_ptr < args + num - 1; arg_ptr++) {
-        switch (args[0].type) {
+        switch (arg_ptr[0].type) {
         case TYPE_INT:
-            switch (args[1].type) {
+            switch (arg_ptr[1].type) {
             case TYPE_INT:
-                if (args[0].int_data != args[1].int_data)
+                if (arg_ptr[0].int_data != arg_ptr[1].int_data)
                     return false_val;
                 break;
             case TYPE_FLOAT:
-                if (args[0].int_data != args[1].float_data)
+                if (arg_ptr[0].int_data != arg_ptr[1].float_data)
                     return false_val;
                 break;
             default:
-                type_error(args[1]);
+                type_error(arg_ptr[1]);
             }
             break;
         case TYPE_FLOAT:
-            switch (args[1].type) {
+            switch (arg_ptr[1].type) {
             case TYPE_INT:
-                if (args[0].float_data != args[1].int_data)
+                if (arg_ptr[0].float_data != arg_ptr[1].int_data)
                     return false_val;
                 break;
             case TYPE_FLOAT:
-                if (args[0].float_data != args[1].float_data)
+                if (arg_ptr[0].float_data != arg_ptr[1].float_data)
                     return false_val;
                 break;
             default:
-                type_error(args[1]);
+                type_error(arg_ptr[1]);
             }
             break;
         default:
-            type_error(args[0]);
+            type_error(arg_ptr[0]);
         }
     }
     return true_val;
@@ -199,37 +196,37 @@ Val lt_prim(Val *args, uint32_t num) {
     if (num == 0)
         return true_val;
     for (Val *arg_ptr = args; arg_ptr < args + num - 1; arg_ptr++) {
-        switch (args[0].type) {
+        switch (arg_ptr[0].type) {
         case TYPE_INT:
-            switch (args[1].type) {
+            switch (arg_ptr[1].type) {
             case TYPE_INT:
-                if (args[0].int_data >= args[1].int_data)
+                if (arg_ptr[0].int_data >= arg_ptr[1].int_data)
                     return false_val;
                 break;
             case TYPE_FLOAT:
-                if (args[0].int_data >= args[1].float_data)
+                if (arg_ptr[0].int_data >= arg_ptr[1].float_data)
                     return false_val;
                 break;
             default:
-                type_error(args[1]);
+                type_error(arg_ptr[1]);
             }
             break;
         case TYPE_FLOAT:
-            switch (args[1].type) {
+            switch (arg_ptr[1].type) {
             case TYPE_INT:
-                if (args[0].float_data >= args[1].int_data)
+                if (arg_ptr[0].float_data >= arg_ptr[1].int_data)
                     return false_val;
                 break;
             case TYPE_FLOAT:
-                if (args[0].float_data >= args[1].float_data)
+                if (arg_ptr[0].float_data >= arg_ptr[1].float_data)
                     return false_val;
                 break;
             default:
-                type_error(args[1]);
+                type_error(arg_ptr[1]);
             }
             break;
         default:
-            type_error(args[0]);
+            type_error(arg_ptr[0]);
         }
     }
     return true_val;
@@ -239,37 +236,37 @@ Val gt_prim(Val *args, uint32_t num) {
     if (num == 0)
         return true_val;
     for (Val *arg_ptr = args; arg_ptr < args + num - 1; arg_ptr++) {
-        switch (args[0].type) {
+        switch (arg_ptr[0].type) {
         case TYPE_INT:
-            switch (args[1].type) {
+            switch (arg_ptr[1].type) {
             case TYPE_INT:
-                if (args[0].int_data <= args[1].int_data)
+                if (arg_ptr[0].int_data <= arg_ptr[1].int_data)
                     return false_val;
                 break;
             case TYPE_FLOAT:
-                if (args[0].int_data <= args[1].float_data)
+                if (arg_ptr[0].int_data <= arg_ptr[1].float_data)
                     return false_val;
                 break;
             default:
-                type_error(args[1]);
+                type_error(arg_ptr[1]);
             }
             break;
         case TYPE_FLOAT:
-            switch (args[1].type) {
+            switch (arg_ptr[1].type) {
             case TYPE_INT:
-                if (args[0].float_data <= args[1].int_data)
+                if (arg_ptr[0].float_data <= arg_ptr[1].int_data)
                     return false_val;
                 break;
             case TYPE_FLOAT:
-                if (args[0].float_data <= args[1].float_data)
+                if (arg_ptr[0].float_data <= arg_ptr[1].float_data)
                     return false_val;
                 break;
             default:
-                type_error(args[1]);
+                type_error(arg_ptr[1]);
             }
             break;
         default:
-            type_error(args[0]);
+            type_error(arg_ptr[0]);
         }
     }
     return true_val;

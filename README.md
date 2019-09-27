@@ -3,7 +3,7 @@
 A basic implementation of Scheme in C that I initially made as exercise 5.51 from [Structure and Interpretation of Computer Programs](https://mitpress.mit.edu/sites/default/files/sicp/index.html).
 
 ## Compilation
-To compile the interpreter, run `./compile.sh`.
+To compile the interpreter, run `unicode/update.sh` to generate the `unicode/unicode_data.h` file, followed by `compile.sh` to actually compile the program.
 The `$CC` environment variable can be used to change used C compiler used. `gcc` is used by default.
 
 ### Flags
@@ -44,9 +44,9 @@ The completion status of the interpreter, grouped by chapters of R5RS which it c
     - 6.3. Other data types
         - ██████ 6.3.1. Booleans
         - ██████ 6.3.2. Pairs and lists
-        - ████░░ 6.3.3. Symbols
-        - ░░░░░░ 6.3.4. Characters
-        - █░░░░░ 6.3.5. Strings
+        - ██████ 6.3.3. Symbols
+        - ██████ 6.3.4. Characters
+        - ██████ 6.3.5. Strings
         - ░░░░░░ 6.3.6. Vectors
     - ██░░░░ 6.4. Control features
     - ░░░░░░ 6.5. `eval`
