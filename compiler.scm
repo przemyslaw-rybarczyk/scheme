@@ -297,6 +297,8 @@
 
 (define (compile-let-syntax expr env tail)
   (validate-expr expr '((let-syntax ((keyword (syntax-rules literals (pattern template) ...)) ...) expr ...)) '(syntax-rules))
+  (if (has-duplicates? (map car (cadr expr)))
+      (error "Duplicate syntax bindings"))
   (for-each validate-syntax-binding (cadr expr))
   (compile-body
     (cddr expr)
@@ -310,8 +312,8 @@
 
 (define (compile-letrec-syntax expr env tail)
   (validate-expr expr '((letrec-syntax ((keyword (syntax-rules literals (pattern template) ...)) ...) expr ...)) '(syntax-rules))
-  (if (not (list? (cadr expr)))
-      (error "Syntax bindings are not a list"))
+  (if (has-duplicates? (map car (cadr expr)))
+      (error "Duplicate syntax bindings"))
   (for-each validate-syntax-binding (cadr expr))
   (let ((new-env (cons '() env)))
     (set-car! new-env
