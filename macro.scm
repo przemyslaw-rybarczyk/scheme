@@ -189,6 +189,14 @@
   (set! macro-id-gen (+ macro-id-gen 1))
   macro-id-gen)
 
+(define (apply-derived-form expr literals rules env)
+  (if (null? rules)
+      (error "Invalid expression")
+      (let ((bindings (get-pattern-bindings expr (caar rules) literals)))
+        (if bindings
+            (apply-pattern-bindings bindings (cadar rules) 0 env #t)
+            (apply-macro expr literals (cdr rules) env)))))
+
 (define (apply-macro expr literals rules env)
   (if (null? rules)
       (error "Invalid macro expression - no patterns match")
