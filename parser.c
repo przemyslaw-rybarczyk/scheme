@@ -56,6 +56,11 @@ String *new_gc_string(size_t len, char32_t *chars) {
     return str;
 }
 
+/* -- get_token
+ * Returns value of the literal for literal tokens, symbols for variable names,
+ * the pair (token . <ASCII code>) for characters '(', ')', '\' and '.'
+ * and (token . -1) for EOF.
+ */
 Val get_token(FILE *f) {
     int32_t c = fgetc32_nospace(f);
 
