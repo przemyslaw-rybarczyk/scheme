@@ -55,10 +55,14 @@
     (if (pair? expanded)
         (cond ((eq? 'define (car expanded))
                (let ((expr (transform-define expanded)))
-                 (compile (caddr expr) '() #f)
-                 (set-def! (next-inst) (reduce-ident (cadr expr)))
-                 (remove-macro! (reduce-ident (cadr expr)))
-                 (put-tail! tail)))
+                 (let ((name (reduce-ident (cadr expr))))
+                   (compile (caddr expr) '() #f)
+                   (set-def! (next-inst) name)
+                   (remove-macro! name)
+                   (if (and (or (assq name derived-forms) (assq name primitive-forms))
+                            (not (memq name shadowed-forms)))
+                       (set! shadowed-forms (cons name shadowed-forms)))
+                   (put-tail! tail))))
               ((eq? 'begin (car expanded))
                (validate-expr expanded '((begin expr ...)) '())
                (compile-top-level-seq (cdr expanded) tail))
@@ -101,13 +105,16 @@
                (let ((macro (assq-ident loc macros)))
                  (if macro
                      (compile (apply-macro (cdr expr) (cadr macro) (caddr macro) '()) env tail)
-                     (let ((derived-form (assq-ident loc derived-forms)))
-                       (if derived-form
-                           (compile (apply-macro (cdr expr) (cadr derived-form) (caddr derived-form) (cadddr derived-form)) env tail)
-                           (let ((primitive-form (assq-ident loc primitive-forms)))
-                             (if primitive-form
-                                 ((cadr primitive-form) expr env tail)
-                                 (compile-appl expr env tail))))))))))
+                     (if (memq loc shadowed-forms)
+                         (compile-appl expr env tail)
+                         (let ((derived-form (assq-ident loc derived-forms)))
+                           (if derived-form
+                               (compile (apply-macro (cdr expr) (cadr derived-form) (caddr derived-form) (cadddr derived-form))
+                                        env tail)
+                               (let ((primitive-form (assq-ident loc primitive-forms)))
+                                 (if primitive-form
+                                     ((cadr primitive-form) expr env tail)
+                                     (compile-appl expr env tail)))))))))))
         ((ident? expr)
          (compile-name expr env tail))
         ((null? expr)
@@ -127,7 +134,8 @@
             (let ((macro (assq-ident loc macros)))
               (if macro
                   (expand-to-define (apply-macro (cdr expr) (cadr macro) (caddr macro) '()) env)
-                  (if (or (eq? loc 'define) (eq? loc 'begin) (eq? loc 'define-syntax))
+                  (if (and (or (eq? loc 'define) (eq? loc 'begin) (eq? loc 'define-syntax))
+                           (not (memq loc shadowed-forms)))
                       (cons loc (cdr expr))
                       #f)))))
       #f))
@@ -447,5 +455,7 @@
 (for-each
   (lambda (form) (set-cdr! (cddr form) (list (list (cons 'macro derived-forms)))))
   derived-forms)
+
+(define shadowed-forms '())
 
 (define macros '())
