@@ -57,6 +57,7 @@
                (let ((expr (transform-define expanded)))
                  (compile (caddr expr) '() #f)
                  (set-def! (next-inst) (reduce-ident (cadr expr)))
+                 (remove-macro! (reduce-ident (cadr expr)))
                  (put-tail! tail)))
               ((eq? 'begin (car expanded))
                (validate-expr expanded '((begin expr ...)) '())
@@ -375,6 +376,19 @@
 
 (define (error-define-syntax expr env tail)
   (error "Invalid use of define-syntax"))
+
+(define (remove-macro! name)
+  (define (loop macros)
+    (if (null? (cdr macros))
+        #!void
+        (if (eq-ident? (caadr macros) name)
+            (set-cdr! macros (cddr macros))
+            (loop (cdr macros)))))
+  (if (null? macros)
+      #!void
+      (if (eq-ident? (caar macros) name)
+          (set! macros (cdr macros))
+          (loop macros))))
 
 (define primitive-forms
   (list
