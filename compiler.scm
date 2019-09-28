@@ -195,8 +195,8 @@
 
 (define (compile-set expr env tail)
   (validate-expr expr '((set! name expr)) '())
-  (if (not (null? (cdddr expr)))
-      (error "set! expression too long"))
+  (if (not (ident? (cadr expr)))
+      (error "Identifier in set! expression is not a variable name"))
   (compile (caddr expr) env #f)
   (let ((loc (locate-name (cadr expr) env)))
     (if (pair? loc)
@@ -335,6 +335,8 @@
 
 (define (transform-define expr)
   (validate-expr expr '((define var val) (define (var . params) expr ...)) '())
+  (if (not (ident? (if (pair? (cadr expr)) (caadr expr) (cadr expr))))
+      (error "Identifier in define expression is not a variable name"))
   (if (pair? (cadr expr))
       (list 'define (caadr expr) (cons 'lambda (cons (cdadr expr) (cddr expr))))
       expr))
