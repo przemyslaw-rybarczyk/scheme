@@ -29,7 +29,7 @@
                 ((= id right-paren)
                  (error "Syntax error: unexpected ')'"))
                 ((= id quote-char)
-                 (list 'quote (parse)))
+                 (list (lambda () (list 'quote 0 '())) (parse)))
                 ((= id period)
                  (error "Syntax error: unexpected '.'"))))
         token)))
@@ -102,14 +102,15 @@
                (if (eq? (car loc) 'macro)
                    (compile (apply-macro (cdr expr) (cadr loc) (caddr loc) (cadddr loc)) env tail)
                    (compile-appl expr env tail))
-               (let ((macro (assq-ident loc macros)))
-                 (if macro
-                     (compile (apply-macro (cdr expr) (cadr macro) (caddr macro) '()) env tail)
-                     (if (memq loc shadowed-forms)
-                         (compile-appl expr env tail)
+               (if (and (memq loc shadowed-forms)
+                        (not (and (procedure? (car expr)) (= 0 (cadr ((car expr)))))))
+                   (compile-appl expr env tail)
+                   (let ((macro (assq-ident loc macros)))
+                     (if macro
+                         (compile (apply-macro (cdr expr) (cadr macro) (caddr macro) '()) env tail)
                          (let ((derived-form (assq-ident loc derived-forms)))
                            (if derived-form
-                               (compile (apply-macro (cdr expr) (cadr derived-form) (caddr derived-form) (cadddr derived-form))
+                               (compile (apply-derived-form (cdr expr) (cadr derived-form) (caddr derived-form) '())
                                         env tail)
                                (let ((primitive-form (assq-ident loc primitive-forms)))
                                  (if primitive-form
@@ -349,7 +350,9 @@
   (if (not (ident? (if (pair? (cadr expr)) (caadr expr) (cadr expr))))
       (error "Identifier in define expression is not a variable name"))
   (if (pair? (cadr expr))
-      (list 'define (caadr expr) (cons 'lambda (cons (cdadr expr) (cddr expr))))
+      (list (lambda () (list 'define 0 '()))
+            (caadr expr)
+            (cons (lambda () (list 'lambda 0 '())) (cons (cdadr expr) (cddr expr))))
       expr))
 
 (define (split-defines exprs env)
@@ -373,7 +376,9 @@
           (seq (cdr x)))
       (if (null? defines)
           (compile-seq seq env tail) ; prevent infinite loop
-          (compile (cons 'letrec (cons (map cdr (map transform-define defines)) seq)) env tail)))))
+          (compile (cons (lambda () (list 'letrec 0 '()))
+                         (cons (map cdr (map transform-define defines)) seq))
+                   env tail)))))
 
 (define (put-tail! tail)
   (if tail
@@ -451,10 +456,6 @@
        ((expr1 expr2 ...)
         (let ((x expr1))
           (if x x (or expr2 ...))))))))
-
-(for-each
-  (lambda (form) (set-cdr! (cddr form) (list (list (cons 'macro derived-forms)))))
-  derived-forms)
 
 (define shadowed-forms '())
 
