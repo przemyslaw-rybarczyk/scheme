@@ -37,10 +37,10 @@
       (reduce-ident (car (x)))
       x))
 
-(define (full-equal-ident? obj list)
-  (or (equal-ident? obj list)
-      (if (procedure? obj)
-          (full-equal-ident? (car (obj)) list)
+(define (full-equal-ident? x y)
+  (or (equal-ident? x y)
+      (if (procedure? x)
+          (full-equal-ident? (car (x)) y)
           #f)))
 
 (define (full-memq-ident obj list)
