@@ -33,11 +33,8 @@ The completion status of the interpreter, grouped by chapters of R5RS which it c
         - ░░░░░░ 4.2.4. Iteration
         - ░░░░░░ 4.2.5. Delayed evaluation
         - ░░░░░░ 4.2.6. Quasiquotation
-    - ░░░░░░ 4.3. Macros
-- 5. Program structure
-    - ██████ 5.1. Programs
-    - ██████ 5.2. Definitions
-    - ░░░░░░ 5.3. Syntax definitions
+    - █████░ 4.3. Macros
+- ██████ 5. Program structure
 - 6. Standard procedures
     - ████░░ 6.1. Equivalence predicates
     - █░░░░░ 6.2. Numbers

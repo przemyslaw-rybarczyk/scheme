@@ -64,10 +64,10 @@
                        (set! shadowed-forms (cons name shadowed-forms)))
                    (put-tail! tail))))
               ((eq? 'begin (car expanded))
-               (validate-expr expanded '((begin expr ...)) '())
+               (validate-expr expanded '((begin expr ...)) '() '())
                (compile-top-level-seq (cdr expanded) tail))
               ((eq? 'define-syntax (car expanded))
-               (validate-expr expanded '((define-syntax keyword (syntax-rules literals (pattern template) ...))) '(syntax-rules))
+               (validate-expr expanded '((define-syntax keyword (syntax-rules literals (pattern template) ...))) '(syntax-rules) '())
                (validate-syntax-binding (cdr expanded))
                (let ((keyword (reduce-ident (cadr expanded)))
                      (macro (list (cadr (caddr expanded))
@@ -100,17 +100,17 @@
          (let ((loc (locate-name (car expr) env)))
            (if (pair? loc)
                (if (eq? (car loc) 'macro)
-                   (compile (apply-macro (cdr expr) (cadr loc) (caddr loc) (cadddr loc)) env tail)
+                   (compile (apply-macro (cdr expr) (cadr loc) (caddr loc) (cadddr loc) env) env tail)
                    (compile-appl expr env tail))
                (if (and (memq loc shadowed-forms)
                         (not (and (procedure? (car expr)) (= 0 (cadr ((car expr)))))))
                    (compile-appl expr env tail)
                    (let ((macro (assq-ident loc macros)))
                      (if macro
-                         (compile (apply-macro (cdr expr) (cadr macro) (caddr macro) '()) env tail)
+                         (compile (apply-macro (cdr expr) (cadr macro) (caddr macro) '() env) env tail)
                          (let ((derived-form (assq-ident loc derived-forms)))
                            (if derived-form
-                               (compile (apply-derived-form (cdr expr) (cadr derived-form) (caddr derived-form) '())
+                               (compile (apply-derived-form (cdr expr) (cadr derived-form) (caddr derived-form) '() env)
                                         env tail)
                                (let ((primitive-form (assq-ident loc primitive-forms)))
                                  (if primitive-form
@@ -130,11 +130,11 @@
       (let ((loc (locate-name (car expr) env)))
         (if (pair? loc)
             (if (eq? (car loc) 'macro)
-                (expand-to-define (apply-macro (cdr expr) (cadr loc) (caddr loc) (cadddr loc)) env)
+                (expand-to-define (apply-macro (cdr expr) (cadr loc) (caddr loc) (cadddr loc) env) env)
                 #f)
             (let ((macro (assq-ident loc macros)))
               (if macro
-                  (expand-to-define (apply-macro (cdr expr) (cadr macro) (caddr macro) '()) env)
+                  (expand-to-define (apply-macro (cdr expr) (cadr macro) (caddr macro) '() env) env)
                   (if (and (or (eq? loc 'define) (eq? loc 'begin) (eq? loc 'define-syntax))
                            (not (memq loc shadowed-forms)))
                       (cons loc (cdr expr))
@@ -151,6 +151,15 @@
             (error "Use of macro as variable")
             (set-name! (next-inst) loc)))
     (put-tail! tail)))
+
+(define (env-shadowed env1 env2)
+  (define (loop env1 vars)
+    (if (eq? env1 env2)
+        vars
+        (if (eq? (caar env1) 'var)
+            (loop (cdr env1) (append (cdar env1) vars))
+            (loop (cdr env1) (append (map car (cdar env1)) vars)))))
+  (loop env1 '()))
 
 (define (env-distance env1 env2)
   (define (loop env1 d)
@@ -196,7 +205,7 @@
   (loop-env name env0 0))
 
 (define (compile-appl expr env tail)
-  (validate-expr expr '((f x ...)) '())
+  (validate-expr expr '((f x ...)) '() env)
   (for-each
     (lambda (expr) (compile expr env #f))
     expr)
@@ -204,7 +213,7 @@
    (next-inst) (- (length expr) 1)))
 
 (define (compile-set expr env tail)
-  (validate-expr expr '((set! name expr)) '())
+  (validate-expr expr '((set! name expr)) '() env)
   (if (not (ident? (cadr expr)))
       (error "Identifier in set! expression is not a variable name"))
   (compile (caddr expr) env #f)
@@ -219,7 +228,7 @@
     (put-tail! tail)))
 
 (define (compile-if expr env tail)
-  (validate-expr expr '((if pred conseq) (if pred conseq alter)) '())
+  (validate-expr expr '((if pred conseq) (if pred conseq alter)) '() env)
   (compile (cadr expr) env #f)
   (let ((jump-false (next-inst)))
     (compile (caddr expr) env tail)
@@ -249,7 +258,7 @@
          (list x))))
 
 (define (compile-lambda expr env tail)
-  (validate-expr expr '((lambda params expr ...)) '())
+  (validate-expr expr '((lambda params expr ...)) '() env)
   (let ((args (transform-variadic (cadr expr))))
     (if (memq #f (map ident? args))
         (error "lambda parameter is not a variable name"))
@@ -271,11 +280,11 @@
         (put-tail! tail)))))
 
 (define (compile-begin expr env tail)
-  (validate-expr expr '((begin expr ...)) '())
+  (validate-expr expr '((begin expr ...)) '() env)
   (compile-seq (cdr expr) env tail))
 
 (define (compile-quote expr env tail)
-  (validate-expr expr '((quote expr)) '())
+  (validate-expr expr '((quote expr)) '() env)
   (compile-quoted (cadr expr))
   (put-tail! tail))
 
@@ -306,7 +315,7 @@
 ;;; Each local macro is of the form (name literals rules env).
 
 (define (compile-let-syntax expr env tail)
-  (validate-expr expr '((let-syntax ((keyword (syntax-rules literals (pattern template) ...)) ...) expr ...)) '(syntax-rules))
+  (validate-expr expr '((let-syntax ((keyword (syntax-rules literals (pattern template) ...)) ...) expr ...)) '(syntax-rules) env)
   (if (has-duplicates? (map car (cadr expr)))
       (error "Duplicate syntax bindings"))
   (for-each validate-syntax-binding (cadr expr))
@@ -321,7 +330,7 @@
     tail))
 
 (define (compile-letrec-syntax expr env tail)
-  (validate-expr expr '((letrec-syntax ((keyword (syntax-rules literals (pattern template) ...)) ...) expr ...)) '(syntax-rules))
+  (validate-expr expr '((letrec-syntax ((keyword (syntax-rules literals (pattern template) ...)) ...) expr ...)) '(syntax-rules) env)
   (if (has-duplicates? (map car (cadr expr)))
       (error "Duplicate syntax bindings"))
   (for-each validate-syntax-binding (cadr expr))
@@ -346,7 +355,7 @@
          (compile-seq (cdr exprs) env tail))))
 
 (define (transform-define expr)
-  (validate-expr expr '((define var val) (define (var . params) expr ...)) '())
+  (validate-expr expr '((define var val) (define (var . params) expr ...)) '() '())
   (if (not (ident? (if (pair? (cadr expr)) (caadr expr) (cadr expr))))
       (error "Identifier in define expression is not a variable name"))
   (if (pair? (cadr expr))
@@ -364,7 +373,7 @@
                    (let ((x (split-defines (cdr exprs) env)))
                      (cons (cons expanded (car x)) (cdr x))))
                   ((eq? (car expanded) 'begin)
-                   (validate-expr expanded '((begin expr ...)) '())
+                   (validate-expr expanded '((begin expr ...)) '() env)
                    (split-defines (append (cdr expanded) (cdr exprs)) env))
                   (else
                    (cons '() exprs)))
