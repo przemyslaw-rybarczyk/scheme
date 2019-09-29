@@ -109,7 +109,7 @@ static void save_string(FILE *fp, String *str) {
 }
 
 static void save_val(FILE *fp, Val val) {
-    s_fputc(val.type, fp);
+    s_fputc((int)val.type, fp);
     switch (val.type) {
     case TYPE_INT:
         for (int i = 7; i >= 0; i--)
@@ -148,7 +148,7 @@ void save_insts(FILE *fp, uint32_t start, uint32_t end) {
     s_fputs(magic, fp);
     s_fputs(version, fp);
     for (uint32_t n = start; n != end; n++) {
-        s_fputc(insts[n].type, fp);
+        s_fputc((int)insts[n].type, fp);
         switch (insts[n].type) {
         case INST_CONST:
             save_val(fp, insts[n].val);
@@ -275,7 +275,7 @@ void load_insts(FILE *fp) {
     int c;
     while ((c = s_fgetc(fp)) != EOF) {
         uint32_t n = next_inst();
-        insts[n].type = c;
+        insts[n].type = (enum Inst_type)c;
         switch (insts[n].type) {
         case INST_CONST:
             insts[n].val = load_val(fp);
