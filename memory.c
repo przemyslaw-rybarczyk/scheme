@@ -100,9 +100,7 @@ void gc_unlock_env(void) {
 }
 
 static size_t align_size(size_t size) {
-    if (size % 8 == 0)
-        return size;
-    return (size / 8 + 1) * 8;
+    return (size + 7) / 8 * 8;
 }
 
 /* -- gc_alloc
