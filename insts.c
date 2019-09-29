@@ -8,7 +8,6 @@
 
 #include "insts.h"
 #include "types.h"
-#include "consts.h"
 #include "display.h"
 #include "safestd.h"
 #include "string.h"
@@ -51,13 +50,11 @@ void setup_insts(void) {
     insts[tail_call_inst] = (Inst){INST_TAIL_CALL};
     map_continue_inst = next_inst();
     insts[map_continue_inst] = (Inst){INST_CALL};
-    insts[next_inst()] =
-        (Inst){INST_CONST, {.val = add_constant((Val){TYPE_HIGH_PRIM, {.high_prim_data = map_prim_continuation}})}};
+    insts[next_inst()] = (Inst){INST_CONST, {.val = (Val){TYPE_HIGH_PRIM, {.high_prim_data = map_prim_continuation}}}};
     insts[next_inst()] = (Inst){INST_TAIL_CALL, {.num = 0}};
     for_each_continue_inst = next_inst();
     insts[for_each_continue_inst] = (Inst){INST_CALL};
-    insts[next_inst()] =
-        (Inst){INST_CONST, {.val = add_constant((Val){TYPE_HIGH_PRIM, {.high_prim_data = for_each_prim_continuation}})}};
+    insts[next_inst()] = (Inst){INST_CONST, {.val = (Val){TYPE_HIGH_PRIM, {.high_prim_data = for_each_prim_continuation}}}};
     insts[next_inst()] = (Inst){INST_TAIL_CALL, {.num = 0}};
     compiler_pc = this_inst();
     char *path = get_path();
@@ -154,7 +151,7 @@ void save_insts(FILE *fp, uint32_t start, uint32_t end) {
         s_fputc(insts[n].type, fp);
         switch (insts[n].type) {
         case INST_CONST:
-            save_val(fp, constant_table[insts[n].val]);
+            save_val(fp, insts[n].val);
             break;
         case INST_VAR:
         case INST_SET:
@@ -281,7 +278,7 @@ void load_insts(FILE *fp) {
         insts[n].type = c;
         switch (insts[n].type) {
         case INST_CONST:
-            insts[n].val = add_constant(load_val(fp));
+            insts[n].val = load_val(fp);
             break;
         case INST_VAR:
         case INST_SET:

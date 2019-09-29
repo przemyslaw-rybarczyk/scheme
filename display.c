@@ -115,7 +115,7 @@ void print_val(Val val) {
     print_val_(val, 0);
 }
 
-/* -- inner_display_val
+/* -- display_val
  * Displays a value as seen as a result of the `display` primitive.
  * Differs from `print_val` in that is displays strings without quotes.
  */
@@ -173,7 +173,9 @@ void print_inst(uint32_t n) {
     printf("%"PRIu32" ", n);
     switch (insts[n].type) {
     case INST_CONST:
-        printf("CONST %zu\n", insts[n].val);
+        printf("CONST ");
+        print_val(insts[n].val);
+        printf("\n");
         break;
     case INST_VAR:
         printf("VAR %"PRIu32" %"PRIu32"\n", insts[n].var.frame, insts[n].var.index);
