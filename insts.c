@@ -22,8 +22,10 @@ static char *get_path(void) {
     if (path == NULL)
         return "";
     char *last_separator = strrchr(path, '/');
-    if (last_separator == NULL)
+    if (last_separator == NULL) {
+        free(path);
         return "";
+    }
     last_separator[1] = '\0';
     return path;
 #else
@@ -59,6 +61,7 @@ void setup_insts(void) {
     compiler_pc = this_inst();
     char *path = get_path();
     load_insts(fopen_relative(path, "compiler.sss", "rb"));
+    free(path);
     compile_pc = this_inst();
     insts[next_inst()] = (Inst){INST_NAME, {.name = new_interned_string_from_cstring("parse-and-compile")}};
     insts[next_inst()] = (Inst){INST_TAIL_CALL, {.num = 0}};

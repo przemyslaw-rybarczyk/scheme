@@ -153,6 +153,7 @@ invalid_num:
         Pair *pair = gc_alloc(sizeof(Pair));
         pair->car = (Val){TYPE_SYMBOL, {.string_data = new_interned_string_from_cstring("token")}};
         pair->cdr = (Val){TYPE_INT, {.int_data = '.'}};
+        free(s);
         return (Val){TYPE_PAIR, {.pair_data = pair}};
     }
 
@@ -160,23 +161,34 @@ invalid_num:
     if (s[0] == '#') {
         // char
         if (s[1] == '\\') {
-            if (i == 2)
+            if (i == 2) {
+                free(s);
                 return (Val){TYPE_CHAR, {.char_data = (char32_t)c}};
-            if (i == 3)
-                return (Val){TYPE_CHAR, {.char_data = s[2]}};
-            if (strbuf_eq_cstr(i, s, "#\\space"))
+            } if (i == 3) {
+                char32_t c = s[2];
+                free(s);
+                return (Val){TYPE_CHAR, {.char_data = c}};
+            } if (strbuf_eq_cstr(i, s, "#\\space")) {
+                free(s);
                 return (Val){TYPE_CHAR, {.char_data = ' '}};
-            if (strbuf_eq_cstr(i, s, "#\\newline"))
+            } if (strbuf_eq_cstr(i, s, "#\\newline")) {
+                free(s);
                 return (Val){TYPE_CHAR, {.char_data = '\n'}};
+            }
         }
-        if (strbuf_eq_cstr(i, s, "#f"))
+        if (strbuf_eq_cstr(i, s, "#f")) {
+            free(s);
             return (Val){TYPE_BOOL, {.int_data = 0}};
-        if (strbuf_eq_cstr(i, s, "#t"))
+        } if (strbuf_eq_cstr(i, s, "#t")) {
+            free(s);
             return (Val){TYPE_BOOL, {.int_data = 1}};
-        if (strbuf_eq_cstr(i, s, "#!void"))
+        } if (strbuf_eq_cstr(i, s, "#!void")) {
+            free(s);
             return (Val){TYPE_VOID};
-        if (strbuf_eq_cstr(i, s, "#!undef"))
+        } if (strbuf_eq_cstr(i, s, "#!undef")) {
+            free(s);
             return (Val){TYPE_UNDEF};
+        }
         eprintf("Syntax error: incorrect literal ");
         eputs32(new_gc_string(i, s));
         eprintf("\n");
