@@ -4,7 +4,6 @@
 
 #include "compiler.h"
 #include "../types.h"
-#include "../consts.h"
 #include "../insts.h"
 #include "../parser.h"
 #include "../safestd.h"
@@ -38,7 +37,7 @@ Val set_const_prim(Val *args, uint32_t num) {
     args_assert(num == 2);
     if (args[0].type != TYPE_INT)
         type_error(args[0]);
-    insts[u32_int_data(args[0])] = (Inst){INST_CONST, {.val = add_constant(args[1])}};
+    insts[u32_int_data(args[0])] = (Inst){INST_CONST, {.val = args[1]}};
     return (Val){TYPE_VOID};
 }
 

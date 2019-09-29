@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "types.h"
-#include "consts.h"
 #include "display.h"
 #include "env.h"
 #include "exec.h"
@@ -89,7 +88,6 @@ int main(int argc, char **argv) {
         }
     }
 
-    setup_constant_table();
     setup_memory();
     setup_obarray();
     setup_primitives();

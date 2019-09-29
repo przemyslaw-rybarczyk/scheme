@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "consts.h"
 #include "exec.h"
 #include "exec_gc.h"
 #include "exec_stack.h"
@@ -67,7 +66,7 @@ Val exec(uint32_t pc, Global_env *init_global_env) {
         switch (insts[pc].type) {
 
         case INST_CONST:
-            stack_push(constant_table[insts[pc++].val]);
+            stack_push(insts[pc++].val);
             break;
 
         case INST_VAR:
