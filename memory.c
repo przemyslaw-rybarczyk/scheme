@@ -83,7 +83,7 @@ void setup_memory(void) {
  * sets up the broken heart and copies data to the new address, determined by
  * the `free_ptr` pointer.
  */
-static void garbage_collect();
+static void garbage_collect(void);
 
 /* -- env_lock
  * A pointer to an environment pointer which will be modified when
