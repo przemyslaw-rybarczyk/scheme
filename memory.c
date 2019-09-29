@@ -133,7 +133,8 @@ void *gc_alloc(size_t size) {
  * as it's impossible to run out of memory there.
  */
 static void *force_alloc(size_t size) {
-    free_ptr += align_size(size);
+    size = align_size(size);
+    free_ptr += size;
     return free_ptr - size;
 }
 
