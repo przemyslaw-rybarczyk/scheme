@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
     for (char **p = argv + 1; *p != NULL; p++) {
         char *arg = *p;
         if (strcmp(arg, "--bytecode") == 0) {
-            if (input_mode != INPUT_FILE) {
+            if (input_mode != INPUT_INTERACTIVE && input_mode != INPUT_FILE) {
                 eprintf("Error: multiple input modes specified\n");
                 return 1;
             }
@@ -84,7 +84,8 @@ int main(int argc, char **argv) {
             eprintf("Error: invalid command-line option %s\n", arg);
             return 1;
         } else {
-            input_mode = INPUT_FILE;
+            if (input_mode == INPUT_INTERACTIVE)
+                input_mode = INPUT_FILE;
             if (input_files_num == input_file_names_capacity) {
                 input_file_names_capacity *= 2;
                 input_file_names = s_realloc(input_file_names, input_file_names_capacity * sizeof(char *));
@@ -122,6 +123,7 @@ int main(int argc, char **argv) {
         break;
     case INPUT_BYTECODE:
         input_file = s_fopen(input_file_names[file++], "rb");
+        expr = this_inst() - 1;
         load_insts(input_file);
         break;
     }
@@ -140,12 +142,12 @@ int main(int argc, char **argv) {
             }
             break;
         case INPUT_BYTECODE:
-            expr = this_inst();
-            while (insts[expr].type != INST_EOF && file != input_files_num) {
+            expr = next_expr(expr + 1);
+            while (insts[expr].type == INST_EOF && file != input_files_num) {
                 fclose(input_file);
                 input_file = s_fopen(input_file_names[file++], "rb");
-                load_insts(input_file);
                 expr = this_inst();
+                load_insts(input_file);
             }
             if (insts[expr].type == INST_EOF)
                 expr = UINT32_MAX;
@@ -155,9 +157,11 @@ int main(int argc, char **argv) {
         if (expr == UINT32_MAX)
             break;
 
-        if (show_bytecode)
-            for (uint32_t inst = expr; inst < this_inst(); inst++)
+        if (show_bytecode) {
+            uint32_t end = this_inst();
+            for (uint32_t inst = expr; inst < end; inst++)
                 print_inst(inst);
+        }
 
         switch (output_mode) {
         case OUTPUT_INTERACTIVE: {
