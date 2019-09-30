@@ -42,13 +42,15 @@ String *intern_string(String *symbol) {
     return symbol;
 }
 
-/* -- intern_gc_string
- * Works like intern_string, except it takes a GC-allocated string as an argument.
+static int string_eq_buf(String *str, size_t len, char32_t *chars);
+
+/* -- new_interned_string
+ * Works like intern_string, except it takes the length and characters as separate arguments.
  * The string is not freed if it already exists in the obarray, and is copied otherwise.
  */
-String *intern_gc_string(String *symbol) {
+String *new_interned_string(size_t len, char32_t *chars) {
     for (String **obarray_ptr = obarray; obarray_ptr < obarray_end; obarray_ptr++) {
-        if (string_eq(symbol, *obarray_ptr))
+        if (string_eq_buf(*obarray_ptr, len, chars))
             return *obarray_ptr;
     }
     ptrdiff_t index = obarray_end - obarray;
@@ -57,9 +59,9 @@ String *intern_gc_string(String *symbol) {
         obarray = s_realloc(obarray, obarray_size * sizeof(String *));
         obarray_end = obarray + index;
     }
-    size_t size = sizeof(String) + symbol->len * sizeof(char32_t);
-    String *interned = s_malloc(size);
-    memcpy(interned, symbol, size);
+    String *interned = s_malloc(sizeof(String) + len * sizeof(char32_t));
+    interned->len = len;
+    memcpy(interned->chars, chars, len * sizeof(char32_t));
     *obarray_end++ = interned;
     return interned;
 }
@@ -85,6 +87,15 @@ int string_eq(String *str1, String *str2) {
         return 0;
     for (size_t i = 0; i < str1->len; i++)
         if (str1->chars[i] != str2->chars[i])
+            return 0;
+    return 1;
+}
+
+static int string_eq_buf(String *str, size_t len, char32_t *chars) {
+    if (str->len != len)
+        return 0;
+    for (size_t i = 0; i < len; i++)
+        if (str->chars[i] != chars[i])
             return 0;
     return 1;
 }

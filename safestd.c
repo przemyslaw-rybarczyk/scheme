@@ -7,6 +7,7 @@
 /* == safestd.c
  * This file contains versions of several standard library functions
  * that don't return error values and instead exit the program upon error.
+ * It also contains functions for UTF-8 I/O.
  */
 
 void *s_malloc(size_t size) {
