@@ -15,10 +15,12 @@
 
 /* -- input_mode
  * Possible values and corresponding command-line options:
- * - INPUT_FILE / (default)
+ * - INPUT_INTERACTIVE / (default)
+ * - INPUT_FILE / (if files provided)
  * - INPUT_BYTECODE / --bytecode
  */
 enum input_mode {
+    INPUT_INTERACTIVE,
     INPUT_FILE,
     INPUT_BYTECODE,
 };
@@ -38,9 +40,11 @@ enum output_mode {
 const char *input_prompt = ">>> ";
 
 int main(int argc, char **argv) {
-    enum input_mode input_mode = INPUT_FILE;
+    enum input_mode input_mode = INPUT_INTERACTIVE;
     enum output_mode output_mode = OUTPUT_INTERACTIVE;
-    char *input_file_name = NULL;
+    uint32_t input_files_num = 0;
+    uint32_t input_file_names_capacity = 4;
+    char **input_file_names = s_malloc(input_file_names_capacity * sizeof(char *));
     char *output_file_name = NULL;
     int show_bytecode = 0;
 
@@ -80,12 +84,18 @@ int main(int argc, char **argv) {
             eprintf("Error: invalid command-line option %s\n", arg);
             return 1;
         } else {
-            if (input_file_name != NULL) {
-                eprintf("Error: multiple input files specified\n");
-                return 1;
+            input_mode = INPUT_FILE;
+            if (input_files_num == input_file_names_capacity) {
+                input_file_names_capacity *= 2;
+                input_file_names = s_realloc(input_file_names, input_file_names_capacity * sizeof(char *));
             }
-            input_file_name = arg;
+            input_file_names[input_files_num++] = arg;
         }
+    }
+
+    if (input_mode != INPUT_INTERACTIVE && input_files_num == 0) {
+        eprintf("Error: no input files provided\n");
+        return 1;
     }
 
     setup_memory();
@@ -96,40 +106,55 @@ int main(int argc, char **argv) {
     setup_insts();
     setup_env();
 
-    FILE *input_file = stdin;
-    switch (input_mode) {
-    case INPUT_FILE:
-        if (input_file_name != NULL)
-            input_file = s_fopen(input_file_name, "r");
-        break;
-    case INPUT_BYTECODE:
-        if (input_file_name == NULL) {
-            eprintf("Error: no bytecode input file specified\n");
-            return 1;
-        }
-        input_file = s_fopen(input_file_name, "rb");
-        break;
-    }
-
+    uint32_t file = 0;
     uint32_t program = this_inst();
     uint32_t expr;
+    FILE *input_file;
 
-    if (output_mode == OUTPUT_INTERACTIVE && input_file_name == NULL)
+    if (output_mode == OUTPUT_INTERACTIVE && input_mode == INPUT_INTERACTIVE)
         printf("%s", input_prompt);
 
     switch (input_mode) {
+    case INPUT_INTERACTIVE:
+        break;
     case INPUT_FILE:
-        expr = read_expr(input_file);
+        input_file = s_fopen(input_file_names[file++], "r");
         break;
     case INPUT_BYTECODE:
+        input_file = s_fopen(input_file_names[file++], "rb");
         load_insts(input_file);
-        expr = program;
-        if (insts[expr].type == INST_EOF)
-            expr = UINT32_MAX;
         break;
     }
 
-    while (expr != UINT32_MAX) {
+    while (1) {
+        switch (input_mode) {
+        case INPUT_INTERACTIVE:
+            expr = read_expr(stdin);
+            break;
+        case INPUT_FILE:
+            expr = read_expr(input_file);
+            while (expr == UINT32_MAX && file != input_files_num) {
+                fclose(input_file);
+                input_file = s_fopen(input_file_names[file++], "r");
+                expr = read_expr(input_file);
+            }
+            break;
+        case INPUT_BYTECODE:
+            expr = this_inst();
+            while (insts[expr].type != INST_EOF && file != input_files_num) {
+                fclose(input_file);
+                input_file = s_fopen(input_file_names[file++], "rb");
+                load_insts(input_file);
+                expr = this_inst();
+            }
+            if (insts[expr].type == INST_EOF)
+                expr = UINT32_MAX;
+            break;
+        }
+
+        if (expr == UINT32_MAX)
+            break;
+
         if (show_bytecode)
             for (uint32_t inst = expr; inst < this_inst(); inst++)
                 print_inst(inst);
@@ -141,7 +166,7 @@ int main(int argc, char **argv) {
                 print_val(val);
                 putchar('\n');
             }
-            if (input_file_name == NULL)
+            if (input_mode == INPUT_INTERACTIVE)
                 printf("%s", input_prompt);
             break;
         }
@@ -151,18 +176,10 @@ int main(int argc, char **argv) {
         case OUTPUT_BYTECODE:
             break;
         }
-
-        switch (input_mode) {
-        case INPUT_FILE:
-            expr = read_expr(input_file);
-            break;
-        case INPUT_BYTECODE:
-            expr = next_expr(expr + 1);
-            if (insts[expr].type == INST_EOF)
-                expr = UINT32_MAX;
-            break;
-        }
     }
+
+    if (input_mode != INPUT_INTERACTIVE)
+        fclose(input_file);
 
     if (output_mode == OUTPUT_BYTECODE) {
         FILE *output_file = s_fopen(output_file_name, "wb");
@@ -170,7 +187,7 @@ int main(int argc, char **argv) {
         if (input_mode == INPUT_BYTECODE)
             end--;
         save_insts(output_file, program, end);
-    } else if (input_file_name == NULL) {
+    } else if (input_mode == INPUT_INTERACTIVE) {
         putchar('\n');
     }
 
