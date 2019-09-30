@@ -41,7 +41,7 @@ int strbuf_eq_cstr(size_t len, char32_t *chars, char *s) {
     return 1;
 }
 
-String *new_string(size_t len, char32_t *chars) {
+static String *new_string(size_t len, char32_t *chars) {
     String *str = s_malloc(sizeof(String) + len * sizeof(char32_t));
     str->len = len;
     memcpy(str->chars, chars, len * sizeof(char32_t));
@@ -49,7 +49,7 @@ String *new_string(size_t len, char32_t *chars) {
     return str;
 }
 
-String *new_gc_string(size_t len, char32_t *chars) {
+static String *new_gc_string(size_t len, char32_t *chars) {
     String *str = gc_alloc_string(len);
     memcpy(str->chars, chars, len * sizeof(char32_t));
     free(chars);
@@ -195,7 +195,9 @@ invalid_num:
         exit(1);
     }
 
-    return (Val){TYPE_SYMBOL, {.string_data = intern_string(new_string(i, s))}};
+    String *str = new_interned_string(i, s);
+    free(s);
+    return (Val){TYPE_SYMBOL, {.string_data = str}};
 }
 
 uint32_t read_expr(FILE *f) {
