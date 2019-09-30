@@ -99,6 +99,7 @@ typedef enum Type {
     TYPE_HIGH_PRIM,
     TYPE_LAMBDA,
     TYPE_PAIR,
+    TYPE_CONST_PAIR,
     TYPE_NIL,
     TYPE_VOID,
     TYPE_UNDEF,
