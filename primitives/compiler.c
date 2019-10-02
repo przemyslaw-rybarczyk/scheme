@@ -175,3 +175,11 @@ Val set_cons_prim(Val *args, uint32_t num) {
     insts[u32_int_data(args[0])] = (Inst){INST_CONS};
     return (Val){TYPE_VOID};
 }
+
+Val const_cons_prim(Val *args, uint32_t num) {
+    args_assert(num == 2);
+    Pair *pair = s_malloc(sizeof(Pair));
+    pair->car = args[0];
+    pair->cdr = args[1];
+    return (Val){TYPE_CONST_PAIR, {.pair_data = pair}};
+}

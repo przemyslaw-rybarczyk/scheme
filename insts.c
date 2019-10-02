@@ -134,6 +134,10 @@ static void save_val(FILE *fp, Val val) {
     case TYPE_SYMBOL:
         save_string(fp, val.string_data);
         break;
+    case TYPE_CONST_PAIR:
+        save_val(fp, val.pair_data->car);
+        save_val(fp, val.pair_data->cdr);
+        break;
     case TYPE_NIL:
     case TYPE_VOID:
     case TYPE_UNDEF:
@@ -250,6 +254,12 @@ static Val load_val(FILE *fp) {
         return (Val){TYPE_CONST_STRING, {.string_data = load_str(fp)}};
     case TYPE_SYMBOL:
         return (Val){TYPE_SYMBOL, {.string_data = intern_string(load_str(fp))}};
+    case TYPE_CONST_PAIR: {
+        Pair *pair = s_malloc(sizeof(Pair));
+        pair->car = load_val(fp);
+        pair->cdr = load_val(fp);
+        return (Val){TYPE_CONST_PAIR, {.pair_data = pair}};
+    }
     case TYPE_NIL:
         return (Val){TYPE_NIL};
     case TYPE_VOID:
