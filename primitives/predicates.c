@@ -28,6 +28,7 @@ int eq(Val val1, Val val2) {
     case TYPE_LAMBDA:
         return val1.lambda_data == val2.lambda_data;
     case TYPE_PAIR:
+    case TYPE_CONST_PAIR:
         return val1.pair_data == val2.pair_data;
     case TYPE_NIL:
     case TYPE_VOID:
@@ -65,6 +66,7 @@ int equal(Val val1, Val val2) {
             }
             break;
         case TYPE_PAIR:
+        case TYPE_CONST_PAIR:
             stack_push(val2.pair_data->cdr);
             stack_push(val1.pair_data->cdr);
             stack_push(val2.pair_data->car);
@@ -98,7 +100,7 @@ Val equal_prim(Val *args, uint32_t num) {
 
 Val pair_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
-    return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_PAIR}};
+    return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_PAIR || args[0].type == TYPE_CONST_PAIR}};
 }
 
 Val null_prim(Val *args, uint32_t num) {

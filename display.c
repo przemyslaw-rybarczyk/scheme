@@ -49,6 +49,7 @@ static void print_val_(Val val0, int display_style) {
                     val.lambda_data->params & PARAMS_VARIADIC ? "+" : "");
             break;
         case TYPE_PAIR:
+        case TYPE_CONST_PAIR:
             printf("(");
             stack_push((Val){TYPE_PRINT_CONTROL, {.print_control_data = PRINT_CONTROL_END_LIST}});
             stack_push(val.pair_data->cdr);
@@ -84,6 +85,7 @@ static void print_val_(Val val0, int display_style) {
                 val = stack_pop();
                 switch (val.type) {
                 case TYPE_PAIR:
+                case TYPE_CONST_PAIR:
                     printf(" ");
                     stack_push(val.pair_data->cdr);
                     stack_push((Val){TYPE_PRINT_CONTROL, {.print_control_data = PRINT_CONTROL_CDR}});
@@ -137,8 +139,8 @@ const char *type_name(Type type) {
         return "bool";
     case TYPE_CHAR:
         return "char";
-    case TYPE_CONST_STRING:
     case TYPE_STRING:
+    case TYPE_CONST_STRING:
         return "string";
     case TYPE_SYMBOL:
         return "symbol";
@@ -148,6 +150,7 @@ const char *type_name(Type type) {
     case TYPE_LAMBDA:
         return "lambda";
     case TYPE_PAIR:
+    case TYPE_CONST_PAIR:
         return "pair";
     case TYPE_NIL:
         return "nil";
