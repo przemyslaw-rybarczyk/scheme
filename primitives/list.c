@@ -15,7 +15,7 @@ Val list_q_prim(Val *args, uint32_t num) {
     uint32_t length = 0;
     // Visited pairs are marked by setting their cdr's type to TYPE_BROKEN_HEART;
     // This is done to detect cyclical lists.
-    while (list.type == TYPE_PAIR && list.pair_data->cdr.type != TYPE_BROKEN_HEART) {
+    while ((list.type == TYPE_PAIR || list.type == TYPE_CONST_PAIR) && list.pair_data->cdr.type != TYPE_BROKEN_HEART) {
         Val list_ = list.pair_data->cdr;
         list.pair_data->cdr.type = TYPE_BROKEN_HEART;
         stack_push(list);
@@ -46,7 +46,7 @@ Val length_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
     long long length = 0;
     Val val = args[0];
-    for (; val.type == TYPE_PAIR; val = val.pair_data->cdr)
+    for (; val.type == TYPE_PAIR || val.type == TYPE_CONST_PAIR; val = val.pair_data->cdr)
         length++;
     if (val.type != TYPE_NIL)
         type_error(val);
@@ -60,7 +60,7 @@ Val append_prim(Val *args, uint32_t num) {
     for (int32_t i = (int32_t)num - 2; i >= 0; i--) {
         Val arg = args[i];
         uint32_t length = 0;
-        while (arg.type == TYPE_PAIR) {
+        while (arg.type == TYPE_PAIR || arg.type == TYPE_CONST_PAIR) {
             stack_push(arg.pair_data->car);
             arg = arg.pair_data->cdr;
             length++;
@@ -84,7 +84,7 @@ Val reverse_prim(Val *args, uint32_t num) {
     Val tail = args[0];
     stack_push((Val){TYPE_NIL});
     stack_push(tail);
-    while (tail.type == TYPE_PAIR) {
+    while (tail.type == TYPE_PAIR || tail.type == TYPE_CONST_PAIR) {
         Pair *pair = gc_alloc(sizeof(Pair));
         tail = stack_pop();
         pair->car = tail.pair_data->car;
@@ -110,7 +110,7 @@ Val list_tail_prim(Val *args, uint32_t num) {
     }
     Val list = args[0];
     for (; k > 0; k--) {
-        if (list.type != TYPE_PAIR)
+        if (list.type != TYPE_PAIR && list.type != TYPE_CONST_PAIR)
             type_error(list);
         list = list.pair_data->cdr;
     }
@@ -128,11 +128,11 @@ Val list_ref_prim(Val *args, uint32_t num) {
     }
     Val list = args[0];
     for (; k > 0; k--) {
-        if (list.type != TYPE_PAIR)
+        if (list.type != TYPE_PAIR && list.type != TYPE_CONST_PAIR)
             type_error(list);
         list = list.pair_data->cdr;
     }
-    if (list.type != TYPE_PAIR)
+    if (list.type != TYPE_PAIR && list.type != TYPE_CONST_PAIR)
         type_error(list);
     return list.pair_data->car;
 }
@@ -142,7 +142,7 @@ Val name(Val *args, uint32_t num) { \
     args_assert(num == 2); \
     Val obj = args[0]; \
     Val list = args[1]; \
-    while (list.type == TYPE_PAIR) { \
+    while (list.type == TYPE_PAIR || list.type == TYPE_CONST_PAIR) { \
         if (f(list.pair_data->car, obj)) \
             return list; \
         list = list.pair_data->cdr; \
@@ -161,8 +161,8 @@ Val name(Val *args, uint32_t num) { \
     args_assert(num == 2); \
     Val obj = args[0]; \
     Val list = args[1]; \
-    while (list.type == TYPE_PAIR) { \
-        if (list.pair_data->car.type != TYPE_PAIR) \
+    while (list.type == TYPE_PAIR || list.type == TYPE_CONST_PAIR) { \
+        if (list.pair_data->car.type != TYPE_PAIR && list.pair_data->car.type != TYPE_CONST_PAIR) \
             type_error(list.pair_data->car); \
         if (f(list.pair_data->car.pair_data->car, obj)) \
             return list.pair_data->car; \
@@ -185,7 +185,7 @@ High_prim_return map_prim(Val *args, uint32_t num) {
     stack_push((Val){TYPE_INT, {.int_data = 1}});
     stack_push(args[0]);
     for (uint32_t i = 1; i < num; i++) {
-        if (args[i].type != TYPE_PAIR) {
+        if (args[i].type != TYPE_PAIR && args[i].type != TYPE_CONST_PAIR) {
             stack_ptr = args - 1;
             stack_push((Val){TYPE_NIL});
             return (High_prim_return){return_inst, NULL};
@@ -208,7 +208,7 @@ High_prim_return map_prim_continuation(Val *args, uint32_t num) {
     args -= n + 1;
     stack_push(args[0]);
     for (uint32_t i = 1; i <= n; i++) {
-        if (args[i].type != TYPE_PAIR) {
+        if (args[i].type != TYPE_PAIR && args[i].type != TYPE_CONST_PAIR) {
             stack_ptr = args + n + k + 2;
             stack_push((Val){TYPE_NIL});
             for (uint32_t j = k; j > 0; j--) {
@@ -234,7 +234,7 @@ High_prim_return for_each_prim(Val *args, uint32_t num) {
     stack_push((Val){TYPE_INT, {.int_data = num}});
     stack_push(args[0]);
     for (uint32_t i = 1; i < num; i++) {
-        if (args[i].type != TYPE_PAIR) {
+        if (args[i].type != TYPE_PAIR && args[i].type != TYPE_CONST_PAIR) {
             stack_ptr = args - 1;
             stack_push((Val){TYPE_VOID});
             return (High_prim_return){return_inst, NULL};
@@ -261,7 +261,7 @@ High_prim_return apply_prim(Val *args, uint32_t num) {
     stack_pop();
     Val arg_list = arg_list0;
     uint32_t arg_num = num - 2;
-    for (; arg_list.type == TYPE_PAIR; arg_list = arg_list.pair_data->cdr) {
+    for (; arg_list.type == TYPE_PAIR || arg_list.type == TYPE_CONST_PAIR; arg_list = arg_list.pair_data->cdr) {
         stack_push(arg_list.pair_data->car);
         arg_num++;
     }

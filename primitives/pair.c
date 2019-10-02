@@ -15,7 +15,7 @@ Val cons_prim(Val *args, uint32_t num) {
 }
 
 Val get_car(Val pair) {
-    if (pair.type != TYPE_PAIR) {
+    if (pair.type != TYPE_PAIR && pair.type != TYPE_CONST_PAIR) {
         eprintf("Error: not a pair\n");
         exit(1);
     }
@@ -23,7 +23,7 @@ Val get_car(Val pair) {
 }
 
 Val get_cdr(Val pair) {
-    if (pair.type != TYPE_PAIR) {
+    if (pair.type != TYPE_PAIR && pair.type != TYPE_CONST_PAIR) {
         eprintf("Error: not a pair\n");
         exit(1);
     }
@@ -182,6 +182,10 @@ Val cddddr_prim(Val *args, uint32_t num) {
 
 Val set_car_prim(Val *args, uint32_t num) {
     args_assert(num == 2);
+    if (args[0].type == TYPE_CONST_PAIR) {
+        eprintf("Error: pair is immutable\n");
+        exit(1);
+    }
     if (args[0].type != TYPE_PAIR)
         type_error(args[0]);
     args[0].pair_data->car = args[1];
@@ -190,6 +194,10 @@ Val set_car_prim(Val *args, uint32_t num) {
 
 Val set_cdr_prim(Val *args, uint32_t num) {
     args_assert(num == 2);
+    if (args[0].type == TYPE_CONST_PAIR) {
+        eprintf("Error: pair is immutable\n");
+        exit(1);
+    }
     if (args[0].type != TYPE_PAIR)
         type_error(args[0]);
     args[0].pair_data->cdr = args[1];
