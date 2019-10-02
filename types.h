@@ -69,6 +69,7 @@ typedef High_prim_return High_prim(struct Val *, uint32_t);
  * - High primitive - TYPE_HIGH_PRIM / prim_data
  * - Lambda - TYPE_LAMBDA / lambda_data
  * - Pair - TYPE_PAIR / pair_data
+ * - Constant pair - TYPE_CONST_PAIR / pair_data
  * - Nil - TYPE_NIL / -unspecified-
  * - Void - TYPE_VOID / -unspecified-
  * - Undef - TYPE_UNDEF / -unspecified-
