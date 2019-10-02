@@ -285,16 +285,14 @@
 
 (define (compile-quote expr env tail)
   (validate-expr expr '((quote expr)) '() env)
-  (compile-quoted (cadr expr))
+  (set-const! (next-inst) (quoted-const (cadr expr)))
   (put-tail! tail))
 
-(define (compile-quoted expr)
-  (cond ((pair? expr)
-         (compile-quoted (car expr))
-         (compile-quoted (cdr expr))
-         (set-cons! (next-inst)))
-        (else
-         (set-const! (next-inst) (reduce-ident expr)))))
+(define (quoted-const expr)
+  (if (pair? expr)
+      (const-cons (quoted-const (car expr))
+                  (quoted-const (cdr expr)))
+      (reduce-ident expr)))
 
 (define (validate-syntax-binding expr)
   (if (not (ident? (car expr)))

@@ -163,6 +163,7 @@ static struct CString_binding cstring_compiler_bindings[] = {
     PRIM("set-return!", set_return_prim),
     PRIM("set-delete!", set_delete_prim),
     PRIM("set-cons!", set_cons_prim),
+    PRIM("const-cons", const_cons_prim),
 };
 
 uint32_t compiler_bindings_size = sizeof(cstring_compiler_bindings) / sizeof(struct CString_binding);
