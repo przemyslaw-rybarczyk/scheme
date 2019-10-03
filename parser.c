@@ -16,22 +16,57 @@
 
 #define INIT_TOKEN_LENGTH 16
 
-/* -- fgetc_nospace
- * Gets the next character from a file, skipping whitespace and comments.
+/* -- parser_buffer
+ * A buffer necessary to provide one Unicode character of pushback.
+ * A value of UINT32_MAX represents the buffer as empty.
  */
-int32_t fgetc32_nospace(FILE *f) {
+static char32_t parser_buffer = UINT32_MAX;
+
+/* -- parser_fgetc32
+ * Gets the next character from a file, using the parser buffer if it's full.
+ */
+int32_t parser_fgetc32(FILE *f) {
+    if (parser_buffer != UINT32_MAX) {
+        int32_t c = (int32_t)parser_buffer;
+        parser_buffer = UINT32_MAX;
+        return c;
+    }
+    return s_fgetc32(f);
+}
+
+/* -- parser_fgetc32_nospace
+ * Gets the next character from a file, skipping whitespace and comments.
+ * Uses the parser buffer.
+ */
+int32_t parser_fgetc32_nospace(FILE *f) {
     int32_t c;
     while (1) {
-        while ((c = s_fgetc32(f)) != EOF32 && (is_whitespace((char32_t)c) || is_control((char32_t)c)))
+        while ((c = parser_fgetc32(f)) != EOF32 && (is_whitespace((char32_t)c) || is_control((char32_t)c)))
             ;
         if (c == ';') {
-            while ((c = s_fgetc32(f)) != '\n' && c != EOF32)
+            while ((c = parser_fgetc32(f)) != '\n' && c != EOF32)
                 ;
             continue;
         }
         break;
     }
     return c;
+}
+
+/* -- parser_init
+ * Initializes the parser by clearing the buffer and checking for EOF.
+ * If there are non-whitespace, non-comment characters remaining, it returns 1
+ * and puts the character back into the parser_buffer.
+ * If EOF is reached instead, it returns 0.
+ * This function should always be called before using the compiler.
+ */
+int parser_init(FILE *f) {
+    parser_buffer = UINT32_MAX;
+    int32_t c = parser_fgetc32_nospace(f);
+    if (c == EOF32)
+        return 0;
+    parser_buffer = (char32_t)c;
+    return 1;
 }
 
 int strbuf_eq_cstr(size_t len, char32_t *chars, char *s) {
@@ -58,14 +93,18 @@ static String *new_gc_string(size_t len, char32_t *chars) {
 
 /* -- get_token
  * Returns value of the literal for literal tokens, symbols for variable names,
- * the pair (token . <ASCII code>) for characters '(', ')', '\' and '.'
- * and (token . -1) for EOF.
+ * the pair (token . <ASCII code>) for characters '(', ')', '\'' and '.'.
  */
 Val get_token(FILE *f) {
-    int32_t c = fgetc32_nospace(f);
+    int32_t c = parser_fgetc32_nospace(f);
+
+    if (c == EOF32) {
+        eprintf("Error: unexpected end of file\n");
+        exit(1);
+    }
 
     // simple cases
-    if (c == '(' || c == ')' || c == '\'' || c == EOF32) {
+    if (c == '(' || c == ')' || c == '\'') {
         Pair *pair = gc_alloc(sizeof(Pair));
         pair->car = (Val){TYPE_SYMBOL, {.string_data = new_interned_string_from_cstring("token")}};
         pair->cdr = (Val){TYPE_INT, {.int_data = c}};
@@ -78,13 +117,13 @@ Val get_token(FILE *f) {
     // string literal
     if (c == '"') {
         size_t i = 0;
-        while ((c = s_fgetc32(f)) != '"') {
+        while ((c = parser_fgetc32(f)) != '"') {
             if (c == EOF32) {
                 eprintf("Syntax error: premature end of file - '\"' expected\n");
                 exit(1);
             }
             if (c == '\\') {
-                c = s_fgetc32(f);
+                c = parser_fgetc32(f);
                 if (c == EOF32) {
                     eprintf("Syntax error: premature end of file - '\"' expected\n");
                     exit(1);
@@ -108,7 +147,7 @@ Val get_token(FILE *f) {
     // name
     size_t i = 1;
     s[0] = (char32_t)c;
-    while ((c = s_fgetc32(f)) != EOF32 && !(is_whitespace((char32_t)c) || is_control((char32_t)c))
+    while ((c = parser_fgetc32(f)) != EOF32 && !(is_whitespace((char32_t)c) || is_control((char32_t)c))
             && c != ';' && c != '(' && c != ')' && c != '\'' && c != '"') {
         s[i++] = (char32_t)c;
         if (i >= capacity) {
@@ -116,7 +155,7 @@ Val get_token(FILE *f) {
             s = s_realloc(s, capacity * sizeof(char32_t));
         }
     }
-    s_ungetc(c, f);
+    parser_buffer = (char32_t)c;
 
     // numeric literal
     if (('0' <= s[0] && s[0] <= '9') || ((s[0] == '+' || s[0] == '-') && i > 1)) {
@@ -201,10 +240,8 @@ invalid_num:
 }
 
 uint32_t read_expr(FILE *f) {
-    int c = fgetc32_nospace(f);
-    if (c == EOF32)
+    if (!parser_init(f))
         return UINT32_MAX;
-    s_ungetc(c, f);
     compiler_input_file = f;
     uint32_t program = next_inst();
     insts[program] = (Inst){INST_EXPR};
