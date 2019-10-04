@@ -101,6 +101,8 @@ typedef enum Type {
     TYPE_LAMBDA,
     TYPE_PAIR,
     TYPE_CONST_PAIR,
+    TYPE_VECTOR,
+    TYPE_CONST_VECTOR,
     TYPE_NIL,
     TYPE_VOID,
     TYPE_UNDEF,
