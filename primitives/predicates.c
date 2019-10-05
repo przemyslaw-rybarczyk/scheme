@@ -121,11 +121,6 @@ Val symbol_prim(Val *args, uint32_t num) {
     return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_SYMBOL}};
 }
 
-Val string_q_prim(Val *args, uint32_t num) {
-    args_assert(num == 1);
-    return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_STRING || args[0].type == TYPE_CONST_STRING}};
-}
-
 Val procedure_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
     return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_PRIM || args[0].type == TYPE_LAMBDA || args[0].type == TYPE_HIGH_PRIM}};
@@ -139,6 +134,16 @@ Val boolean_prim(Val *args, uint32_t num) {
 Val char_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
     return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_CHAR}};
+}
+
+Val string_q_prim(Val *args, uint32_t num) {
+    args_assert(num == 1);
+    return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_STRING || args[0].type == TYPE_CONST_STRING}};
+}
+
+Val vector_q_prim(Val *args, uint32_t num) {
+    args_assert(num == 1);
+    return (Val){TYPE_BOOL, {.int_data = args[0].type == TYPE_VECTOR || args[0].type == TYPE_CONST_VECTOR}};
 }
 
 Val not_prim(Val *args, uint32_t num) {
