@@ -58,20 +58,20 @@ int equal(Val val1, Val val2) {
     while (stack_ptr > stack_ptr_before) {
         val1 = stack_pop();
         val2 = stack_pop();
-        if (val1.type != val2.type) {
-            stack_ptr = stack_ptr_before;
-            return 0;
-        }
         switch (val1.type) {
         case TYPE_STRING:
         case TYPE_CONST_STRING:
-            if (!(val2.type == TYPE_STRING || val2.type == TYPE_CONST_STRING) || !string_eq(val1.string_data, val2.string_data)) {
+            if ((val2.type != TYPE_STRING && val2.type != TYPE_CONST_STRING) || !string_eq(val1.string_data, val2.string_data)) {
                 stack_ptr = stack_ptr_before;
                 return 0;
             }
             break;
         case TYPE_PAIR:
         case TYPE_CONST_PAIR:
+            if (val2.type != TYPE_PAIR && val2.type != TYPE_CONST_PAIR) {
+                stack_ptr = stack_ptr_before;
+                return 0;
+            }
             stack_push(val2.pair_data->cdr);
             stack_push(val1.pair_data->cdr);
             stack_push(val2.pair_data->car);
@@ -79,7 +79,7 @@ int equal(Val val1, Val val2) {
             break;
         case TYPE_VECTOR:
         case TYPE_CONST_VECTOR:
-            if (val1.vector_data->len != val2.vector_data->len) {
+            if ((val2.type != TYPE_VECTOR && val2.type != TYPE_CONST_VECTOR) || (val1.vector_data->len != val2.vector_data->len)) {
                 stack_ptr = stack_ptr_before;
                 return 0;
             }
