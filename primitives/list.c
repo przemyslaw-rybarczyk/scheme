@@ -57,7 +57,7 @@ Val append_prim(Val *args, uint32_t num) {
     if (num == 0)
         return (Val){TYPE_NIL};
     Val val = args[num - 1];
-    for (int32_t i = (int32_t)num - 2; i >= 0; i--) {
+    for (uint32_t i = num - 1; i-- > 0; ) {
         Val arg = args[i];
         uint32_t length = 0;
         while (arg.type == TYPE_PAIR || arg.type == TYPE_CONST_PAIR) {

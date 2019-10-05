@@ -83,7 +83,7 @@ Val vector_to_list_prim(Val *args, uint32_t num) {
     Val *arg = stack_ptr;
     stack_push(args[0]);
     stack_push((Val){TYPE_NIL});
-    for (ssize_t i = (ssize_t)arg->vector_data->len - 1; i >= 0; i--) {
+    for (size_t i = arg->vector_data->len; i-- > 0; ) {
         Pair *pair = gc_alloc(sizeof(Pair));
         pair->car = arg->vector_data->vals[i];
         pair->cdr = stack_pop();
