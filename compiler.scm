@@ -12,6 +12,7 @@
       (set! token-buffer (next-token)))
   token-buffer)
 
+(define hash 35)
 (define quote-char 39)
 (define left-paren 40)
 (define right-paren 41)
@@ -31,7 +32,12 @@
                 ((= id quote-char)
                  (list (lambda () (list 'quote 0 '())) (parse)))
                 ((= id period)
-                 (error "Syntax error: unexpected '.'"))))
+                 (error "Syntax error: unexpected '.'"))
+                ((= id hash)
+                 (let ((x (parse)))
+                   (if (list? x)
+                       (list->vector x)
+                       (error "Syntax error: expected list or name after #"))))))
         token)))
 
 (define (parse-list)
@@ -120,6 +126,8 @@
          (compile-name expr env tail))
         ((null? expr)
          (error "() is not a valid expression"))
+        ((vector? expr)
+         (error "Unquoted vector"))
         (else
          (set-const! (next-inst) expr)
          (put-tail! tail))))
