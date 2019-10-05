@@ -56,6 +56,16 @@ static void print_val_(Val val0, int display_style) {
             stack_push((Val){TYPE_PRINT_CONTROL, {.print_control_data = PRINT_CONTROL_CDR}});
             stack_push(val.pair_data->car);
             break;
+        case TYPE_VECTOR:
+        case TYPE_CONST_VECTOR:
+            printf("#(");
+            stack_push((Val){TYPE_PRINT_CONTROL, {.print_control_data = PRINT_CONTROL_END_LIST}});
+            for (size_t i = val.vector_data->len; i-- > 0; ) {
+                stack_push(val.vector_data->vals[i]);
+                if (i != 0)
+                    stack_push((Val){TYPE_PRINT_CONTROL, {.print_control_data = PRINT_CONTROL_SPACE}});
+            }
+            break;
         case TYPE_NIL:
             printf("()");
             break;
@@ -98,6 +108,9 @@ static void print_val_(Val val0, int display_style) {
                     stack_push(val);
                     break;
                 }
+                break;
+            case PRINT_CONTROL_SPACE:
+                printf(" ");
                 break;
             case PRINT_CONTROL_END_LIST:
                 printf(")");
@@ -152,6 +165,10 @@ const char *type_name(Type type) {
     case TYPE_PAIR:
     case TYPE_CONST_PAIR:
         return "pair";
+    case TYPE_VECTOR:
+    case TYPE_CONST_VECTOR:
+        return "vector";
+        break;
     case TYPE_NIL:
         return "nil";
     case TYPE_VOID:

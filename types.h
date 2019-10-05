@@ -5,26 +5,15 @@
 
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 
-/* -- String
- * A string may be allocated in one of three ways. Uninterned strings are used
- * to represent string constants. Interned strings are used to represent symbols
- * and variable names. GC-allocated strings represent mutable strings and are
- * allocated from garbage collected memory.
- * Every GC-allocated string must have at least one character, even if it's empty.
- * The character is used for purposes of garbage collection.
- */
-typedef struct String {
-    union {
-        size_t len;
-        struct String *new_ptr;
-    };
-    char32_t chars[];
-} String;
-
 struct Pair;
+struct String;
+struct Vector;
 struct Lambda;
 struct Global_env;
+struct High_prim_return;
 struct Val;
+
+typedef struct High_prim_return High_prim(struct Val *, uint32_t);
 
 /* -- Print_control
  * These values are put on the stack to control the process of printing a value.
@@ -32,28 +21,15 @@ struct Val;
  * - PRINT_CONTROL_CDR interprets the next value on the stack as some suffix
  *   of a list and prints it accordingly depending on whether it is a pair, nil,
  *   or another value.
+ * - PRINT_CONTROL_SPACE prints a space.
  * - PRINT_CONTROL_END_LIST prints a closed parenthesis.
  */
 typedef enum Print_control {
     PRINT_CONTROL_END,
     PRINT_CONTROL_CDR,
+    PRINT_CONTROL_SPACE,
     PRINT_CONTROL_END_LIST,
 } Print_control;
-
-/* -- High_prim
- * Unlike a regular primitive function, a high primitive function takes
- * is called with the arguments still on top of the stack and returns
- * the program counter and global environment from which exec() should resume
- * execution. This is done to allow for primitive functions that run Scheme
- * code to be tail recursive.
- */
-
-typedef struct High_prim_return {
-    uint32_t pc;
-    struct Global_env *global_env;
-} High_prim_return;
-
-typedef High_prim_return High_prim(struct Val *, uint32_t);
 
 /* -- Val
  * Contains a Scheme value with `type` representing its type and data
@@ -70,17 +46,18 @@ typedef High_prim_return High_prim(struct Val *, uint32_t);
  * - Lambda - TYPE_LAMBDA / lambda_data
  * - Pair - TYPE_PAIR / pair_data
  * - Constant pair - TYPE_CONST_PAIR / pair_data
+ * - Vector - TYPE_VECTOR / vector_data
+ * - Constant vector - TYPE_CONST_VECTOR / vector_data
  * - Nil - TYPE_NIL / -unspecified-
  * - Void - TYPE_VOID / -unspecified-
  * - Undef - TYPE_UNDEF / -unspecified-
- * Lambdas and pairs are represented as pointers to the heap.
- * Strings and symbols are immutable and may only be defined as literals.
  * #!void is used as a return value when none is specified, such as
  * in assignments and definitions.
  * #!undef is used primarily for defining the letrec construct.
  * Attempting to read a variable whose value is #!undef results in an error.
  * However, for simplicity, this property is disabled in the compiler.
- * A `type` value of TYPE_BROKEN_HEART is used only for garbage collection.
+ * A `type` value of TYPE_BROKEN_HEART is used internally to mark an invalid value,
+ * primarily in garbage collection.
  * The following values are used only for returning from functions:
  * - Environment - TYPE_ENV / env_data
  * - Instruction pointer - TYPE_INST / inst_data
@@ -120,11 +97,12 @@ typedef struct Val {
         long long int_data;
         double float_data;
         char32_t char_data;
-        String *string_data;
+        struct String *string_data;
         struct Val (*prim_data)(struct Val *, uint32_t);
         High_prim *high_prim_data;
         struct Lambda *lambda_data;
         struct Pair *pair_data;
+        struct Vector *vector_data;
         struct Env *env_data;
         struct Global_env *global_env_data;
         uint32_t inst_data;
@@ -142,6 +120,35 @@ typedef struct Pair {
 } Pair;
 
 struct Env;
+
+/* -- String
+ * A string may be allocated in one of three ways. Uninterned strings are used
+ * to represent string constants. Interned strings are used to represent symbols
+ * and variable names. GC-allocated strings represent mutable strings and are
+ * allocated from garbage-collected memory.
+ * Every GC-allocated string must have at least one character, even if it's empty.
+ * The character is used for purposes of garbage collection.
+ */
+typedef struct String {
+    union {
+        size_t len;
+        struct String *new_ptr;
+    };
+    char32_t chars[];
+} String;
+
+/* -- Vector
+ * A vector may be constant or allocated in garbage-collected memory.
+ * Every GC-allocated vector must hold at least one value, even if it's empty.
+ * The value is used for garbage collection.
+ */
+typedef struct Vector {
+    union {
+        size_t len;
+        struct Vector *new_ptr;
+    };
+    struct Val vals[];
+} Vector;
 
 /* -- Lambda
  * Represents a lambda with the following elements:
@@ -198,6 +205,19 @@ typedef struct Env_loc {
     uint32_t frame;
     uint32_t index;
 } Env_loc;
+
+/* -- High_prim
+ * Unlike a regular primitive function, a high primitive function
+ * is called with the arguments still on top of the stack and returns
+ * the program counter and global environment from which exec() should resume
+ * execution. This is done to allow for primitive functions that run Scheme
+ * code to be tail recursive.
+ */
+
+typedef struct High_prim_return {
+    uint32_t pc;
+    struct Global_env *global_env;
+} High_prim_return;
 
 /* -- inst
  * Represents a bytecode instruction.
