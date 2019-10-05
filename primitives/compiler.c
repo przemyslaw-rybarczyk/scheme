@@ -1,6 +1,7 @@
 #include <stddef.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "compiler.h"
 #include "../types.h"
@@ -182,4 +183,14 @@ Val const_cons_prim(Val *args, uint32_t num) {
     pair->car = args[0];
     pair->cdr = args[1];
     return (Val){TYPE_CONST_PAIR, {.pair_data = pair}};
+}
+
+Val const_vector_prim(Val *args, uint32_t num) {
+    args_assert(num == 1);
+    if (args[0].type != TYPE_VECTOR && args[0].type != TYPE_CONST_VECTOR)
+        type_error(args[0]);
+    size_t vec_size = sizeof(Vector) + args[0].vector_data->len * sizeof(Val);
+    Vector *vec = s_malloc(vec_size);
+    memcpy(vec, args[0].vector_data, vec_size);
+    return (Val){TYPE_CONST_VECTOR, {.vector_data = vec}};
 }

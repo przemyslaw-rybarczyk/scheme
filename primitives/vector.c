@@ -100,8 +100,8 @@ Val list_to_vector_prim(Val *args, uint32_t num) {
         len++;
     if (list.type != TYPE_NIL)
         type_error(list);
-    list = args[0];
     Vector *vec = gc_alloc_vector(len);
+    list = args[0];
     for (size_t i = 0; i < len; i++) {
         vec->vals[i] = list.pair_data->car;
         list = list.pair_data->cdr;

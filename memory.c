@@ -214,6 +214,8 @@ static Vector *move_vector(Vector *vec) {
     memcpy(new_vec, vec, vec_size);
     vec->vals[0].type = TYPE_BROKEN_HEART;
     vec->new_ptr = new_vec;
+    for (size_t i = 0; i < new_vec->len; i++)
+        gc_stack_push((GC_object){GC_VAL, {.val = &new_vec->vals[i]}});
     return new_vec;
 }
 
