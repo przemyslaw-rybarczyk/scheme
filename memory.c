@@ -110,12 +110,12 @@ static size_t align_size(size_t size) {
 void *gc_alloc(size_t size) {
     size = align_size(size);
 #ifndef GC_ALWAYS
-    if (free_ptr - mem_start >= (ssize_t)mem_size - (ssize_t)size)
+    if (free_ptr - mem_start >= (ptrdiff_t)mem_size - (ptrdiff_t)size)
 #endif
         garbage_collect();
-    if (free_ptr - mem_start >= (ssize_t)mem_size - (ssize_t)size) {
+    if (free_ptr - mem_start >= (ptrdiff_t)mem_size - (ptrdiff_t)size) {
         mem_size *= 2;
-        while (free_ptr - mem_start >= (ssize_t)mem_size - (ssize_t)size)
+        while (free_ptr - mem_start >= (ptrdiff_t)mem_size - (ptrdiff_t)size)
             mem_size *= 2;
         garbage_collect();
     }

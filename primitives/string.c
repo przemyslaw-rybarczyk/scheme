@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -80,18 +81,18 @@ Val string_set_prim(Val *args, uint32_t num) {
     return (Val){TYPE_VOID};
 }
 
-ssize_t string_cmp(String *str1, String *str2) {
+ptrdiff_t string_cmp(String *str1, String *str2) {
     size_t len = (str1->len < str2->len) ? str1->len : str2->len;
     for (size_t i = 0; i < len; i++) {
         if (str1->chars[i] != str2->chars[i])
-            return (ssize_t)str1->chars[i] - (ssize_t)str2->chars[i];
+            return (ptrdiff_t)str1->chars[i] - (ptrdiff_t)str2->chars[i];
     }
-    return (ssize_t)str1->len - (ssize_t)str2->len;
+    return (ptrdiff_t)str1->len - (ptrdiff_t)str2->len;
 }
 
-ssize_t string_ci_cmp(String *str1, String *str2) {
+ptrdiff_t string_ci_cmp(String *str1, String *str2) {
     if (str1->len == 0 || str2->len == 0)
-        return (ssize_t)str1->len - (ssize_t)str2->len;
+        return (ptrdiff_t)str1->len - (ptrdiff_t)str2->len;
     String *str[2] = {str1, str2};
     size_t i[2] = {0, 0};
     uint16_t *fold[2] = {full_foldcase(str1->chars[0]), full_foldcase(str2->chars[0])};
