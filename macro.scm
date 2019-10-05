@@ -92,6 +92,10 @@
                       #f)))
                (else
                 #f)))
+        ((vector? pattern)
+         (if (vector? expr)
+             (get-pattern-bindings (vector->list expr) (vector->list pattern) literals shadowed)
+             #f))
         ((and (ident? pattern) (not (full-memq-ident pattern literals)))
          (list (list pattern 0 expr)))
         ((and (full-equal-ident? expr pattern) (not (full-memq-ident pattern shadowed)))
@@ -177,6 +181,8 @@
                       (apply-pattern-bindings bindings (cdr template) macro-id env ellipses)))))
         ((and ellipses (eq? (reduce-ident template) '...))
          (error "Invalid ellipsis in pattern"))
+        ((vector? template)
+         (list->vector (apply-pattern-bindings bindings (vector->list template) macro-id env ellipses)))
         ((ident? template)
          (let ((binding (assq-ident template bindings)))
            (if binding
