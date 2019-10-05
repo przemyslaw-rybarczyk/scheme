@@ -136,6 +136,7 @@ static void *force_alloc(size_t size) {
 
 static Val move_val(Val val);
 static String *move_string(String *str);
+static Vector *move_vector(Vector *vec);
 static Env *move_env(Env *env);
 static Pair *move_pair(Pair *pair);
 static Lambda *move_lambda(Lambda *lambda);
@@ -180,6 +181,9 @@ static Val move_val(Val val) {
     case TYPE_PAIR:
         val.pair_data = move_pair(val.pair_data);
         return val;
+    case TYPE_VECTOR:
+        val.vector_data = move_vector(val.vector_data);
+        return val;
     case TYPE_LAMBDA:
         val.lambda_data = move_lambda(val.lambda_data);
         return val;
@@ -200,6 +204,17 @@ static String *move_string(String *str) {
     str->chars[0] = UINT32_MAX;
     str->new_ptr = new_str;
     return new_str;
+}
+
+static Vector *move_vector(Vector *vec) {
+    if (vec->vals[0].type == TYPE_BROKEN_HEART)
+        return vec->new_ptr;
+    size_t vec_size = sizeof(Vector) + (vec->len ? vec->len : 1) * sizeof(Val);
+    Vector *new_vec = force_alloc(vec_size);
+    memcpy(new_vec, vec, vec_size);
+    vec->vals[0].type = TYPE_BROKEN_HEART;
+    vec->new_ptr = new_vec;
+    return new_vec;
 }
 
 static Env *move_env(Env *env) {
