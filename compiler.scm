@@ -297,10 +297,13 @@
   (put-tail! tail))
 
 (define (quoted-const expr)
-  (if (pair? expr)
-      (const-cons (quoted-const (car expr))
-                  (quoted-const (cdr expr)))
-      (reduce-ident expr)))
+  (cond ((pair? expr)
+         (const-cons (quoted-const (car expr))
+                     (quoted-const (cdr expr))))
+        ((vector? expr)
+         (const-vector (list->vector (map quoted-const (vector->list expr)))))
+        (else
+         (reduce-ident expr))))
 
 (define (validate-syntax-binding expr)
   (if (not (ident? (car expr)))

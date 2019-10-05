@@ -21,3 +21,4 @@ Val set_return_prim(Val *args, uint32_t num);
 Val set_delete_prim(Val *args, uint32_t num);
 Val set_cons_prim(Val *args, uint32_t num);
 Val const_cons_prim(Val *args, uint32_t num);
+Val const_vector_prim(Val *args, uint32_t num);

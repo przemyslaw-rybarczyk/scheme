@@ -215,8 +215,8 @@ Val list_to_string_prim(Val *args, uint32_t num) {
         len++;
     if (list.type != TYPE_NIL)
         type_error(list);
-    list = args[0];
     String *str = gc_alloc_string(len);
+    list = args[0];
     for (size_t i = 0; i < len; i++) {
         if (list.pair_data->car.type != TYPE_CHAR)
             type_error(list.pair_data->car);
