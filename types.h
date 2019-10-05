@@ -2,6 +2,7 @@
 
 #include <inttypes.h>
 #include <uchar.h>
+#include "bigint/bigint.h"
 
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 
@@ -67,6 +68,7 @@ typedef enum Print_control {
 
 typedef enum Type {
     TYPE_INT,
+    TYPE_BIGINT,
     TYPE_FLOAT,
     TYPE_BOOL,
     TYPE_CHAR,
@@ -95,6 +97,7 @@ typedef struct Val {
     enum Type type;
     union {
         long long int_data;
+        Bigint *bigint_data;
         double float_data;
         char32_t char_data;
         struct String *string_data;
