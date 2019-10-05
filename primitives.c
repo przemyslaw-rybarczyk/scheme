@@ -1,5 +1,3 @@
-#include <stdlib.h>
-
 #include "primitives.h"
 #include "types.h"
 #include "primitives/char.h"
@@ -10,6 +8,7 @@
 #include "primitives/pair.h"
 #include "primitives/predicates.h"
 #include "primitives/string.h"
+#include "primitives/vector.h"
 #include "safestd.h"
 #include "string.h"
 
@@ -137,6 +136,7 @@ static struct CString_binding cstring_r5rs_bindings[] = {
     PRIM("string-fill!", string_fill_prim),
     PRIM("symbol->string", symbol_to_string_prim),
     PRIM("string->symbol", string_to_symbol_prim),
+    PRIM("vector", vector_prim),
     PRIM("display", display_prim),
     PRIM("newline", newline_prim),
     PRIM("error", error_prim),

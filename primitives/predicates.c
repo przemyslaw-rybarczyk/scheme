@@ -30,6 +30,9 @@ int eq(Val val1, Val val2) {
     case TYPE_PAIR:
     case TYPE_CONST_PAIR:
         return val1.pair_data == val2.pair_data;
+    case TYPE_VECTOR:
+    case TYPE_CONST_VECTOR:
+        return val1.vector_data == val2.vector_data;
     case TYPE_NIL:
     case TYPE_VOID:
     case TYPE_UNDEF:
