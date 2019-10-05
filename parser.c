@@ -54,14 +54,13 @@ int32_t parser_fgetc32_nospace(FILE *f) {
 }
 
 /* -- parser_init
- * Initializes the parser by clearing the buffer and checking for EOF.
+ * Initializes the parser by and checking for EOF.
  * If there are non-whitespace, non-comment characters remaining, it returns 1
  * and puts the character back into the parser_buffer.
  * If EOF is reached instead, it returns 0.
  * This function should always be called before using the compiler.
  */
 int parser_init(FILE *f) {
-    parser_buffer = UINT32_MAX;
     int32_t c = parser_fgetc32_nospace(f);
     if (c == EOF32)
         return 0;
@@ -93,7 +92,8 @@ static String *new_gc_string(size_t len, char32_t *chars) {
 
 /* -- get_token
  * Returns value of the literal for literal tokens, symbols for variable names,
- * the pair (token . <ASCII code>) for characters '(', ')', '\'' and '.'.
+ * the pair (token . <ASCII code>) for characters '(', ')', '\'', '.' and '#'.
+ * Note that '.' and '#' are not considered separate tokens in all contexts.
  */
 Val get_token(FILE *f) {
     int32_t c = parser_fgetc32_nospace(f);
@@ -188,10 +188,10 @@ invalid_num:
         exit(1);
     }
 
-    if (i == 1 && s[0] == '.') {
+    if (i == 1 && (s[0] == '.' || s[0] == '#')) {
         Pair *pair = gc_alloc(sizeof(Pair));
         pair->car = (Val){TYPE_SYMBOL, {.string_data = new_interned_string_from_cstring("token")}};
-        pair->cdr = (Val){TYPE_INT, {.int_data = '.'}};
+        pair->cdr = (Val){TYPE_INT, {.int_data = s[0]}};
         free(s);
         return (Val){TYPE_PAIR, {.pair_data = pair}};
     }
