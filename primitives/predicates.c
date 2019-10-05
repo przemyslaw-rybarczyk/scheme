@@ -58,8 +58,10 @@ int equal(Val val1, Val val2) {
     while (stack_ptr > stack_ptr_before) {
         val1 = stack_pop();
         val2 = stack_pop();
-        if (val1.type != val2.type)
+        if (val1.type != val2.type) {
+            stack_ptr = stack_ptr_before;
             return 0;
+        }
         switch (val1.type) {
         case TYPE_STRING:
         case TYPE_CONST_STRING:
