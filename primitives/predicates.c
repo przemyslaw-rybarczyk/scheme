@@ -77,6 +77,17 @@ int equal(Val val1, Val val2) {
             stack_push(val2.pair_data->car);
             stack_push(val1.pair_data->car);
             break;
+        case TYPE_VECTOR:
+        case TYPE_CONST_VECTOR:
+            if (val1.vector_data->len != val2.vector_data->len) {
+                stack_ptr = stack_ptr_before;
+                return 0;
+            }
+            for (size_t i = 0; i < val1.vector_data->len; i++) {
+                stack_push(val2.vector_data->vals[i]);
+                stack_push(val1.vector_data->vals[i]);
+            }
+            break;
         default:
             if (!eqv(val1, val2)) {
                 stack_ptr = stack_ptr_before;
