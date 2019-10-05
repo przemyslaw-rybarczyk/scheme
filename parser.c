@@ -73,7 +73,7 @@ int strbuf_eq_cstr(size_t len, char32_t *chars, char *s) {
     for (size_t i = 0; i < len; i++)
         if (chars[i] != s[i] || s[i] == '\0')
             return 0;
-    return 1;
+    return s[len] == '\0';
 }
 
 static String *new_string(size_t len, char32_t *chars) {
@@ -201,8 +201,10 @@ invalid_num:
         // char
         if (s[1] == '\\') {
             if (i == 2) {
+                char32_t c = parser_buffer;
+                parser_buffer = UINT32_MAX;
                 free(s);
-                return (Val){TYPE_CHAR, {.char_data = (char32_t)c}};
+                return (Val){TYPE_CHAR, {.char_data = c}};
             } if (i == 3) {
                 char32_t c = s[2];
                 free(s);
@@ -214,8 +216,7 @@ invalid_num:
                 free(s);
                 return (Val){TYPE_CHAR, {.char_data = '\n'}};
             }
-        }
-        if (strbuf_eq_cstr(i, s, "#f")) {
+        } if (strbuf_eq_cstr(i, s, "#f")) {
             free(s);
             return (Val){TYPE_BOOL, {.int_data = 0}};
         } if (strbuf_eq_cstr(i, s, "#t")) {
