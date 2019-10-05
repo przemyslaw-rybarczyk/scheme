@@ -209,10 +209,13 @@ Val string_to_list_prim(Val *args, uint32_t num) {
 Val list_to_string_prim(Val *args, uint32_t num) {
     args_assert(num == 1);
     size_t len = 0;
-    for (Val list = args[0]; list.type == TYPE_PAIR || list.type == TYPE_CONST_PAIR; list = list.pair_data->cdr)
-        len++;
-    String *str = gc_alloc_string(len);
     Val list = args[0];
+    for (; list.type == TYPE_PAIR || list.type == TYPE_CONST_PAIR; list = list.pair_data->cdr)
+        len++;
+    if (list.type != TYPE_NIL)
+        type_error(list);
+    list = args[0];
+    String *str = gc_alloc_string(len);
     for (size_t i = 0; i < len; i++) {
         if (list.pair_data->car.type != TYPE_CHAR)
             type_error(list.pair_data->car);
