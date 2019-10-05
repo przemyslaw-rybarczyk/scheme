@@ -197,7 +197,7 @@ Val string_to_list_prim(Val *args, uint32_t num) {
     Val *arg = stack_ptr;
     stack_push(args[0]);
     stack_push((Val){TYPE_NIL});
-    for (ssize_t i = (ssize_t)arg->string_data->len - 1; i >= 0; i--) {
+    for (size_t i = arg->string_data->len; i-- > 0; ) {
         Pair *pair = gc_alloc(sizeof(Pair));
         pair->car = (Val){TYPE_CHAR, {.char_data = arg->string_data->chars[i]}};
         pair->cdr = stack_pop();
