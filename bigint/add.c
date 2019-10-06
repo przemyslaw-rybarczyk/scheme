@@ -1,14 +1,23 @@
+#include <limits.h>
 #include <string.h>
 
 #include "bigint.h"
 
+#if PTRDIFF_MAX <= LLONG_MAX
+#define abs llabs
+#else
+#define abs imaxabs
+#endif
+
 Bigint *bigint_add(Bigint *m, Bigint *n) {
-    size_t m_len = (size_t)imaxabs(m->len);
-    size_t n_len = (size_t)imaxabs(n->len);
-    if (m_len > n_len) { // Ensure |m->len| <= |n->len|
+    size_t m_len = (size_t)abs(m->len);
+    size_t n_len = (size_t)abs(n->len);
+    if (abs(m->len) > abs(n->len)) { // Ensure |m->len| <= |n->len|
         Bigint *t = m;
         m = n;
         n = t;
+        m_len = (size_t)abs(m->len);
+        n_len = (size_t)abs(n->len);
     }
     Bigint *r = gc_alloc(sizeof(Bigint) + (n_len + 1) * sizeof(bi_base));
     r->len = n_len;
