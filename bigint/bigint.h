@@ -1,14 +1,25 @@
+#pragma once
+
 #include <inttypes.h>
+#include <stddef.h>
+
+extern void *gc_alloc(size_t size);
 
 #ifdef __SIZEOF_INT128__
-typedef uint64_t base;
-typedef __uint128_t double_base;
+typedef uint64_t bi_base;
+typedef __uint128_t bi_double_base;
 #else
-typedef uint32_t base;
-typedef uint64_t double_base;
+typedef uint32_t bi_base;
+typedef uint64_t bi_double_base;
 #endif
 
+/* -- Bigint
+ * Represents an integer consisting of |len| digits. The base is either 2^32
+ * or 2^64, depending on whether __uint128_t is available. If len < 0,
+ * the number is negative. The digits are stored in little-endian order,
+ * and the highest digit is non-zero.
+ */
 typedef struct Bigint {
-    size_t len;
-    base digits[];
+    ptrdiff_t len;
+    bi_base digits[];
 } Bigint;

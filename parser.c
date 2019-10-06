@@ -4,6 +4,7 @@
 
 #include "parser.h"
 #include "types.h"
+#include "bigint/string.h"
 #include "env.h"
 #include "exec.h"
 #include "insts.h"
@@ -216,6 +217,15 @@ invalid_num:
                 free(s);
                 return (Val){TYPE_CHAR, {.char_data = '\n'}};
             }
+        } if (s[1] == 'x') {
+            Bigint *bi = read_bigint_hexadecimal(i - 2, s + 2);
+            if (bi == NULL) {
+                eprintf("Error: invalid hexadecimal literal ");
+                eputs32(new_gc_string(i, s));
+                eprintf("\n");
+                exit(1);
+            }
+            return (Val){TYPE_BIGINT, {.bigint_data = bi}};
         } if (strbuf_eq_cstr(i, s, "#f")) {
             free(s);
             return (Val){TYPE_BOOL, {.int_data = 0}};

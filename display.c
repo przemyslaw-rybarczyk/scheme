@@ -2,6 +2,7 @@
 
 #include "display.h"
 #include "types.h"
+#include "bigint/string.h"
 #include "exec_stack.h"
 #include "insts.h"
 #include "safestd.h"
@@ -15,6 +16,9 @@ static void print_val_(Val val0, int display_style) {
         switch(val.type) {
         case TYPE_INT:
             printf("%lld", val.int_data);
+            break;
+        case TYPE_BIGINT:
+            print_bigint_hexadecimal(val.bigint_data);
             break;
         case TYPE_FLOAT:
             printf("%.16g", val.float_data);
