@@ -33,6 +33,7 @@ Bigint *bigint_add(Bigint *m, Bigint *n) {
             r->digits[i] = 0;
         if (i < n_len) {
             r->digits[i] = n->digits[i] + 1;
+            i++;
         } else {
             r->digits[i] = 1;
             r->len++;
