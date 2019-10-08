@@ -11,25 +11,29 @@
 #endif
 
 // TODO avoid GC of m and n
-// TODO put correct sign on result
-static Bigint *bigint_add_sub(Bigint *m, Bigint *n, int subtract) {
+static Bigint *bigint_add_sub(Bigint *x, Bigint *y, int subtract) {
+    Bigint *n;
+    Bigint *m;
+    size_t sub_sign;
+    if (abs(x->len) > abs(y->len)) { // Ensure |n->len| >= |m->len|
+        n = x;
+        m = y;
+        sub_sign = (x->len >= 0) ? 1 : -1;
+    } else {
+        n = y;
+        m = x;
+        sub_sign = ((subtract ? -1 : 1) * y->len >= 0) ? 1 : -1;
+    }
     size_t m_len = (size_t)abs(m->len);
     size_t n_len = (size_t)abs(n->len);
-    if (abs(m->len) > abs(n->len)) { // Ensure |m->len| <= |n->len|
-        Bigint *t = m;
-        m = n;
-        n = t;
-        m_len = (size_t)abs(m->len);
-        n_len = (size_t)abs(n->len);
-    }
     Bigint *r = gc_alloc(sizeof(Bigint) + (n_len + 1) * sizeof(bi_base));
-    if (((m->len < 0) != (n->len < 0)) == subtract) { // Same signs
-        r->len = n->len;
+    if ((x->len < 0) == ((subtract ? -1 : 1) * y->len < 0)) { // Same signs
+        r->len = n_len;
         bi_base carry = 0;
-        for (size_t i = 0; i < m->len; i++) { // Add common part
-            bi_double_base x = (bi_double_base)m->digits[i] + n->digits[i] + carry;
-            r->digits[i] = x;
-            carry = x >> BI_BASE_BITS;
+        for (size_t i = 0; i < m_len; i++) { // Add common part
+            bi_double_base d = (bi_double_base)m->digits[i] + n->digits[i] + carry;
+            r->digits[i] = d;
+            carry = d >> BI_BASE_BITS;
         }
         size_t i = m_len;
         if (carry) { // Add to bottom part of n until carry is clear
@@ -44,6 +48,7 @@ static Bigint *bigint_add_sub(Bigint *m, Bigint *n, int subtract) {
             }
         }
         memcpy(r->digits + i, n->digits + i, (n_len - i) * sizeof(bi_base)); // Copy remaining digits
+        r->len *= (x->len >= 0) ? 1 : -1;
     } else { // Different signs
         if (m_len == n_len) {
             bi_base carry = 0;
@@ -52,16 +57,16 @@ static Bigint *bigint_add_sub(Bigint *m, Bigint *n, int subtract) {
             n_len++;
             m_len = n_len;
             if (n_len > 0 && m->digits[n_len - 1] > n->digits[n_len - 1]) { // Ensure |m| <= |n|
-                Bigint *t = m;
-                m = n;
-                n = t;
+                n = x;
+                m = y;
+                sub_sign *= -1;
             }
         }
         bi_base carry = 0;
         for (size_t i = 0; i < m_len; i++) { // Subtract common part
-            bi_double_base x = (bi_double_base)n->digits[i] - m->digits[i] - carry;
-            r->digits[i] = x;
-            carry = (x >> BI_BASE_BITS) & 1;
+            bi_double_base d = (bi_double_base)n->digits[i] - m->digits[i] - carry;
+            r->digits[i] = d;
+            carry = (d >> BI_BASE_BITS) & 1;
         }
         size_t i = m_len;
         if (carry) { // Subtract from part of n until carry is clear
@@ -74,7 +79,7 @@ static Bigint *bigint_add_sub(Bigint *m, Bigint *n, int subtract) {
         while (n_len-- > 0 && r->digits[n_len] == 0) // Remove leading zeroes
             ;
         n_len++;
-        r->len = n_len;
+        r->len = n_len * sub_sign;
     }
     return r;
 }
