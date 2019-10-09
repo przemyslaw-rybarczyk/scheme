@@ -8,7 +8,7 @@
 
 Val add_prim(Val *args, uint32_t num) {
     if ((args[0].type == TYPE_BIGINT || args[0].type == TYPE_CONST_BIGINT) && (args[1].type == TYPE_BIGINT || args[1].type == TYPE_CONST_BIGINT)) {
-        return (Val){TYPE_BIGINT, {.bigint_data = bigint_add(args[0].bigint_data, args[1].bigint_data)}};
+        return (Val){TYPE_BIGINT, {.bigint_data = bigint_add(args[0], args[1])}};
     }
     long long int_sum = 0;
     double float_sum;
@@ -40,7 +40,7 @@ Val add_prim(Val *args, uint32_t num) {
 
 Val sub_prim(Val *args, uint32_t num) {
     if ((args[0].type == TYPE_BIGINT || args[0].type == TYPE_CONST_BIGINT) && (args[1].type == TYPE_BIGINT || args[1].type == TYPE_CONST_BIGINT)) {
-        return (Val){TYPE_BIGINT, {.bigint_data = bigint_sub(args[0].bigint_data, args[1].bigint_data)}};
+        return (Val){TYPE_BIGINT, {.bigint_data = bigint_sub(args[0], args[1])}};
     }
     long long int_diff = 0;
     double float_diff = 0;

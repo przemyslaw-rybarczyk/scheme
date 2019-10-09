@@ -4,13 +4,18 @@
 #include "bigint.h"
 #include "../exec_stack.h"
 
-static Bigint *bigint_add_sub(Bigint *x, Bigint *y, int subtract) {
-    stack_push((Val){TYPE_BIGINT, {.bigint_data = x}});
-    stack_push((Val){TYPE_BIGINT, {.bigint_data = y}});
-    size_t r_len = bilabs(x->len) > bilabs(y->len) ? bilabs(x->len) : bilabs(y->len);
+/* -- bigint_add_sub
+ * Adds or subtracts two bigints. The value `subtract` is set to perform
+ * subtraction instead of addition. The values x and y may only be of type
+ * TYPE_BIGINT or TYPE_CONST_BIGINT and are not checked.
+ */
+static Bigint *bigint_add_sub(Val xv, Val yv, int subtract) {
+    size_t r_len = bilabs(xv.bigint_data->len) > bilabs(yv.bigint_data->len) ? bilabs(xv.bigint_data->len) : bilabs(yv.bigint_data->len);
+    stack_push(xv);
+    stack_push(yv);
     Bigint *r = gc_alloc_bigint(r_len + 1);
-    y = stack_pop().bigint_data;
-    x = stack_pop().bigint_data;
+    Bigint *y = stack_pop().bigint_data;
+    Bigint *x = stack_pop().bigint_data;
     Bigint *n;
     Bigint *m;
     int sub_sign;
@@ -81,10 +86,10 @@ static Bigint *bigint_add_sub(Bigint *x, Bigint *y, int subtract) {
     return r;
 }
 
-Bigint *bigint_add(Bigint *m, Bigint *n) {
-    return bigint_add_sub(m, n, 0);
+Bigint *bigint_add(Val x, Val y) {
+    return bigint_add_sub(x, y, 0);
 }
 
-Bigint *bigint_sub(Bigint *m, Bigint *n) {
-    return bigint_add_sub(m, n, 1);
+Bigint *bigint_sub(Val x, Val y) {
+    return bigint_add_sub(x, y, 1);
 }
