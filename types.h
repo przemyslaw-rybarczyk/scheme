@@ -69,6 +69,7 @@ typedef enum Print_control {
 typedef enum Type {
     TYPE_INT,
     TYPE_BIGINT,
+    TYPE_CONST_BIGINT,
     TYPE_FLOAT,
     TYPE_BOOL,
     TYPE_CHAR,

@@ -18,6 +18,7 @@ static void print_val_(Val val0, int display_style) {
             printf("%lld", val.int_data);
             break;
         case TYPE_BIGINT:
+        case TYPE_CONST_BIGINT:
             print_bigint_hexadecimal(val.bigint_data);
             break;
         case TYPE_FLOAT:

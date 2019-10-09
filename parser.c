@@ -225,7 +225,7 @@ invalid_num:
                 eprintf("\n");
                 exit(1);
             }
-            return (Val){TYPE_BIGINT, {.bigint_data = bi}};
+            return (Val){TYPE_CONST_BIGINT, {.bigint_data = bi}};
         } if (strbuf_eq_cstr(i, s, "#f")) {
             free(s);
             return (Val){TYPE_BOOL, {.int_data = 0}};

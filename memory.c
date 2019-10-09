@@ -135,6 +135,7 @@ static void *force_alloc(size_t size) {
 }
 
 static Val move_val(Val val);
+static Bigint *move_bigint(Bigint *bi);
 static String *move_string(String *str);
 static Vector *move_vector(Vector *vec);
 static Env *move_env(Env *env);
@@ -175,6 +176,9 @@ static void garbage_collect(void) {
 
 static Val move_val(Val val) {
     switch (val.type) {
+    case TYPE_BIGINT:
+        val.bigint_data = move_bigint(val.bigint_data);
+        return val;
     case TYPE_STRING:
         val.string_data = move_string(val.string_data);
         return val;
@@ -193,6 +197,21 @@ static Val move_val(Val val) {
     default:
         return val;
     }
+}
+
+static Bigint *move_bigint(Bigint *bi) {
+    if (bi->len == PTRDIFF_MIN) {
+        Bigint *new_ptr;
+        memcpy(&new_ptr, bi->digits, sizeof(Bigint *));
+        return new_ptr;
+    }
+    size_t digits_size = bilabs(bi->len) * sizeof(bi_base);
+    size_t bi_size = sizeof(Bigint) + (digits_size > sizeof(Bigint *) ? digits_size : sizeof(Bigint *));
+    Bigint *new_bi = force_alloc(bi_size);
+    memcpy(new_bi, bi, bi_size);
+    bi->len = PTRDIFF_MIN;
+    memcpy(bi->digits, &new_bi, sizeof(Bigint *));
+    return new_bi;
 }
 
 static String *move_string(String *str) {

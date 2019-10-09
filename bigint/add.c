@@ -1,21 +1,20 @@
-#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "bigint.h"
+#include "../exec_stack.h"
 
-#if PTRDIFF_MAX <= LLONG_MAX
-#define abs llabs
-#else
-#define abs imaxabs
-#endif
-
-// TODO avoid GC of m and n
 static Bigint *bigint_add_sub(Bigint *x, Bigint *y, int subtract) {
+    stack_push((Val){TYPE_BIGINT, {.bigint_data = x}});
+    stack_push((Val){TYPE_BIGINT, {.bigint_data = y}});
+    size_t r_len = bilabs(x->len) > bilabs(y->len) ? bilabs(x->len) : bilabs(y->len);
+    Bigint *r = gc_alloc_bigint(r_len + 1);
+    y = stack_pop().bigint_data;
+    x = stack_pop().bigint_data;
     Bigint *n;
     Bigint *m;
     size_t sub_sign;
-    if (abs(x->len) > abs(y->len)) { // Ensure |n->len| >= |m->len|
+    if (bilabs(x->len) > bilabs(y->len)) { // Ensure |n->len| >= |m->len|
         n = x;
         m = y;
         sub_sign = (x->len >= 0) ? 1 : -1;
@@ -24,9 +23,8 @@ static Bigint *bigint_add_sub(Bigint *x, Bigint *y, int subtract) {
         m = x;
         sub_sign = ((subtract ? -1 : 1) * y->len >= 0) ? 1 : -1;
     }
-    size_t m_len = (size_t)abs(m->len);
-    size_t n_len = (size_t)abs(n->len);
-    Bigint *r = gc_alloc(sizeof(Bigint) + (n_len + 1) * sizeof(bi_base));
+    size_t m_len = (size_t)bilabs(m->len);
+    size_t n_len = (size_t)bilabs(n->len);
     if ((x->len < 0) == ((subtract ? -1 : 1) * y->len < 0)) { // Same signs
         r->len = n_len;
         bi_base carry = 0;
