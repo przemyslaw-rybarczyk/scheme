@@ -13,7 +13,7 @@ static Bigint *bigint_add_sub(Bigint *x, Bigint *y, int subtract) {
     x = stack_pop().bigint_data;
     Bigint *n;
     Bigint *m;
-    size_t sub_sign;
+    int sub_sign;
     if (bilabs(x->len) > bilabs(y->len)) { // Ensure |n->len| >= |m->len|
         n = x;
         m = y;
@@ -26,11 +26,11 @@ static Bigint *bigint_add_sub(Bigint *x, Bigint *y, int subtract) {
     size_t m_len = (size_t)bilabs(m->len);
     size_t n_len = (size_t)bilabs(n->len);
     if ((x->len < 0) == ((subtract ? -1 : 1) * y->len < 0)) { // Same signs
-        r->len = n_len;
+        r->len = (ptrdiff_t)n_len;
         bi_base carry = 0;
         for (size_t i = 0; i < m_len; i++) { // Add common part
             bi_double_base d = (bi_double_base)m->digits[i] + n->digits[i] + carry;
-            r->digits[i] = d;
+            r->digits[i] = (bi_base)d;
             carry = d >> BI_BASE_BITS;
         }
         size_t i = m_len;
@@ -49,7 +49,6 @@ static Bigint *bigint_add_sub(Bigint *x, Bigint *y, int subtract) {
         r->len *= (x->len >= 0) ? 1 : -1;
     } else { // Different signs
         if (m_len == n_len) {
-            bi_base carry = 0;
             while (n_len-- > 0 && m->digits[n_len] == n->digits[n_len]) // Remove common leading digits
                 ;
             n_len++;
@@ -63,7 +62,7 @@ static Bigint *bigint_add_sub(Bigint *x, Bigint *y, int subtract) {
         bi_base carry = 0;
         for (size_t i = 0; i < m_len; i++) { // Subtract common part
             bi_double_base d = (bi_double_base)n->digits[i] - m->digits[i] - carry;
-            r->digits[i] = d;
+            r->digits[i] = (bi_base)d;
             carry = (d >> BI_BASE_BITS) & 1;
         }
         size_t i = m_len;
@@ -77,7 +76,7 @@ static Bigint *bigint_add_sub(Bigint *x, Bigint *y, int subtract) {
         while (n_len-- > 0 && r->digits[n_len] == 0) // Remove leading zeroes
             ;
         n_len++;
-        r->len = n_len * sub_sign;
+        r->len = (ptrdiff_t)n_len * sub_sign;
     }
     return r;
 }

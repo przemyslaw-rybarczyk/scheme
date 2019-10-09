@@ -3,6 +3,7 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 #ifdef __SIZEOF_INT128__
 typedef uint64_t bi_base;
@@ -19,9 +20,9 @@ typedef uint64_t bi_double_base;
 // Avoid using imaxabs if possible since it doesn't get optimized and compiles
 // to a function call.
 #if PTRDIFF_MAX <= LLONG_MAX
-#define bilabs llabs
+#define bilabs(x) ((size_t)llabs(x))
 #else
-#define bilabs imaxabs
+#define bilabs(x) ((size_t)imaxabs(x))
 #endif
 
 /* -- Bigint
