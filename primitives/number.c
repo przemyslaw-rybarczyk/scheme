@@ -4,6 +4,7 @@
 #include "number.h"
 #include "../types.h"
 #include "../bigint/add.h"
+#include "../bigint/mul.h"
 #include "assert.h"
 
 Val add_prim(Val *args, uint32_t num) {
@@ -93,6 +94,9 @@ Val sub_prim(Val *args, uint32_t num) {
 }
 
 Val mul_prim(Val *args, uint32_t num) {
+    if ((args[0].type == TYPE_BIGINT || args[0].type == TYPE_CONST_BIGINT) && (args[1].type == TYPE_BIGINT || args[1].type == TYPE_CONST_BIGINT)) {
+        return (Val){TYPE_BIGINT, {.bigint_data = bigint_mul(args[0], args[1])}};
+    }
     long long int_prod = 1;
     double float_prod;
     int float_val = 0;

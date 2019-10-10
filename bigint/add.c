@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "bigint.h"
+#include "../types.h"
 #include "../exec_stack.h"
 
 /* -- bigint_add_sub
@@ -28,8 +29,8 @@ static Bigint *bigint_add_sub(Val xv, Val yv, int subtract) {
         m = x;
         sub_sign = ((subtract ? -1 : 1) * y->len >= 0) ? 1 : -1;
     }
-    size_t m_len = (size_t)bilabs(m->len);
-    size_t n_len = (size_t)bilabs(n->len);
+    size_t m_len = bilabs(m->len);
+    size_t n_len = bilabs(n->len);
     if ((x->len < 0) == ((subtract ? -1 : 1) * y->len < 0)) { // Same signs
         r->len = (ptrdiff_t)n_len;
         bi_base carry = 0;
