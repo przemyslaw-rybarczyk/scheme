@@ -4,8 +4,12 @@
 #include "../types.h"
 #include "../exec_stack.h"
 
-// TODO handle multiplication by zero separately
 Bigint *bigint_mul(Val xv, Val yv) {
+    if (xv.bigint_data->len == 0 || yv.bigint_data->len == 0) {
+        Bigint *r = gc_alloc_bigint(0);
+        r->len = 0;
+        return r;
+    }
     size_t r_len = bilabs(xv.bigint_data->len) + bilabs(yv.bigint_data->len);
     stack_push(xv);
     stack_push(yv);
@@ -24,6 +28,8 @@ Bigint *bigint_mul(Val xv, Val yv) {
         }
         r->digits[i + n_len] = carry;
     }
+    if (r->digits[r_len - 1] == 0)
+        r_len--;
     r->len = (ptrdiff_t)r_len * ((n->len >= 0) ? 1 : -1) * ((m->len >= 0) ? 1 : -1);
     return r;
 }
