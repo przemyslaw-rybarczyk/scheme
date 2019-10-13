@@ -13,7 +13,7 @@ Bigint *bigint_mul(Val xv, Val yv) {
     size_t r_len = bilabs(xv.bigint_data->len) + bilabs(yv.bigint_data->len);
     stack_push(xv);
     stack_push(yv);
-    Bigint *r = gc_alloc_bigint(r_len + 1);
+    Bigint *r = gc_alloc_bigint(r_len);
     memset(r->digits, 0, r_len * sizeof(bi_base));
     Bigint *n = stack_pop().bigint_data;
     Bigint *m = stack_pop().bigint_data;
