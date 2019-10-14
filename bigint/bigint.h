@@ -5,13 +5,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#if defined(UINT8_BIGINT_BASE)
-    typedef uint8_t bi_base;
-    typedef uint16_t bi_double_base;
-    #define BI_BASE_BITS 8
-    #define BI_BASE_MAX UINT8_MAX
-    #define clz(x) (__builtin_clz(x) - ((8 * __SIZEOF_INT__) - 8))
-#elif defined(__SIZEOF_INT128__)
+#ifdef __SIZEOF_INT128__
     typedef uint64_t bi_base;
     typedef __uint128_t bi_double_base;
     #define BI_BASE_BITS 64
