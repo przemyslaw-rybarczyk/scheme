@@ -5,16 +5,34 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#ifdef __SIZEOF_INT128__
-typedef uint64_t bi_base;
-typedef __uint128_t bi_double_base;
-#define BI_BASE_BITS 64
-#define BI_BASE_MAX UINT64_MAX
+#if defined(UINT8_BIGINT_BASE)
+    typedef uint8_t bi_base;
+    typedef uint16_t bi_double_base;
+    #define BI_BASE_BITS 8
+    #define BI_BASE_MAX UINT8_MAX
+    #define clz(x) (__builtin_clz(x) - ((8 * __SIZEOF_INT__) - 8))
+#elif defined(__SIZEOF_INT128__)
+    typedef uint64_t bi_base;
+    typedef __uint128_t bi_double_base;
+    #define BI_BASE_BITS 64
+    #define BI_BASE_MAX UINT64_MAX
+    #if ULLONG_MAX == UINT64_MAX
+        #define clz __builtin_clzll
+    #else
+        #define clz(x) (__builtin_clzll(x) - ((8 * __SIZEOF_LONG_LONG__) - 64))
+    #endif
 #else
-typedef uint32_t bi_base;
-typedef uint64_t bi_double_base;
-#define BI_BASE_BITS 32
-#define BI_BASE_MAX UINT32_MAX
+    typedef uint32_t bi_base;
+    typedef uint64_t bi_double_base;
+    #define BI_BASE_BITS 32
+    #define BI_BASE_MAX UINT32_MAX
+    #if ULONG_MAX == UINT32_MAX
+        #define clz __builtin_clzl
+    #elif UINT_MAX == UINT32_MAX
+        #define clz __builtin_clz
+    #else
+        #define clz(x) (__builtin_clzl(x) - ((8 * __SIZEOF_LONG__) - 32))
+    #endif
 #endif
 
 // Avoid using imaxabs if possible since it doesn't get optimized and compiles
