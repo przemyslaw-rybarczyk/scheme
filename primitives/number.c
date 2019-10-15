@@ -3,9 +3,7 @@
 
 #include "number.h"
 #include "../types.h"
-#include "../bigint/add.h"
-#include "../bigint/mul.h"
-#include "../bigint/div.h"
+#include "../bigint/ops.h"
 #include "assert.h"
 
 Val add_prim(Val *args, uint32_t num) {
