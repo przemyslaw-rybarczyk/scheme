@@ -5,6 +5,24 @@
 #include "../exec_stack.h"
 #include "../safestd.h"
 
+Bigint *bigint_div_base(Val xv, bi_base y, int y_sign) {
+    size_t len = bilabs(xv.bigint_data->len);
+    stack_push(xv);
+    Bigint *r = gc_alloc_bigint(len);
+    Bigint *x = stack_pop().bigint_data;
+    r->digits[len - 1] = x->digits[len - 1] / y;
+    bi_base carry = x->digits[len - 1] % y;
+    for (size_t i = len - 1; i-- > 0; ) {
+        bi_double_base x_top = (bi_double_base)carry << BI_BASE_BITS | x->digits[i];
+        r->digits[i] = (bi_base)(x_top / y);
+        carry = x_top % y;
+    }
+    if (r->digits[len - 1] == 0)
+        len--;
+    r->len = (ptrdiff_t)len * ((x->len >= 0) ? 1 : -1) * y_sign;
+    return r;
+}
+
 Bigint *bigint_div(Val xv, Val yv) {
     // Division is performed using Algorithm D from chapter 4.3.1 of volume 2
     // of The Art of Computer Programming.
@@ -14,6 +32,9 @@ Bigint *bigint_div(Val xv, Val yv) {
         Bigint *r = gc_alloc_bigint(0);
         r->len = 0;
         return r;
+    }
+    if (y_len == 1) {
+        return bigint_div_base(xv, yv.bigint_data->digits[0], yv.bigint_data->len >= 0 ? 1 : -1);
     }
     size_t r_len = x_len - y_len;
     stack_push(xv);
@@ -48,13 +69,10 @@ Bigint *bigint_div(Val xv, Val yv) {
         bi_double_base q = x_top / y[y_len - 1];
         bi_double_base rem = x_top % y[y_len - 1];
         // Reduce error of estimate
-//      Uncomment when division by one digit is separated
-//      if (q > BI_BASE_MAX || q * y[y_len - 2] > ((rem << BI_BASE_BITS) | x[i + y_len - 2])) {
-        if (q > BI_BASE_MAX || (y_len > 1 && q * y[y_len - 2] > ((rem << BI_BASE_BITS) | x[i + y_len - 2]))) {
+        if (q > BI_BASE_MAX || q * y[y_len - 2] > ((rem << BI_BASE_BITS) | x[i + y_len - 2])) {
             q--;
             rem += y[y_len - 1];
-//          if (rem <= BI_BASE_MAX && (q > BI_BASE_MAX || q * y[y_len - 2] > ((rem << BI_BASE_BITS) | x[i + y_len - 2]))) {
-            if (rem <= BI_BASE_MAX && (q > BI_BASE_MAX || (y_len > 1 && q * y[y_len - 2] > ((rem << BI_BASE_BITS) | x[i + y_len - 2])))) {
+            if (rem <= BI_BASE_MAX && (q > BI_BASE_MAX || q * y[y_len - 2] > ((rem << BI_BASE_BITS) | x[i + y_len - 2]))) {
                 q--;
                 rem += y[y_len - 1];
             }
