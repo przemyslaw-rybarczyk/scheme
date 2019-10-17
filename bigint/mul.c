@@ -1,22 +1,14 @@
 #include <string.h>
 
 #include "bigint.h"
-#include "../types.h"
-#include "../exec_stack.h"
 
-Bigint *bigint_mul(Val xv, Val yv) {
-    if (xv.bigint_data->len == 0 || yv.bigint_data->len == 0) {
-        Bigint *r = gc_alloc_bigint(0);
+Bigint *bigint_mul(Bigint *m, Bigint *n, Bigint *r) {
+    if (m->len == 0 || n->len == 0) {
         r->len = 0;
         return r;
     }
-    size_t r_len = bilabs(xv.bigint_data->len) + bilabs(yv.bigint_data->len);
-    stack_push(xv);
-    stack_push(yv);
-    Bigint *r = gc_alloc_bigint(r_len);
+    size_t r_len = bilabs(m->len) + bilabs(n->len);
     memset(r->digits, 0, r_len * sizeof(bi_base));
-    Bigint *n = stack_pop().bigint_data;
-    Bigint *m = stack_pop().bigint_data;
     size_t n_len = bilabs(n->len);
     size_t m_len = bilabs(m->len);
     for (size_t i = 0; i < m_len; i++) {

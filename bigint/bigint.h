@@ -15,6 +15,7 @@
     #else
         #define clz(x) (__builtin_clzll(x) - ((8 * __SIZEOF_LONG_LONG__) - 64))
     #endif
+    #define ctz __builtin_ctzll
 #else
     typedef uint32_t bi_base;
     typedef uint64_t bi_double_base;
@@ -27,6 +28,7 @@
     #else
         #define clz(x) (__builtin_clzl(x) - ((8 * __SIZEOF_LONG__) - 32))
     #endif
+    #define ctz __builtin_ctzl
 #endif
 
 // Avoid using imaxabs if possible since it doesn't get optimized and compiles

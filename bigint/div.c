@@ -1,15 +1,10 @@
 #include <string.h>
 
 #include "bigint.h"
-#include "../types.h"
-#include "../exec_stack.h"
 #include "../safestd.h"
 
-Bigint *bigint_div_base(Val xv, bi_base y, int y_sign) {
-    size_t len = bilabs(xv.bigint_data->len);
-    stack_push(xv);
-    Bigint *r = gc_alloc_bigint(len);
-    Bigint *x = stack_pop().bigint_data;
+Bigint *bigint_div_base(Bigint *x, bi_base y, Bigint *r, int y_sign) {
+    size_t len = bilabs(x->len);
     r->digits[len - 1] = x->digits[len - 1] / y;
     bi_base carry = x->digits[len - 1] % y;
     for (size_t i = len - 1; i-- > 0; ) {
@@ -23,25 +18,19 @@ Bigint *bigint_div_base(Val xv, bi_base y, int y_sign) {
     return r;
 }
 
-Bigint *bigint_div(Val xv, Val yv) {
+Bigint *bigint_div(Bigint *x0, Bigint *y0, Bigint *r) {
     // Division is performed using Algorithm D from chapter 4.3.1 of volume 2
     // of The Art of Computer Programming.
-    size_t x_len = bilabs(xv.bigint_data->len) + 1;
-    size_t y_len = bilabs(yv.bigint_data->len);
+    size_t x_len = bilabs(x0->len) + 1;
+    size_t y_len = bilabs(y0->len);
     if (x_len - 1 < y_len) {
-        Bigint *r = gc_alloc_bigint(0);
         r->len = 0;
         return r;
     }
     if (y_len == 1) {
-        return bigint_div_base(xv, yv.bigint_data->digits[0], yv.bigint_data->len >= 0 ? 1 : -1);
+        return bigint_div_base(x0, y0->digits[0], r, y0->len >= 0 ? 1 : -1);
     }
     size_t r_len = x_len - y_len;
-    stack_push(xv);
-    stack_push(yv);
-    Bigint *r = gc_alloc_bigint(r_len);
-    Bigint *y0 = stack_pop().bigint_data;
-    Bigint *x0 = stack_pop().bigint_data;
     // Normalize x and y so that highest bit of y is set
     bi_base *y = s_malloc(y_len * sizeof(bi_base));
     bi_base *x = s_malloc(x_len * sizeof(bi_base));

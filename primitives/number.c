@@ -3,12 +3,14 @@
 
 #include "number.h"
 #include "../types.h"
+#include "../exec_stack.h"
 #include "../bigint/ops.h"
 #include "assert.h"
 
 Val add_prim(Val *args, uint32_t num) {
     if ((args[0].type == TYPE_BIGINT || args[0].type == TYPE_CONST_BIGINT) && (args[1].type == TYPE_BIGINT || args[1].type == TYPE_CONST_BIGINT)) {
-        return (Val){TYPE_BIGINT, {.bigint_data = bigint_add(args[0], args[1])}};
+        Bigint *r = gc_alloc_bigint(BIGINT_ADD_LEN(args[0].bigint_data, args[1].bigint_data));
+        return (Val){TYPE_BIGINT, {.bigint_data = bigint_add(args[0].bigint_data, args[1].bigint_data, r)}};
     }
     long long int_sum = 0;
     double float_sum;
@@ -40,7 +42,8 @@ Val add_prim(Val *args, uint32_t num) {
 
 Val sub_prim(Val *args, uint32_t num) {
     if ((args[0].type == TYPE_BIGINT || args[0].type == TYPE_CONST_BIGINT) && (args[1].type == TYPE_BIGINT || args[1].type == TYPE_CONST_BIGINT)) {
-        return (Val){TYPE_BIGINT, {.bigint_data = bigint_sub(args[0], args[1])}};
+        Bigint *r = gc_alloc_bigint(BIGINT_SUB_LEN(args[0].bigint_data, args[1].bigint_data));
+        return (Val){TYPE_BIGINT, {.bigint_data = bigint_sub(args[0].bigint_data, args[1].bigint_data, r)}};
     }
     long long int_diff = 0;
     double float_diff = 0;
@@ -94,7 +97,8 @@ Val sub_prim(Val *args, uint32_t num) {
 
 Val mul_prim(Val *args, uint32_t num) {
     if ((args[0].type == TYPE_BIGINT || args[0].type == TYPE_CONST_BIGINT) && (args[1].type == TYPE_BIGINT || args[1].type == TYPE_CONST_BIGINT)) {
-        return (Val){TYPE_BIGINT, {.bigint_data = bigint_mul(args[0], args[1])}};
+        Bigint *r = gc_alloc_bigint(BIGINT_MUL_LEN(args[0].bigint_data, args[1].bigint_data));
+        return (Val){TYPE_BIGINT, {.bigint_data = bigint_mul(args[0].bigint_data, args[1].bigint_data, r)}};
     }
     long long int_prod = 1;
     double float_prod;
@@ -126,7 +130,8 @@ Val mul_prim(Val *args, uint32_t num) {
 
 Val div_prim(Val *args, uint32_t num) {
     if ((args[0].type == TYPE_BIGINT || args[0].type == TYPE_CONST_BIGINT) && (args[1].type == TYPE_BIGINT || args[1].type == TYPE_CONST_BIGINT)) {
-        return (Val){TYPE_BIGINT, {.bigint_data = bigint_div(args[0], args[1])}};
+        Bigint *r = gc_alloc_bigint(BIGINT_DIV_LEN(args[0].bigint_data, args[1].bigint_data));
+        return (Val){TYPE_BIGINT, {.bigint_data = bigint_div(args[0].bigint_data, args[1].bigint_data, r)}};
     }
     double quot = 0;
     args_assert(num != 0);
