@@ -170,6 +170,14 @@ Val div_prim(Val *args, uint32_t num) {
     return (Val){TYPE_FLOAT, {.float_data = quot}};
 }
 
+Val gcd_prim(Val *args, uint32_t num) {
+    if ((args[0].type == TYPE_BIGINT || args[0].type == TYPE_CONST_BIGINT) && (args[1].type == TYPE_BIGINT || args[1].type == TYPE_CONST_BIGINT)) {
+        Bigint *r = gc_alloc_bigint(BIGINT_GCD_LEN(args[0].bigint_data, args[1].bigint_data));
+        return (Val){TYPE_BIGINT, {.bigint_data = bigint_gcd(args[0].bigint_data, args[1].bigint_data, r)}};
+    }
+    return (Val){TYPE_VOID};
+}
+
 Val equ_prim(Val *args, uint32_t num) {
     if (num == 0)
         return true_val;

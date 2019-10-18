@@ -3,6 +3,7 @@
 #include <uchar.h>
 
 #include "bigint.h"
+#include "string.h"
 #include "../safestd.h"
 
 bi_base read_digit(char32_t c) {

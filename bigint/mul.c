@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include "bigint.h"
+#include "ops.h"
 
 Bigint *bigint_mul(Bigint *m, Bigint *n, Bigint *r) {
     if (m->len == 0 || n->len == 0) {

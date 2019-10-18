@@ -1,4 +1,5 @@
 #include "bigint.h"
+#include "ops.h"
 #include "../memory.h"
 
 Bigint *gc_alloc_bigint(size_t len) {

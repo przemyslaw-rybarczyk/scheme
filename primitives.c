@@ -76,6 +76,7 @@ static struct CString_binding cstring_r5rs_bindings[] = {
     PRIM("-", sub_prim),
     PRIM("*", mul_prim),
     PRIM("/", div_prim),
+    PRIM("gcd", gcd_prim),
     PRIM("=", equ_prim),
     PRIM("<", lt_prim),
     PRIM(">", gt_prim),

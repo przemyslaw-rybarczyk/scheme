@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "bigint.h"
+#include "ops.h"
 
 static Bigint *bigint_add_sub(Bigint *x, Bigint *y, Bigint *r, int subtract) {
     Bigint *n;

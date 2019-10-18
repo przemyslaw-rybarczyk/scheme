@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include "bigint.h"
+#include "ops.h"
 #include "../safestd.h"
 
 Bigint *bigint_div_base(Bigint *x, bi_base y, Bigint *r, int y_sign) {
