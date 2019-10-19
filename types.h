@@ -1,11 +1,14 @@
 #pragma once
 
+#include <complex.h>
 #include <inttypes.h>
 #include <uchar.h>
 #include "bigint/bigint.h"
 
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 
+struct Fraction;
+struct Complex;
 struct Pair;
 struct String;
 struct Vector;
@@ -70,8 +73,8 @@ typedef enum Type {
     TYPE_INT,
     TYPE_BIGINT,
     TYPE_CONST_BIGINT,
-    TYPE_RATIONAL,
-    TYPE_CONST_RATIONAL,
+    TYPE_FRACTION,
+    TYPE_CONST_FRACTION,
     TYPE_FLOAT,
     TYPE_FLOAT_COMPLEX,
     TYPE_CONST_FLOAT_COMPLEX,
@@ -105,7 +108,10 @@ typedef struct Val {
     union {
         long long int_data;
         Bigint *bigint_data;
+        struct Fraction *fraction_data;
         double float_data;
+        double complex *float_complex_data;
+        struct Complex *complex_data;
         char32_t char_data;
         struct String *string_data;
         struct Val (*prim_data)(struct Val *, uint32_t);
@@ -120,9 +126,16 @@ typedef struct Val {
     };
 } Val;
 
-/* -- Pair
- * Represents a cons pair of two vals - `car` and `cdr`.
- */
+typedef struct Fraction {
+    Bigint *numerator;
+    Bigint *denominator;
+} Fraction;
+
+// Each value must be of a real number type.
+typedef struct Complex {
+    Val real;
+    Val imag;
+} Complex;
 
 typedef struct Pair {
     Val car;
