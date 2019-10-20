@@ -17,6 +17,10 @@ struct Global_env;
 struct High_prim_return;
 struct Val;
 
+typedef int64_t small_int;
+#define SMALL_INT_MIN LLONG_MIN
+#define SMALL_INT_MAX LLONG_MAX
+
 typedef struct High_prim_return High_prim(struct Val *, uint32_t);
 
 /* -- Print_control
@@ -106,7 +110,7 @@ typedef enum Type {
 typedef struct Val {
     enum Type type;
     union {
-        long long int_data;
+        small_int int_data;
         Bigint *bigint_data;
         struct Fraction *fraction_data;
         double float_data;
