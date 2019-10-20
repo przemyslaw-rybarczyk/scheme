@@ -159,7 +159,8 @@ Val get_token(FILE *f) {
     parser_buffer = (char32_t)c;
 
     // numeric literal
-    if (('0' <= s[0] && s[0] <= '9') || ((s[0] == '+' || s[0] == '-') && i > 1)) {
+    if (('0' <= s[0] && s[0] <= '9') ||
+            (i > 1 && (s[0] == '+' || s[0] == '-' || (s[0] == '.' && '0' <= s[1] && s[1] <= '9')))) {
         char *num = s_malloc(i + 1);
         for (size_t j = 0; j < i; j++) {
             if (('0' <= s[j] && s[j] <= '9') || s[j] == '+' || s[j] == '-' || s[j] == '.')
