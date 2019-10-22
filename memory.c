@@ -69,14 +69,14 @@ void setup_memory(void) {
  *
  * Each type of data is turned into a 'broken heart' after being moved to the
  * new heap.
- * +-----------+-------------------------------------+---------------------------+
- * | data type | conditon for broken heart           | field holding new address |
- * +-----------+-------------------------------------+---------------------------+
- * | Env       | env->size == UINT32_MAX             | env->outer                |
- * | Lambda    | lambda->body == UINT32_MAX          | lambda->new_ptr           |
- * | Pair      | pair->car.type == TYPE_BROKEN_HEART | pair->car.pair_data       |
- * | String    | str->chars[0] == UINT32_MAX         | str->new_ptr              |
- * +-----------+-------------------------------------+---------------------------+
+ * ┌───────────┬─────────────────────────────────────┬───────────────────────────┐
+ * │ data type │ conditon for broken heart           │ field holding new address │
+ * ├───────────┼─────────────────────────────────────┼───────────────────────────┤
+ * │ Env       │ env->size == UINT32_MAX             │ env->outer                │
+ * │ Lambda    │ lambda->body == UINT32_MAX          │ lambda->new_ptr           │
+ * │ Pair      │ pair->car.type == TYPE_BROKEN_HEART │ pair->car.pair_data       │
+ * │ String    │ str->chars[0] == UINT32_MAX         │ str->new_ptr              │
+ * └───────────┴─────────────────────────────────────┴───────────────────────────┘
  *
  * If a broken heart value is detected, the data has already been moved and the
  * moving function simply returns the address contained within it. Otherwise it
