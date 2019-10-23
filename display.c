@@ -21,6 +21,23 @@ static void print_val_(Val val0, int display_style) {
         case TYPE_CONST_BIGINT:
             print_bigint_hexadecimal(val.bigint_data);
             break;
+        case TYPE_FRACTION:
+        case TYPE_CONST_FRACTION:
+            print_bigint_hexadecimal(val.fraction_data->numerator);
+            printf("/");
+            print_bigint_hexadecimal(val.fraction_data->denominator);
+            break;
+        case TYPE_COMPLEX:
+        case TYPE_CONST_COMPLEX:
+            print_val_(val.complex_data->real, display_style);
+            printf("+");
+            print_val_(val.complex_data->imag, display_style);
+            printf("i");
+            break;
+        case TYPE_FLOAT_COMPLEX:
+        case TYPE_CONST_FLOAT_COMPLEX:
+            printf("%f+%fi", creal(*(val.float_complex_data)), cimag(*(val.float_complex_data)));
+            break;
         case TYPE_FLOAT:
             printf("%.16g", val.float_data);
             if ((float)(int)val.float_data == val.float_data)

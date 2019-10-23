@@ -1,10 +1,13 @@
+#include <complex.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "number.h"
 #include "../types.h"
-#include "../exec_stack.h"
 #include "../bigint/ops.h"
+#include "../exec_stack.h"
+#include "../memory.h"
+#include "../safestd.h"
 #include "assert.h"
 
 Val add_prim(Val *args, uint32_t num) {
@@ -130,8 +133,15 @@ Val mul_prim(Val *args, uint32_t num) {
 
 Val div_prim(Val *args, uint32_t num) {
     if ((args[0].type == TYPE_BIGINT || args[0].type == TYPE_CONST_BIGINT) && (args[1].type == TYPE_BIGINT || args[1].type == TYPE_CONST_BIGINT)) {
-        Bigint *r = gc_alloc_bigint(BIGINT_DIV_LEN(args[0].bigint_data, args[1].bigint_data));
-        return (Val){TYPE_BIGINT, {.bigint_data = bigint_div(args[0].bigint_data, args[1].bigint_data, r)}};
+        Fraction *r = gc_alloc(sizeof(Fraction));
+        Bigint *d = s_malloc(sizeof(Bigint) + BIGINT_GCD_LEN(args[0].bigint_data, args[1].bigint_data) * sizeof(bi_base));
+        bigint_gcd(args[0].bigint_data, args[1].bigint_data, d);
+        r->numerator = gc_alloc_bigint(BIGINT_DIV_LEN(args[0].bigint_data, d));
+        r->denominator = gc_alloc_bigint(BIGINT_DIV_LEN(args[1].bigint_data, d));
+        bigint_div(args[0].bigint_data, d, r->numerator);
+        bigint_div(args[1].bigint_data, d, r->denominator);
+        free(d);
+        return (Val){TYPE_FRACTION, {.fraction_data = r}};
     }
     double quot = 0;
     args_assert(num != 0);
@@ -168,6 +178,14 @@ Val div_prim(Val *args, uint32_t num) {
         }
     }
     return (Val){TYPE_FLOAT, {.float_data = quot}};
+}
+
+Val quotient_prim(Val *args, uint32_t num) {
+    if ((args[0].type == TYPE_BIGINT || args[0].type == TYPE_CONST_BIGINT) && (args[1].type == TYPE_BIGINT || args[1].type == TYPE_CONST_BIGINT)) {
+        Bigint *r = gc_alloc_bigint(BIGINT_DIV_LEN(args[0].bigint_data, args[1].bigint_data));
+        return (Val){TYPE_BIGINT, {.bigint_data = bigint_div(args[0].bigint_data, args[1].bigint_data, r)}};
+    }
+    return (Val){TYPE_VOID};
 }
 
 Val gcd_prim(Val *args, uint32_t num) {
@@ -296,4 +314,17 @@ Val gt_prim(Val *args, uint32_t num) {
         }
     }
     return true_val;
+}
+
+Val make_rectangular_prim(Val *args, uint32_t num) {
+    args_assert(num == 2);
+    if (args[0].type == TYPE_FLOAT && args[1].type == TYPE_FLOAT) {
+        double complex *z = gc_alloc(sizeof(double complex));
+        *z = args[0].float_data + args[1].float_data * I;
+        return (Val){TYPE_FLOAT_COMPLEX, {.float_complex_data = z}};
+    }
+    Complex *z = gc_alloc(sizeof(Complex));
+    z->real = args[0];
+    z->imag = args[1];
+    return (Val){TYPE_COMPLEX, {.complex_data = z}};
 }
