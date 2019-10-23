@@ -7,6 +7,83 @@
 #include "insts.h"
 #include "safestd.h"
 
+size_t sprint_number_size(Val val) {
+    switch (val.type) {
+    case TYPE_INT:
+        return (size_t)snprintf(NULL, 0, "%"PRId64, val.int_data);
+    case TYPE_BIGINT:
+    case TYPE_CONST_BIGINT:
+        return 20 * bilabs(val.bigint_data->len) + 1;
+    case TYPE_FRACTION:
+    case TYPE_CONST_FRACTION:
+        return 20 * bilabs(val.fraction_data->numerator->len) + 20 * bilabs(val.fraction_data->denominator->len) + 2;
+    case TYPE_FLOAT:
+        return (size_t)snprintf(NULL, 0, "%f", val.float_data);
+    case TYPE_COMPLEX:
+    case TYPE_CONST_COMPLEX:
+        return sprint_number_size(val.complex_data->real) + sprint_number_size(val.complex_data->imag) + 2;
+    case TYPE_FLOAT_COMPLEX:
+    case TYPE_CONST_FLOAT_COMPLEX:
+        return (size_t)snprintf(NULL, 0, "%f", creal(*(val.float_complex_data))) + (size_t)snprintf(NULL, 0, "%f", cimag(*(val.float_complex_data))) + 2;
+    default:
+        eprintf("Internal error in sprint_number_size(): not a number\n");
+        exit(1);
+    }
+}
+
+size_t sprint_number(Val val, char32_t *chars) {
+    switch (val.type) {
+    case TYPE_INT: {
+        size_t n = (size_t)snprintf(NULL, 0, "%"PRId64, val.int_data);
+        char *s = s_malloc(n + 1);
+        sprintf(s, "%"PRId64, val.int_data);
+        for (size_t i = 0; s[i] != '\0'; i++)
+            chars[i] = (char32_t)s[i];
+        free(s);
+        return n;
+    }
+    case TYPE_BIGINT:
+    case TYPE_CONST_BIGINT: {
+        return bigint_sprint_hexdecimal(val.bigint_data, chars);
+    }
+    case TYPE_FRACTION:
+    case TYPE_CONST_FRACTION: {
+        size_t m = bigint_sprint_hexdecimal(val.fraction_data->numerator, chars);
+        chars[m] = '/';
+        size_t n = bigint_sprint_hexdecimal(val.fraction_data->denominator, chars + m + 1);
+        return m + n + 1;
+    }
+    case TYPE_FLOAT: {
+        size_t n = (size_t)snprintf(NULL, 0, "%f", val.float_data);
+        char *s = s_malloc(n + 1);
+        sprintf(s, "%f", val.float_data);
+        for (size_t i = 0; s[i] != '\0'; i++)
+            chars[i] = (char32_t)s[i];
+        free(s);
+        return n;
+    }
+    case TYPE_COMPLEX:
+    case TYPE_CONST_COMPLEX: {
+        size_t m = sprint_number(val.complex_data->real, chars);
+        chars[m] = '+';
+        size_t n = sprint_number(val.complex_data->imag, chars + m + 1);
+        chars[m + n + 1] = 'i';
+        return m + n + 2;
+    }
+    case TYPE_FLOAT_COMPLEX:
+    case TYPE_CONST_FLOAT_COMPLEX: {
+        size_t m = sprint_number((Val){TYPE_FLOAT, .float_data = creal(*(val.float_complex_data))}, chars);
+        chars[m] = '+';
+        size_t n = sprint_number((Val){TYPE_FLOAT, .float_data = cimag(*(val.float_complex_data))}, chars + m + 1);
+        chars[m + n + 1] = 'i';
+        return m + n + 2;
+    }
+    default:
+        eprintf("Internal error in sprint_number(): not a number\n");
+        exit(1);
+    }
+}
+
 static void print_val_(Val val0, int display_style) {
     stack_push((Val){TYPE_PRINT_CONTROL, {.print_control_data = PRINT_CONTROL_END}});
     stack_push(val0);
@@ -15,34 +92,21 @@ static void print_val_(Val val0, int display_style) {
         val = stack_pop();
         switch(val.type) {
         case TYPE_INT:
-            printf("%lld", val.int_data);
-            break;
         case TYPE_BIGINT:
         case TYPE_CONST_BIGINT:
-            print_bigint_hexadecimal(val.bigint_data);
-            break;
         case TYPE_FRACTION:
         case TYPE_CONST_FRACTION:
-            print_bigint_hexadecimal(val.fraction_data->numerator);
-            printf("/");
-            print_bigint_hexadecimal(val.fraction_data->denominator);
-            break;
+        case TYPE_FLOAT:
         case TYPE_COMPLEX:
         case TYPE_CONST_COMPLEX:
-            print_val_(val.complex_data->real, display_style);
-            printf("+");
-            print_val_(val.complex_data->imag, display_style);
-            printf("i");
-            break;
         case TYPE_FLOAT_COMPLEX:
-        case TYPE_CONST_FLOAT_COMPLEX:
-            printf("%f+%fi", creal(*(val.float_complex_data)), cimag(*(val.float_complex_data)));
+        case TYPE_CONST_FLOAT_COMPLEX: {
+            String *str = s_malloc(sizeof(String) + sprint_number_size(val) * sizeof(char32_t));
+            str->len = sprint_number(val, str->chars);
+            puts32(str);
+            free(str);
             break;
-        case TYPE_FLOAT:
-            printf("%.16g", val.float_data);
-            if ((float)(int)val.float_data == val.float_data)
-                putchar('.');
-            break;
+        }
         case TYPE_BOOL:
             printf(val.int_data ? "#t" : "#f");
             break;

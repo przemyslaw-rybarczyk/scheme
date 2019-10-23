@@ -14,10 +14,10 @@ bi_base read_digit(char32_t c) {
     return c - '0';
 }
 
-char write_digit(char i) {
+char32_t write_digit(int i) {
     if (i >= 10)
-        return i - 10 + 'a';
-    return i + '0';
+        return (char32_t)(i - 10 + 'a');
+    return (char32_t)(i + '0');
 }
 
 #define HEX_CPD (sizeof(bi_base) * 2)
@@ -42,17 +42,18 @@ Bigint *read_bigint_hexadecimal(size_t len, char32_t *chars) {
     return bi;
 }
 
-void print_bigint_hexadecimal(Bigint *bi) {
+size_t bigint_sprint_hexdecimal(Bigint *bi, char32_t *chars) {
+    size_t k = 0;
     size_t len;
     if (bi->len < 0) {
-        printf("-");
+        chars[k++] = '-';
         len = (size_t)(-bi->len);
     } else {
         len = (size_t)bi->len;
     }
-    printf("#x");
     for (size_t i = len; i-- > 0; ) {
         for (int j = HEX_CPD; j-- > 0; )
-            printf("%c", write_digit((char)((bi->digits[i] >> (4 * j)) & 0xF)));
+            chars[k++] = write_digit((bi->digits[i] >> (4 * j)) & 0xF);
     }
+    return k;
 }
