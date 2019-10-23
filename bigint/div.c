@@ -4,32 +4,45 @@
 #include "ops.h"
 #include "../safestd.h"
 
-Bigint *bigint_div_base(Bigint *x, bi_base y, Bigint *r, int y_sign) {
+static Bigint *bigint_div_base(Bigint *x, bi_base y, Bigint *r, int y_sign, int mod) {
     size_t len = bilabs(x->len);
-    r->digits[len - 1] = x->digits[len - 1] / y;
+    if (!mod)
+        r->digits[len - 1] = x->digits[len - 1] / y;
     bi_base carry = x->digits[len - 1] % y;
     for (size_t i = len - 1; i-- > 0; ) {
         bi_double_base x_top = (bi_double_base)carry << BI_BASE_BITS | x->digits[i];
-        r->digits[i] = (bi_base)(x_top / y);
+        if (!mod)
+            r->digits[i] = (bi_base)(x_top / y);
         carry = x_top % y;
     }
-    if (r->digits[len - 1] == 0)
-        len--;
-    r->len = (ptrdiff_t)len * ((x->len >= 0) ? 1 : -1) * y_sign;
-    return r;
-}
-
-Bigint *bigint_div(Bigint *x0, Bigint *y0, Bigint *r) {
-    // Division is performed using Algorithm D from chapter 4.3.1 of volume 2
-    // of The Art of Computer Programming.
-    size_t x_len = bilabs(x0->len) + 1;
-    size_t y_len = bilabs(y0->len);
-    if (x_len - 1 < y_len) {
-        r->len = 0;
+    if (mod) {
+        r->len = carry != 0;
+        if (carry != 0)
+            r->digits[0] = carry;
+        return r;
+    } else {
+        if (r->digits[len - 1] == 0)
+            len--;
+        r->len = (ptrdiff_t)len * ((x->len >= 0) ? 1 : -1) * y_sign;
         return r;
     }
+}
+
+static Bigint *bigint_div_mod(Bigint *x0, Bigint *y0, Bigint *r, int mod) {
+    // Division and modulo is performed using Algorithm D from chapter 4.3.1
+    // of volume 2 of The Art of Computer Programming.
+    size_t x_len = bilabs(x0->len) + 1;
+    size_t y_len = bilabs(y0->len);
+    if (x_len - 1 < y_len) { // |x0->len| < |y0->len|
+        if (mod) {
+            return x0;
+        } else {
+            r->len = 0;
+            return r;
+        }
+    }
     if (y_len == 1) {
-        return bigint_div_base(x0, y0->digits[0], r, y0->len >= 0 ? 1 : -1);
+        return bigint_div_base(x0, y0->digits[0], r, y0->len >= 0 ? 1 : -1, mod);
     }
     size_t r_len = x_len - y_len;
     // Normalize x and y so that highest bit of y is set
@@ -91,12 +104,37 @@ Bigint *bigint_div(Bigint *x0, Bigint *y0, Bigint *r) {
             x[i + y_len] += carry;
             q--;
         }
-        r->digits[i] = (bi_base)q;
+        if (!mod)
+            r->digits[i] = (bi_base)q;
+    }
+    if (mod) {
+        if (shift_amount) {
+            r->digits[0] = x[0] >> shift_amount;
+            for (size_t i = 1; i < y_len; i++) {
+                r->digits[i - 1] |= x[i] << (BI_BASE_BITS - shift_amount);
+                r->digits[i] = x[i] >> shift_amount;
+            }
+        } else {
+            memcpy(r->digits, x, y_len * sizeof(bi_base));
+        }
+        while (y_len-- > 0 && r->digits[y_len] == 0)
+            ;
+        y_len++;
+        r->len = (ptrdiff_t)y_len * ((x0->len >= 0) ? 1 : -1) * ((y0->len >= 0) ? 1 : -1);
+    } else {
+        if (r->digits[r_len - 1] == 0)
+            r_len--;
+        r->len = (ptrdiff_t)r_len * ((x0->len >= 0) ? 1 : -1) * ((y0->len >= 0) ? 1 : -1);
     }
     free(x);
     free(y);
-    if (r->digits[r_len - 1] == 0)
-        r_len--;
-    r->len = (ptrdiff_t)r_len * ((x0->len >= 0) ? 1 : -1) * ((y0->len >= 0) ? 1 : -1);
     return r;
+}
+
+Bigint *bigint_div(Bigint *x, Bigint *y, Bigint *r) {
+    return bigint_div_mod(x, y, r, 0);
+}
+
+Bigint *bigint_mod(Bigint *x, Bigint *y, Bigint *r) {
+    return bigint_div_mod(x, y, r, 1);
 }
