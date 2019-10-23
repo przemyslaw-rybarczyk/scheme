@@ -18,13 +18,13 @@ size_t sprint_number_size(Val val) {
     case TYPE_CONST_FRACTION:
         return 20 * bilabs(val.fraction_data->numerator->len) + 20 * bilabs(val.fraction_data->denominator->len) + 2;
     case TYPE_FLOAT:
-        return (size_t)snprintf(NULL, 0, "%f", val.float_data);
+        return (size_t)snprintf(NULL, 0, "%.17g", val.float_data);
     case TYPE_COMPLEX:
     case TYPE_CONST_COMPLEX:
         return sprint_number_size(val.complex_data->real) + sprint_number_size(val.complex_data->imag) + 2;
     case TYPE_FLOAT_COMPLEX:
     case TYPE_CONST_FLOAT_COMPLEX:
-        return (size_t)snprintf(NULL, 0, "%f", creal(*(val.float_complex_data))) + (size_t)snprintf(NULL, 0, "%f", cimag(*(val.float_complex_data))) + 2;
+        return (size_t)snprintf(NULL, 0, "%.17g", creal(*(val.float_complex_data))) + (size_t)snprintf(NULL, 0, "%.17g", cimag(*(val.float_complex_data))) + 2;
     default:
         eprintf("Internal error in sprint_number_size(): not a number\n");
         exit(1);
@@ -54,9 +54,9 @@ size_t sprint_number(Val val, char32_t *chars) {
         return m + n + 1;
     }
     case TYPE_FLOAT: {
-        size_t n = (size_t)snprintf(NULL, 0, "%f", val.float_data);
+        size_t n = (size_t)snprintf(NULL, 0, "%.17g", val.float_data);
         char *s = s_malloc(n + 1);
-        sprintf(s, "%f", val.float_data);
+        sprintf(s, "%.17g", val.float_data);
         for (size_t i = 0; s[i] != '\0'; i++)
             chars[i] = (char32_t)s[i];
         free(s);
