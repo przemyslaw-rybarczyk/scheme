@@ -13,6 +13,10 @@
 #include "safestd.h"
 #include "string.h"
 
+#ifndef __STDC_IEC_559__
+#warning __STDC_IEC_559__ not defined; floating-point arithmetic may work incorrectly
+#endif
+
 /* -- input_mode
  * Possible values and corresponding command-line options:
  * - INPUT_INTERACTIVE / (default)
