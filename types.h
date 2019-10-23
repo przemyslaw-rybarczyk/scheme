@@ -43,27 +43,54 @@ typedef enum Print_control {
  * Contains a Scheme value with `type` representing its type and data
  * containing the value.
  * The valid representations are:
- * - Integer - TYPE_INT / int_data
- * - Floating-point - TYPE_FLOAT / float_data
+ * - Small integer - TYPE_INT / int_data
+ * - Big integer - TYPE_BIGINT / bigint_data
+ * - Fraction - TYPE_FRACTION / fraction_data
+ * - Floating-point number - TYPE_FLOAT / float_data
+ * - Complex floating-point number - TYPE_FLOAT_COMPLEX / float_complex_data
+ * - Complex number - TYPE_COMPLEX / complex_data
  * - Boolean - TYPE_BOOL / int_data
  * - String - TYPE_STRING / string_data
- * - Constant string - TYPE_CONST_STRING / string_data
  * - Symbol - TYPE_SYMBOL / string_data
  * - Primitive - TYPE_PRIM / prim_data
  * - High primitive - TYPE_HIGH_PRIM / prim_data
  * - Lambda - TYPE_LAMBDA / lambda_data
  * - Pair - TYPE_PAIR / pair_data
- * - Constant pair - TYPE_CONST_PAIR / pair_data
  * - Vector - TYPE_VECTOR / vector_data
- * - Constant vector - TYPE_CONST_VECTOR / vector_data
  * - Nil - TYPE_NIL / -unspecified-
  * - Void - TYPE_VOID / -unspecified-
  * - Undef - TYPE_UNDEF / -unspecified-
+ *
+ * Some types have constant variants, which are prefixed with with TYPE_CONST.
+ * They represent literal values and as a result are immutable and not subject
+ * to garbage collection.
+ *
+ * The six numeric types form a kind of hierarchy where values of a lower type
+ * could also be represented using a higher type:
+ * ┌───────────────────────────────────────────────┐
+ * │               TYPE_COMPLEX                    │
+ * │              ↙     ↓      ↘                   │
+ * │ TYPE_FRACTION  TYPE_FLOAT  TYPE_FLOAT_COMPLEX │
+ * │      ↓                                        │
+ * │ TYPE_BIGINT                                   │
+ * │      ↓                                        │
+ * │ TYPE_INT                                      │
+ * └───────────────────────────────────────────────┘
+ * However, a numeric value must be represented in the simplest form possible. As such:
+ * - Integers in range [SMALL_INT_MIN, SMALL_INT_MAX] must be represented as TYPE_INT.
+ * - Fractions with denominator 1 must be represented as integers.
+ * - Other fractions must be fully reduced.
+ * - Complex numbers whose imaginary part is an exact 0 must be represented with
+ *   an appropriate real type.
+ * - Complex numbers whose both parts are inexact must be represented as TYPE_FLOAT_COMPLEX.
+ * These rules ensure that each number has exactly one valid representation.
+ *
  * #!void is used as a return value when none is specified, such as
  * in assignments and definitions.
  * #!undef is used primarily for defining the letrec construct.
  * Attempting to read a variable whose value is #!undef results in an error.
  * However, for simplicity, this property is disabled in the compiler.
+ *
  * A `type` value of TYPE_BROKEN_HEART is used internally to mark an invalid value,
  * primarily in garbage collection.
  * The following values are used only for returning from functions:
