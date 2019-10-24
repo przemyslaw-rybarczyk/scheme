@@ -3,10 +3,10 @@
 #include "bigint.h"
 #include "ops.h"
 
-Bigint *bigint_mul(Bigint *m, Bigint *n, Bigint *r) {
+void bigint_mul(Bigint *m, Bigint *n, Bigint *r) {
     if (m->len == 0 || n->len == 0) {
         r->len = 0;
-        return r;
+        return;
     }
     size_t r_len = bilabs(m->len) + bilabs(n->len);
     memset(r->digits, 0, r_len * sizeof(bi_base));
@@ -24,5 +24,4 @@ Bigint *bigint_mul(Bigint *m, Bigint *n, Bigint *r) {
     if (r->digits[r_len - 1] == 0)
         r_len--;
     r->len = (ptrdiff_t)r_len * ((n->len >= 0) ? 1 : -1) * ((m->len >= 0) ? 1 : -1);
-    return r;
 }

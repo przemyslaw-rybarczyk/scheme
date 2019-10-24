@@ -4,14 +4,9 @@
 #include "ops.h"
 #include "../safestd.h"
 
-Bigint *bigint_abs(Bigint *x, Bigint *r) {
-    if (x->len >= 0) {
-        return x;
-    } else {
-        memcpy(r->digits, x->digits, bilabs(x->len) * sizeof(bi_base));
-        r->len = -x->len;
-        return r;
-    }
+void bigint_abs(Bigint *x, Bigint *r) {
+    memcpy(r->digits, x->digits, bilabs(x->len) * sizeof(bi_base));
+    r->len = bilabs(x->len);
 }
 
 typedef struct Shift_count {
@@ -61,11 +56,15 @@ static void shift_left(Bigint *x, Shift_count sc, Bigint *r) {
     }
 }
 
-Bigint *bigint_gcd(Bigint *x, Bigint *y, Bigint *r) {
-    if (x->len == 0)
-        return bigint_abs(y, r);
-    if (y->len == 0)
-        return bigint_abs(x, r);
+void bigint_gcd(Bigint *x, Bigint *y, Bigint *r) {
+    if (x->len == 0) {
+        bigint_abs(y, r);
+        return;
+    }
+    if (y->len == 0) {
+        bigint_abs(x, r);
+        return;
+    }
     Bigint *t = s_malloc(sizeof(Bigint) + BIGINT_SUB_LEN(x, y) * sizeof(bi_base));
     Bigint *u = s_malloc(sizeof(Bigint) + BIGINT_SUB_LEN(x, y) * sizeof(bi_base));
     Bigint *v = s_malloc(sizeof(Bigint) + BIGINT_SUB_LEN(x, y) * sizeof(bi_base));
@@ -83,5 +82,4 @@ Bigint *bigint_gcd(Bigint *x, Bigint *y, Bigint *r) {
     free(t);
     free(u);
     free(v);
-    return r;
 }

@@ -7,9 +7,9 @@
 #define BIGINT_MOD_LEN(x, y) bilabs((y)->len)
 #define BIGINT_GCD_LEN(x, y) (bilabs((x)->len) < bilabs((y)->len) ? bilabs((x)->len) : bilabs((y)->len))
 
-Bigint *bigint_add(Bigint *x, Bigint *y, Bigint *r);
-Bigint *bigint_sub(Bigint *x, Bigint *y, Bigint *r);
-Bigint *bigint_mul(Bigint *x, Bigint *y, Bigint *r);
-Bigint *bigint_div(Bigint *x, Bigint *y, Bigint *r);
-Bigint *bigint_mod(Bigint *x, Bigint *y, Bigint *r);
-Bigint *bigint_gcd(Bigint *x, Bigint *y, Bigint *r);
+void bigint_add(Bigint *x, Bigint *y, Bigint *r);
+void bigint_sub(Bigint *x, Bigint *y, Bigint *r);
+void bigint_mul(Bigint *x, Bigint *y, Bigint *r);
+void bigint_div(Bigint *x, Bigint *y, Bigint *r);
+void bigint_mod(Bigint *x, Bigint *y, Bigint *r);
+void bigint_gcd(Bigint *x, Bigint *y, Bigint *r);

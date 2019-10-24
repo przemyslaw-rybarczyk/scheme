@@ -13,7 +13,8 @@
 Val add_prim(Val *args, uint32_t num) {
     if ((args[0].type == TYPE_BIGINT || args[0].type == TYPE_CONST_BIGINT) && (args[1].type == TYPE_BIGINT || args[1].type == TYPE_CONST_BIGINT)) {
         Bigint *r = gc_alloc_bigint(BIGINT_ADD_LEN(args[0].bigint_data, args[1].bigint_data));
-        return (Val){TYPE_BIGINT, {.bigint_data = bigint_add(args[0].bigint_data, args[1].bigint_data, r)}};
+        bigint_add(args[0].bigint_data, args[1].bigint_data, r);
+        return (Val){TYPE_BIGINT, {.bigint_data = r}};
     }
     long long int_sum = 0;
     double float_sum;
@@ -46,7 +47,8 @@ Val add_prim(Val *args, uint32_t num) {
 Val sub_prim(Val *args, uint32_t num) {
     if ((args[0].type == TYPE_BIGINT || args[0].type == TYPE_CONST_BIGINT) && (args[1].type == TYPE_BIGINT || args[1].type == TYPE_CONST_BIGINT)) {
         Bigint *r = gc_alloc_bigint(BIGINT_SUB_LEN(args[0].bigint_data, args[1].bigint_data));
-        return (Val){TYPE_BIGINT, {.bigint_data = bigint_sub(args[0].bigint_data, args[1].bigint_data, r)}};
+        bigint_sub(args[0].bigint_data, args[1].bigint_data, r);
+        return (Val){TYPE_BIGINT, {.bigint_data = r}};
     }
     long long int_diff = 0;
     double float_diff = 0;
@@ -101,7 +103,8 @@ Val sub_prim(Val *args, uint32_t num) {
 Val mul_prim(Val *args, uint32_t num) {
     if ((args[0].type == TYPE_BIGINT || args[0].type == TYPE_CONST_BIGINT) && (args[1].type == TYPE_BIGINT || args[1].type == TYPE_CONST_BIGINT)) {
         Bigint *r = gc_alloc_bigint(BIGINT_MUL_LEN(args[0].bigint_data, args[1].bigint_data));
-        return (Val){TYPE_BIGINT, {.bigint_data = bigint_mul(args[0].bigint_data, args[1].bigint_data, r)}};
+        bigint_mul(args[0].bigint_data, args[1].bigint_data, r);
+        return (Val){TYPE_BIGINT, {.bigint_data = r}};
     }
     long long int_prod = 1;
     double float_prod;
@@ -183,7 +186,8 @@ Val div_prim(Val *args, uint32_t num) {
 Val quotient_prim(Val *args, uint32_t num) {
     if ((args[0].type == TYPE_BIGINT || args[0].type == TYPE_CONST_BIGINT) && (args[1].type == TYPE_BIGINT || args[1].type == TYPE_CONST_BIGINT)) {
         Bigint *r = gc_alloc_bigint(BIGINT_DIV_LEN(args[0].bigint_data, args[1].bigint_data));
-        return (Val){TYPE_BIGINT, {.bigint_data = bigint_div(args[0].bigint_data, args[1].bigint_data, r)}};
+        bigint_div(args[0].bigint_data, args[1].bigint_data, r);
+        return (Val){TYPE_BIGINT, {.bigint_data = r}};
     }
     return (Val){TYPE_VOID};
 }
@@ -191,7 +195,8 @@ Val quotient_prim(Val *args, uint32_t num) {
 Val mod_prim(Val *args, uint32_t num) {
     if ((args[0].type == TYPE_BIGINT || args[0].type == TYPE_CONST_BIGINT) && (args[1].type == TYPE_BIGINT || args[1].type == TYPE_CONST_BIGINT)) {
         Bigint *r = gc_alloc_bigint(BIGINT_MOD_LEN(args[0].bigint_data, args[1].bigint_data));
-        return (Val){TYPE_BIGINT, {.bigint_data = bigint_mod(args[0].bigint_data, args[1].bigint_data, r)}};
+        bigint_mod(args[0].bigint_data, args[1].bigint_data, r);
+        return (Val){TYPE_BIGINT, {.bigint_data = r}};
     }
     return (Val){TYPE_VOID};
 }
@@ -199,7 +204,8 @@ Val mod_prim(Val *args, uint32_t num) {
 Val gcd_prim(Val *args, uint32_t num) {
     if ((args[0].type == TYPE_BIGINT || args[0].type == TYPE_CONST_BIGINT) && (args[1].type == TYPE_BIGINT || args[1].type == TYPE_CONST_BIGINT)) {
         Bigint *r = gc_alloc_bigint(BIGINT_GCD_LEN(args[0].bigint_data, args[1].bigint_data));
-        return (Val){TYPE_BIGINT, {.bigint_data = bigint_gcd(args[0].bigint_data, args[1].bigint_data, r)}};
+        bigint_gcd(args[0].bigint_data, args[1].bigint_data, r);
+        return (Val){TYPE_BIGINT, {.bigint_data = r}};
     }
     return (Val){TYPE_VOID};
 }

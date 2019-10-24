@@ -4,7 +4,7 @@
 #include "bigint.h"
 #include "ops.h"
 
-static Bigint *bigint_add_sub(Bigint *x, Bigint *y, Bigint *r, int subtract) {
+static void bigint_add_sub(Bigint *x, Bigint *y, Bigint *r, int subtract) {
     Bigint *n;
     Bigint *m;
     int sub_sign;
@@ -72,13 +72,12 @@ static Bigint *bigint_add_sub(Bigint *x, Bigint *y, Bigint *r, int subtract) {
         n_len++;
         r->len = (ptrdiff_t)n_len * sub_sign;
     }
-    return r;
 }
 
-Bigint *bigint_add(Bigint *x, Bigint *y, Bigint *r) {
-    return bigint_add_sub(x, y, r, 0);
+void bigint_add(Bigint *x, Bigint *y, Bigint *r) {
+    bigint_add_sub(x, y, r, 0);
 }
 
-Bigint *bigint_sub(Bigint *x, Bigint *y, Bigint *r) {
-    return bigint_add_sub(x, y, r, 1);
+void bigint_sub(Bigint *x, Bigint *y, Bigint *r) {
+    bigint_add_sub(x, y, r, 1);
 }

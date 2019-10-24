@@ -4,7 +4,7 @@
 #include "ops.h"
 #include "../safestd.h"
 
-static Bigint *bigint_div_base(Bigint *x, bi_base y, Bigint *r, int y_sign, int mod) {
+void bigint_div_base(Bigint *x, bi_base y, Bigint *r, int y_sign, int mod) {
     size_t len = bilabs(x->len);
     if (!mod)
         r->digits[len - 1] = x->digits[len - 1] / y;
@@ -19,31 +19,31 @@ static Bigint *bigint_div_base(Bigint *x, bi_base y, Bigint *r, int y_sign, int 
         r->len = carry != 0;
         if (carry != 0)
             r->digits[0] = carry;
-        return r;
     } else {
         if (r->digits[len - 1] == 0)
             len--;
         r->len = (ptrdiff_t)len * ((x->len >= 0) ? 1 : -1) * y_sign;
-        return r;
     }
 }
 
-static Bigint *bigint_div_mod(Bigint *x0, Bigint *y0, Bigint *r, int mod) {
+void bigint_div_mod(Bigint *x0, Bigint *y0, Bigint *r, int mod) {
     // Division and modulo is performed using Algorithm D from chapter 4.3.1
     // of volume 2 of The Art of Computer Programming.
-    size_t x_len = bilabs(x0->len) + 1;
+    size_t x_len = bilabs(x0->len);
     size_t y_len = bilabs(y0->len);
-    if (x_len - 1 < y_len) { // |x0->len| < |y0->len|
+    if (x_len < y_len) { // |x0->len| < |y0->len|
         if (mod) {
-            return x0;
+            memcpy(r, x0, sizeof(Bigint) + x_len * sizeof(bi_base));
         } else {
             r->len = 0;
-            return r;
         }
+        return;
     }
     if (y_len == 1) {
-        return bigint_div_base(x0, y0->digits[0], r, y0->len >= 0 ? 1 : -1, mod);
+        bigint_div_base(x0, y0->digits[0], r, y0->len >= 0 ? 1 : -1, mod);
+        return;
     }
+    x_len = x_len + 1;
     size_t r_len = x_len - y_len;
     // Normalize x and y so that highest bit of y is set
     bi_base *y = s_malloc(y_len * sizeof(bi_base));
@@ -128,13 +128,12 @@ static Bigint *bigint_div_mod(Bigint *x0, Bigint *y0, Bigint *r, int mod) {
     }
     free(x);
     free(y);
-    return r;
 }
 
-Bigint *bigint_div(Bigint *x, Bigint *y, Bigint *r) {
-    return bigint_div_mod(x, y, r, 0);
+void bigint_div(Bigint *x, Bigint *y, Bigint *r) {
+    bigint_div_mod(x, y, r, 0);
 }
 
-Bigint *bigint_mod(Bigint *x, Bigint *y, Bigint *r) {
-    return bigint_div_mod(x, y, r, 1);
+void bigint_mod(Bigint *x, Bigint *y, Bigint *r) {
+    bigint_div_mod(x, y, r, 1);
 }
