@@ -2,9 +2,10 @@
 #include <string.h>
 #include <uchar.h>
 
-#include "bigint.h"
 #include "string.h"
 #include "../safestd.h"
+#include "bigint.h"
+#include "ops.h"
 
 bi_base read_digit(char32_t c) {
     if (c >= 'a')
@@ -14,7 +15,7 @@ bi_base read_digit(char32_t c) {
     return c - '0';
 }
 
-char32_t write_digit(int i) {
+char32_t write_digit(bi_base i) {
     if (i >= 10)
         return (char32_t)(i - 10 + 'a');
     return (char32_t)(i + '0');
@@ -42,7 +43,7 @@ Bigint *read_bigint_hexadecimal(size_t len, char32_t *chars) {
     return bi;
 }
 
-size_t bigint_sprint_hexdecimal(Bigint *bi, char32_t *chars) {
+static size_t bigint_sprint_hexdecimal(Bigint *bi, char32_t *chars) {
     size_t k = 0;
     size_t len;
     if (bi->len < 0) {
@@ -56,4 +57,42 @@ size_t bigint_sprint_hexdecimal(Bigint *bi, char32_t *chars) {
             chars[k++] = write_digit((bi->digits[i] >> (4 * j)) & 0xF);
     }
     return k;
+}
+
+size_t bigint_sprint_base(Bigint *bi, bi_base base, char32_t *chars) {
+    if (bi->len == 0) {
+        chars[0] = '0';
+        return 1;
+    }
+    // TODO special versions for other power-of-two bases
+    if (base == 16)
+        bigint_sprint_hexdecimal(bi, chars);
+    Bigint *y = s_malloc(sizeof(Bigint) + sizeof(bi_base));
+    y->len = 1;
+    y->digits[0] = base;
+    Bigint *d = s_malloc(sizeof(Bigint) + BIGINT_MOD_LEN(bi, y) * sizeof(bi_base));
+    Bigint *x = s_malloc(sizeof(Bigint) + BIGINT_DIV_LEN(bi, y) * sizeof(bi_base));
+    Bigint *q = s_malloc(sizeof(Bigint) + BIGINT_DIV_LEN(bi, y) * sizeof(bi_base));
+    size_t i = 0;
+    bigint_mod(bi, y, d);
+    chars[i++] = write_digit(d->len ? d->digits[0] : 0);
+    bigint_div(bi, y, x);
+    while (x->len != 0) {
+        bigint_mod(x, y, d);
+        chars[i++] = write_digit(d->len ? d->digits[0] : 0);
+        bigint_div(x, y, q);
+        Bigint *t = x;
+        x = q;
+        q = t;
+    }
+    for (size_t j = 0; j < i / 2; j++) {
+        char32_t t = chars[j];
+        chars[j] = chars[i - j - 1];
+        chars[i - j - 1] = t;
+    }
+    free(y);
+    free(d);
+    free(x);
+    free(q);
+    return i;
 }

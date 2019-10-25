@@ -43,14 +43,13 @@ size_t sprint_number(Val val, char32_t *chars) {
         return n;
     }
     case TYPE_BIGINT:
-    case TYPE_CONST_BIGINT: {
-        return bigint_sprint_hexdecimal(val.bigint_data, chars);
-    }
+    case TYPE_CONST_BIGINT:
+        return bigint_sprint_base(val.bigint_data, 10, chars);
     case TYPE_FRACTION:
     case TYPE_CONST_FRACTION: {
-        size_t m = bigint_sprint_hexdecimal(val.fraction_data->numerator, chars);
+        size_t m = bigint_sprint_base(val.fraction_data->numerator, 10, chars);
         chars[m] = '/';
-        size_t n = bigint_sprint_hexdecimal(val.fraction_data->denominator, chars + m + 1);
+        size_t n = bigint_sprint_base(val.fraction_data->denominator, 10, chars + m + 1);
         return m + n + 1;
     }
     case TYPE_FLOAT: {
