@@ -7,6 +7,15 @@
 #define BIGINT_MOD_LEN(x, y) bilabs((y)->len)
 #define BIGINT_GCD_LEN(x, y) (bilabs((x)->len) < bilabs((y)->len) ? bilabs((x)->len) : bilabs((y)->len))
 
+/* == bigint/ops.h
+ * These functions require a bigint (r) of sufficient size to write the result to.
+ * The macros BIGINT_<op>_LEN can be used to get the necessary number of
+ * digits of a bigint. The allocation is done outside the functions so that
+ * the result may be stored either on the heap or in garbage-collected memory.
+ * Note that some operations may require more allocated digits than the result
+ * acually has, so the macros should always be used.
+ */
+
 void bigint_add(Bigint *x, Bigint *y, Bigint *r);
 void bigint_sub(Bigint *x, Bigint *y, Bigint *r);
 void bigint_mul(Bigint *x, Bigint *y, Bigint *r);
