@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 
 #include "display.h"
@@ -18,7 +19,7 @@ size_t sprint_number_size(Val val) {
     case TYPE_CONST_FRACTION:
         return 20 * bilabs(val.fraction_data->numerator->len) + 20 * bilabs(val.fraction_data->denominator->len) + 2;
     case TYPE_FLOAT:
-        return (size_t)snprintf(NULL, 0, "%.17g", val.float_data);
+        return (size_t)snprintf(NULL, 0, "%.17g", val.float_data) + 2;
     case TYPE_COMPLEX:
     case TYPE_CONST_COMPLEX:
         return sprint_number_size(val.complex_data->real) + sprint_number_size(val.complex_data->imag) + 2;
@@ -56,8 +57,16 @@ size_t sprint_number(Val val, char32_t *chars) {
         size_t n = (size_t)snprintf(NULL, 0, "%.17g", val.float_data);
         char *s = s_malloc(n + 1);
         sprintf(s, "%.17g", val.float_data);
-        for (size_t i = 0; s[i] != '\0'; i++)
+        int exp = 0;
+        for (size_t i = 0; i < n; i++) {
+            if (s[i] == 'e')
+                exp = 1;
             chars[i] = (char32_t)s[i];
+        }
+        if (!exp && val.float_data == floor(val.float_data)) {
+            chars[n++] = '.';
+            chars[n++] = '0';
+        }
         free(s);
         return n;
     }
