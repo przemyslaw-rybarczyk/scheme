@@ -4,6 +4,7 @@
 
 #include "string.h"
 #include "../safestd.h"
+#include "../string.h"
 #include "bigint.h"
 #include "ops.h"
 
@@ -23,7 +24,8 @@ char32_t write_digit(bi_base i) {
 
 #define HEX_CPD (sizeof(bi_base) * 2)
 
-Bigint *read_bigint_hexadecimal(size_t len, char32_t *chars) {
+// TODO don't allocate
+static Bigint *read_bigint_hexadecimal(size_t len, char32_t *chars) {
     while (len >= 0 && *chars == '0') {
         chars++;
         len--;
@@ -43,7 +45,7 @@ Bigint *read_bigint_hexadecimal(size_t len, char32_t *chars) {
     return bi;
 }
 
-static size_t bigint_sprint_hexdecimal(Bigint *bi, char32_t *chars) {
+static size_t bigint_write_hexdecimal(Bigint *bi, char32_t *chars) {
     size_t k = 0;
     size_t len;
     if (bi->len < 0) {
@@ -59,14 +61,14 @@ static size_t bigint_sprint_hexdecimal(Bigint *bi, char32_t *chars) {
     return k;
 }
 
-size_t bigint_sprint_base(Bigint *bi, bi_base base, char32_t *chars) {
+size_t bigint_write_base(Bigint *bi, bi_base base, char32_t *chars) {
     if (bi->len == 0) {
         chars[0] = '0';
         return 1;
     }
     // TODO special versions for other power-of-two bases
     if (base == 16)
-        bigint_sprint_hexdecimal(bi, chars);
+        bigint_write_hexdecimal(bi, chars);
     Bigint *y = s_malloc(sizeof(Bigint) + sizeof(bi_base));
     y->len = 1;
     y->digits[0] = base;
@@ -95,4 +97,21 @@ size_t bigint_sprint_base(Bigint *bi, bi_base base, char32_t *chars) {
     free(x);
     free(q);
     return i;
+}
+
+int bigint_read_base(size_t len, char32_t *chars, bi_base base, Bigint *r) {
+    r->len = 0;
+    for (size_t i = 0; i < len; i++) {
+        bi_base carry = read_digit(chars[i]);
+        if (carry >= base)
+            return 0;
+        for (size_t j = 0; j < r->len; j++) {
+            bi_double_base d = (bi_double_base)r->digits[j] * base + carry;
+            r->digits[j] = (bi_base)d;
+            carry = d >> BI_BASE_BITS;
+        }
+        if (carry)
+            r->digits[r->len++] = carry;
+    }
+    return 1;
 }

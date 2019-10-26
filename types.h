@@ -17,10 +17,6 @@ struct Global_env;
 struct High_prim_return;
 struct Val;
 
-typedef int64_t small_int;
-#define SMALL_INT_MIN LLONG_MIN
-#define SMALL_INT_MAX LLONG_MAX
-
 typedef struct High_prim_return High_prim(struct Val *, uint32_t);
 
 /* -- Print_control

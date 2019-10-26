@@ -8,7 +8,7 @@
 #include "insts.h"
 #include "safestd.h"
 
-size_t sprint_number_size(Val val) {
+static size_t write_number_size(Val val) {
     switch (val.type) {
     case TYPE_INT:
         return (size_t)snprintf(NULL, 0, "%"PRId64, val.int_data);
@@ -22,17 +22,17 @@ size_t sprint_number_size(Val val) {
         return (size_t)snprintf(NULL, 0, "%.17g", val.float_data) + 2;
     case TYPE_COMPLEX:
     case TYPE_CONST_COMPLEX:
-        return sprint_number_size(val.complex_data->real) + sprint_number_size(val.complex_data->imag) + 2;
+        return write_number_size(val.complex_data->real) + write_number_size(val.complex_data->imag) + 2;
     case TYPE_FLOAT_COMPLEX:
     case TYPE_CONST_FLOAT_COMPLEX:
         return (size_t)snprintf(NULL, 0, "%.17g", creal(*(val.float_complex_data))) + (size_t)snprintf(NULL, 0, "%.17g", cimag(*(val.float_complex_data))) + 2;
     default:
-        eprintf("Internal error in sprint_number_size(): not a number\n");
+        eprintf("Internal error in write_number_size(): not a number\n");
         exit(1);
     }
 }
 
-size_t sprint_number(Val val, char32_t *chars) {
+static size_t write_number(Val val, char32_t *chars) {
     switch (val.type) {
     case TYPE_INT: {
         size_t n = (size_t)snprintf(NULL, 0, "%"PRId64, val.int_data);
@@ -45,12 +45,13 @@ size_t sprint_number(Val val, char32_t *chars) {
     }
     case TYPE_BIGINT:
     case TYPE_CONST_BIGINT:
-        return bigint_sprint_base(val.bigint_data, 10, chars);
+        printf("BIG:");
+        return bigint_write_base(val.bigint_data, 10, chars);
     case TYPE_FRACTION:
     case TYPE_CONST_FRACTION: {
-        size_t m = bigint_sprint_base(val.fraction_data->numerator, 10, chars);
+        size_t m = bigint_write_base(val.fraction_data->numerator, 10, chars);
         chars[m] = '/';
-        size_t n = bigint_sprint_base(val.fraction_data->denominator, 10, chars + m + 1);
+        size_t n = bigint_write_base(val.fraction_data->denominator, 10, chars + m + 1);
         return m + n + 1;
     }
     case TYPE_FLOAT: {
@@ -72,22 +73,22 @@ size_t sprint_number(Val val, char32_t *chars) {
     }
     case TYPE_COMPLEX:
     case TYPE_CONST_COMPLEX: {
-        size_t m = sprint_number(val.complex_data->real, chars);
+        size_t m = write_number(val.complex_data->real, chars);
         chars[m] = '+';
-        size_t n = sprint_number(val.complex_data->imag, chars + m + 1);
+        size_t n = write_number(val.complex_data->imag, chars + m + 1);
         chars[m + n + 1] = 'i';
         return m + n + 2;
     }
     case TYPE_FLOAT_COMPLEX:
     case TYPE_CONST_FLOAT_COMPLEX: {
-        size_t m = sprint_number((Val){TYPE_FLOAT, .float_data = creal(*(val.float_complex_data))}, chars);
+        size_t m = write_number((Val){TYPE_FLOAT, .float_data = creal(*(val.float_complex_data))}, chars);
         chars[m] = '+';
-        size_t n = sprint_number((Val){TYPE_FLOAT, .float_data = cimag(*(val.float_complex_data))}, chars + m + 1);
+        size_t n = write_number((Val){TYPE_FLOAT, .float_data = cimag(*(val.float_complex_data))}, chars + m + 1);
         chars[m + n + 1] = 'i';
         return m + n + 2;
     }
     default:
-        eprintf("Internal error in sprint_number(): not a number\n");
+        eprintf("Internal error in write_number(): not a number\n");
         exit(1);
     }
 }
@@ -109,8 +110,8 @@ static void print_val_(Val val0, int display_style) {
         case TYPE_CONST_COMPLEX:
         case TYPE_FLOAT_COMPLEX:
         case TYPE_CONST_FLOAT_COMPLEX: {
-            String *str = s_malloc(sizeof(String) + sprint_number_size(val) * sizeof(char32_t));
-            str->len = sprint_number(val, str->chars);
+            String *str = s_malloc(sizeof(String) + write_number_size(val) * sizeof(char32_t));
+            str->len = write_number(val, str->chars);
             puts32(str);
             free(str);
             break;

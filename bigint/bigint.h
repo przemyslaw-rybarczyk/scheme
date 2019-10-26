@@ -5,6 +5,10 @@
 #include <stddef.h>
 #include <stdlib.h>
 
+typedef int64_t small_int;
+#define SMALL_INT_MIN LLONG_MIN
+#define SMALL_INT_MAX LLONG_MAX
+
 #ifdef __SIZEOF_INT128__
     typedef uint64_t bi_base;
     typedef __uint128_t bi_double_base;
@@ -54,3 +58,4 @@ typedef struct Bigint {
 } Bigint;
 
 Bigint *gc_alloc_bigint(size_t len);
+int bigint_to_small_int(Bigint *bi, small_int *n);

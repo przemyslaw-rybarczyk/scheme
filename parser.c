@@ -161,6 +161,17 @@ Val get_token(FILE *f) {
     // numeric literal
     if (('0' <= s[0] && s[0] <= '9') ||
             (i > 1 && (s[0] == '+' || s[0] == '-' || (s[0] == '.' && '0' <= s[1] && s[1] <= '9')))) {
+        Bigint *n = s_malloc(sizeof(Bigint) + (i / 20 + 1) * sizeof(bi_base));
+        int is_int = bigint_read_base(i, s, 10, n);
+        if (is_int) {
+            small_int n_small;
+            if (bigint_to_small_int(n, &n_small)) {
+                free(n);
+                return (Val){TYPE_INT, {.int_data = n_small}};
+            }
+            return (Val){TYPE_CONST_BIGINT, {.bigint_data = n}};
+        }
+        free(n);
         char *num = s_malloc(i + 1);
         for (size_t j = 0; j < i; j++) {
             if (('0' <= s[j] && s[j] <= '9') || s[j] == '+' || s[j] == '-' || s[j] == '.')
@@ -170,17 +181,11 @@ Val get_token(FILE *f) {
         }
         num[i] = '\0';
         char *endptr;
-        long long int_val = strtoll(num, &endptr, 10);
+        double f = strtod(num, &endptr);
         if (*endptr == '\0') {
             free(s);
             free(num);
-            return (Val){TYPE_INT, {.int_data = int_val}};
-        }
-        double float_val = strtod(num, &endptr);
-        if (*endptr == '\0') {
-            free(s);
-            free(num);
-            return (Val){TYPE_FLOAT, {.float_data = float_val}};
+            return (Val){TYPE_FLOAT, {.float_data = f}};
         }
 invalid_num:
         free(num);
@@ -218,15 +223,6 @@ invalid_num:
                 free(s);
                 return (Val){TYPE_CHAR, {.char_data = '\n'}};
             }
-        } if (s[1] == 'x') {
-            Bigint *bi = read_bigint_hexadecimal(i - 2, s + 2);
-            if (bi == NULL) {
-                eprintf("Error: invalid hexadecimal literal ");
-                eputs32(new_gc_string(i, s));
-                eprintf("\n");
-                exit(1);
-            }
-            return (Val){TYPE_CONST_BIGINT, {.bigint_data = bi}};
         } if (strbuf_eq_cstr(i, s, "#f")) {
             free(s);
             return (Val){TYPE_BOOL, {.int_data = 0}};
