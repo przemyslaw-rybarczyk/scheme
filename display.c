@@ -45,6 +45,7 @@ static size_t write_number(Val val, char32_t *chars) {
     }
     case TYPE_BIGINT:
     case TYPE_CONST_BIGINT:
+        // TEMPORARY FOR TESTING
         printf("BIG:");
         return bigint_write_base(val.bigint_data, 10, chars);
     case TYPE_FRACTION:

@@ -161,7 +161,7 @@ Val get_token(FILE *f) {
     // numeric literal
     if (('0' <= s[0] && s[0] <= '9') ||
             (i > 1 && (s[0] == '+' || s[0] == '-' || (s[0] == '.' && '0' <= s[1] && s[1] <= '9')))) {
-        Bigint *n = s_malloc(sizeof(Bigint) + (i / 20 + 1) * sizeof(bi_base));
+        Bigint *n = s_malloc(sizeof(Bigint) + (i / 19 + 1) * sizeof(bi_base));
         int is_int = bigint_read_base(i, s, 10, n);
         if (is_int) {
             small_int n_small;
