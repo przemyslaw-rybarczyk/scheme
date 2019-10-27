@@ -1,3 +1,4 @@
+*.o
 scheme
 unicode/*.txt
 unicode/unicode_data.h

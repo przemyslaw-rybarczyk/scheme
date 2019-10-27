@@ -3,8 +3,7 @@
 A basic implementation of Scheme in C that I initially made as exercise 5.51 from [Structure and Interpretation of Computer Programs](https://mitpress.mit.edu/sites/default/files/sicp/index.html).
 
 ## Compilation
-To compile the interpreter, run `unicode/update.sh` to generate the `unicode/unicode_data.h` file, followed by `compile.sh` to actually compile the program.
-The `$CC` environment variable can be used to change used C compiler used. `clang` is used by default.
+To compile the interpreter, run `make`. The C compiler can be set with `CC=`. `clang` is used by default.
 
 ### Flags
 - `GC_ALWAYS` makes the garbage collector activate on every allocation. Useful for debugging.
