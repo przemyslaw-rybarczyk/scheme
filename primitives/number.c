@@ -135,6 +135,18 @@ Val mul_prim(Val *args, uint32_t num) {
 }
 
 Val div_prim(Val *args, uint32_t num) {
+    if (args[0].type == TYPE_INT) {
+        Bigint *bi0 = gc_alloc(sizeof(Bigint) + sizeof(bi_base));
+        bi0->len = (args[0].int_data < 0) ? -1 : 1;
+        bi0->digits[0] = llabs(args[0].int_data);
+        args[0] = (Val){TYPE_BIGINT, {.bigint_data = bi0}};
+    }
+    if (args[1].type == TYPE_INT) {
+        Bigint *bi1 = gc_alloc(sizeof(Bigint) + sizeof(bi_base));
+        bi1->len = (args[1].int_data < 0) ? -1 : 1;
+        bi1->digits[0] = llabs(args[1].int_data);
+        args[1] = (Val){TYPE_BIGINT, {.bigint_data = bi1}};
+    }
     if ((args[0].type == TYPE_BIGINT || args[0].type == TYPE_CONST_BIGINT) && (args[1].type == TYPE_BIGINT || args[1].type == TYPE_CONST_BIGINT)) {
         Fraction *r = gc_alloc(sizeof(Fraction));
         Bigint *d = s_malloc(sizeof(Bigint) + BIGINT_GCD_LEN(args[0].bigint_data, args[1].bigint_data) * sizeof(bi_base));
